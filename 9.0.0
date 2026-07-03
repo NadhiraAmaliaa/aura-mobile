@@ -1,0 +1,5 @@
+"freezed" is already in "dev_dependencies". Will try to update the constraint.
+"riverpod_generator" is already in "dev_dependencies". Will try to update the constraint.
+"json_serializable" is already in "dev_dependencies". Will try to update the constraint.
+"riverpod_annotation" is already in "dependencies". Will try to update the constraint.
+"retrofit_generator" was found in dev_dependencies. Removing "retrofit_generator" and adding it to dependencies instead.
