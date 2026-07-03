@@ -294,9 +294,12 @@ Riverpod already does). **Trade-off:** codegen adds a build step (accepted).
 
 ### 7.2 Result & error handling
 
-- All repository methods return a **sealed `ApiResult<T>`** (freezed union:
-  `Success` / `Failure`) — no throwing across the repository boundary for
-  expected errors.
+- All repository methods return a **sealed `ApiResult<T>`** (`Success` /
+  `Failure`) — no throwing across the repository boundary for expected errors.
+  **Implementation note:** this is a plain Dart 3 `sealed class`, **not** a
+  Freezed union. For a two-variant generic result, hand-written sealed classes
+  give the same exhaustive `switch` with cleaner generics and no codegen.
+  Freezed remains reserved for data models and UI state.
 - `Failure` carries a typed `AppException` (network, unauthorized, validation,
   server, unknown). Unexpected exceptions are reported to Sentry.
 
@@ -384,7 +387,11 @@ logout must call the backend to revoke, not just clear local storage.
 
 ### Android storage caveats
 
-- Configure `flutter_secure_storage` with `encryptedSharedPreferences: true`.
+- **`encryptedSharedPreferences` is no longer set.** It is deprecated in
+  `flutter_secure_storage 10.x` (the Jetpack Security library is deprecated by
+  Google; data auto-migrates to custom ciphers on first access). We use the
+  default `AndroidOptions`. Revisit if the plugin changes its default backend
+  again.
 - Configure Android auto-backup rules so stale keystore entries aren't restored.
 
 ---
