@@ -20,15 +20,15 @@ Attendance system.
 
 ### Core features (v1 scope)
 
-| Feature | Notes |
-|---|---|
-| Authentication | Token-based login (Sanctum). |
-| Attendance Check-In / Check-Out | Records timestamp + GPS coordinates. |
-| GPS location | Captured on check-in/out; a **fraud surface**, see §12. |
-| Work Mode | `wfo` \| `wfh` \| `dinas` (WFO / WFH / Business Trip). |
-| Leave Requests | `izin` \| `sakit`, with approval status. |
-| Attendance History | Read-only list of past records. |
-| Profile | Intern profile view. |
+| Feature                         | Notes                                                   |
+| ------------------------------- | ------------------------------------------------------- |
+| Authentication                  | Token-based login (Sanctum).                            |
+| Attendance Check-In / Check-Out | Records timestamp + GPS coordinates.                    |
+| GPS location                    | Captured on check-in/out; a **fraud surface**, see §12. |
+| Work Mode                       | `wfo` \| `wfh` \| `dinas` (WFO / WFH / Business Trip).  |
+| Leave Requests                  | `izin` \| `sakit`, with approval status.                |
+| Attendance History              | Read-only list of past records.                         |
+| Profile                         | Intern profile view.                                    |
 
 ### Backend domain reference (from Laravel schema)
 
@@ -48,8 +48,8 @@ Field vocabulary the app must mirror exactly:
 
 1. **Feature-first, not layer-first.** Code is organized by business feature so
    the app scales by adding folders, not by growing shared god-layers.
-2. **Server is the source of truth.** The device *reports*; the backend
-   *decides* (attendance status, late/present, timestamps, future geofence).
+2. **Server is the source of truth.** The device _reports_; the backend
+   _decides_ (attendance status, late/present, timestamps, future geofence).
    The client never owns business rules that have integrity/fraud implications.
 3. **Pragmatic layering.** We use a light presentation/data separation with a
    thin domain layer only where it earns its keep (auth, attendance). We do
@@ -58,12 +58,12 @@ Field vocabulary the app must mirror exactly:
    handling. No hidden mutable singletons.
 5. **Codegen is a first-class workflow**, not an afterthought.
 
-### 2.2 What this architecture is *called*
+### 2.2 What this architecture is _called_
 
 Feature-first + **Riverpod presentation layer (Notifier / AsyncNotifier)** over
 repositories.
 
-> We deliberately **do not call this "MVVM."** Riverpod's `AsyncNotifier` *is*
+> We deliberately **do not call this "MVVM."** Riverpod's `AsyncNotifier` _is_
 > the ViewModel. Using the MVVM label historically invites someone to add a
 > second state framework (`ChangeNotifier`, `provider`-style bindings) that
 > fights Riverpod. Precise naming prevents architectural drift.
@@ -143,7 +143,7 @@ lib/
 touches leave. **Alternative considered:** strict Clean everywhere (rejected as
 over-engineering for a ~5-feature app; ceremony without payoff for CRUD screens).
 **Trade-off:** inconsistency between "full 3-layer" features and "2-layer"
-features. Mitigated by documenting *which* features get a domain layer (above).
+features. Mitigated by documenting _which_ features get a domain layer (above).
 
 ---
 
@@ -153,50 +153,56 @@ features. Mitigated by documenting *which* features get a domain layer (above).
 
 **Runtime dependencies**
 
-| Package | Role | Why |
-|---|---|---|
-| `flutter_riverpod` | State / DI | Chosen state solution. |
-| `riverpod_annotation` | Codegen annotations | Enables `@riverpod`. |
-| `dio` | HTTP client | Interceptors required for auth. |
-| `retrofit` | Typed API layer | Less boilerplate as API grows. |
-| `go_router` | Routing | Declarative + auth redirect. |
-| `flutter_secure_storage` | Token storage | Encrypted at rest. |
-| `freezed_annotation` | Model/union annotations | Immutable models + sealed unions. |
-| `json_annotation` | Serialization annotations | Works alongside freezed. |
-| `geolocator` | GPS | Core to attendance; also mock detection. |
-| `intl` | Date/time/format | Dates, times, locale formatting. |
-| `sentry_flutter` | Crash/error reporting | Non-negotiable for production. |
+| Package                  | Role                      | Why                                      |
+| ------------------------ | ------------------------- | ---------------------------------------- |
+| `flutter_riverpod`       | State / DI                | Chosen state solution.                   |
+| `riverpod_annotation`    | Codegen annotations       | Enables `@riverpod`.                     |
+| `dio`                    | HTTP client               | Interceptors required for auth.          |
+| `retrofit`               | Typed API layer           | Less boilerplate as API grows.           |
+| `go_router`              | Routing                   | Declarative + auth redirect.             |
+| `flutter_secure_storage` | Token storage             | Encrypted at rest.                       |
+| `freezed_annotation`     | Model/union annotations   | Immutable models + sealed unions.        |
+| `json_annotation`        | Serialization annotations | Works alongside freezed.                 |
+| `geolocator`             | GPS                       | Core to attendance; also mock detection. |
+| `intl`                   | Date/time/format          | Dates, times, locale formatting.         |
+| `sentry_flutter`         | Crash/error reporting     | Non-negotiable for production.           |
 
 **Dev dependencies**
 
-| Package | Role |
-|---|---|
-| `build_runner` | Codegen runner. |
-| `riverpod_generator` | `@riverpod` codegen. |
-| `freezed` | Model/union codegen. |
-| `retrofit_generator` | Retrofit codegen. |
-| `json_serializable` | `fromJson`/`toJson`. |
-| `custom_lint` | Enables plugin lints. |
-| `riverpod_lint` | Catches Riverpod mistakes at analyze time. |
-| `mocktail` | Mocking for tests, no codegen. |
+| Package              | Role                                       |
+| -------------------- | ------------------------------------------ |
+| `build_runner`       | Codegen runner.                            |
+| `riverpod_generator` | `@riverpod` codegen.                       |
+| `freezed`            | Model/union codegen.                       |
+| `retrofit_generator` | Retrofit codegen.                          |
+| `json_serializable`  | `fromJson`/`toJson`.                       |
+| `mocktail`           | Mocking for tests, no codegen.             |
+
+> **Note (2026-07-03):** `custom_lint` and `riverpod_lint` were **deferred at
+> install time**, not by choice but due to an ecosystem version conflict:
+> `flutter_riverpod 3.3.2` pins `riverpod 3.3.2`, while the current
+> `riverpod_lint`/`custom_lint` only resolve against `riverpod ≤ 3.1.0`. We
+> chose **not** to downgrade the core state library to satisfy a linter. Re-add
+> both once `riverpod_lint` supports `riverpod 3.3.x` (see §4.2).
 
 **Optional (may add in v1 if UX needs it)**
 
-| Package | Role | Condition |
-|---|---|---|
+| Package             | Role              | Condition                                        |
+| ------------------- | ----------------- | ------------------------------------------------ |
 | `connectivity_plus` | Offline awareness | Add if we need explicit offline UX for check-in. |
 
 ### 4.2 Deferred (do NOT install yet)
 
-| Package | Why deferred | Install trigger |
-|---|---|---|
-| `permission_handler` | `geolocator` handles location permissions itself. Redundant for a location-only v1. Adding later is cheap/non-invasive. | A second permission domain: camera (selfie check-in), notifications, photos. |
-| `freezed` (as "later") | **Reversed — now installed day one.** Kept here for history: it touches models + state, so retrofitting is expensive; hence it is foundational. | N/A (installed). |
-| `hive` / `isar` / `drift` | No offline persistence requirement in v1. Local DB collides with anti-fraud (stale queued check-ins). | A decision to support offline **read** caching or offline history. |
-| `google_maps_flutter` / geofence libs | Work-modes doc marks geofencing as **future, server-side**. `geolocator` already gives coordinates. | Client-side map display or client geofence UX. |
-| `firebase_messaging` / `flutter_local_notifications` | Push (e.g., leave approval alerts) is a feature, not foundation. | Notification feature is scheduled. |
-| `google_maps_flutter` | See above. | See above. |
-| Analytics SDKs | Not foundational; adds privacy surface. | A product analytics requirement. |
+| Package                                              | Why deferred                                                                                                                                    | Install trigger                                                              |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `permission_handler`                                 | `geolocator` handles location permissions itself. Redundant for a location-only v1. Adding later is cheap/non-invasive.                         | A second permission domain: camera (selfie check-in), notifications, photos. |
+| `custom_lint` / `riverpod_lint`                      | Foundational by intent, but currently **unresolvable** against `riverpod 3.3.2` (they cap at `riverpod ≤ 3.1.0`). Not worth downgrading the core library. | `riverpod_lint` publishes support for `riverpod 3.3.x`.                       |
+| `freezed` (as "later")                               | **Reversed — now installed day one.** Kept here for history: it touches models + state, so retrofitting is expensive; hence it is foundational. | N/A (installed).                                                             |
+| `hive` / `isar` / `drift`                            | No offline persistence requirement in v1. Local DB collides with anti-fraud (stale queued check-ins).                                           | A decision to support offline **read** caching or offline history.           |
+| `google_maps_flutter` / geofence libs                | Work-modes doc marks geofencing as **future, server-side**. `geolocator` already gives coordinates.                                             | Client-side map display or client geofence UX.                               |
+| `firebase_messaging` / `flutter_local_notifications` | Push (e.g., leave approval alerts) is a feature, not foundation.                                                                                | Notification feature is scheduled.                                           |
+| `google_maps_flutter`                                | See above.                                                                                                                                      | See above.                                                                   |
+| Analytics SDKs                                       | Not foundational; adds privacy surface.                                                                                                         | A product analytics requirement.                                             |
 
 ### 4.3 Explicitly rejected
 
@@ -208,13 +214,13 @@ features. Mitigated by documenting *which* features get a domain layer (above).
 
 ## 5. Naming Conventions
 
-| Element | Convention | Example |
-|---|---|---|
-| Files & directories | `snake_case` | `auth_repository.dart` |
-| Classes / enums / typedefs | `PascalCase` | `AttendanceRepository`, `WorkMode` |
-| Members / variables | `lowerCamelCase` | `checkInTime` |
-| Constants | `lowerCamelCase` (modern Dart) | `defaultTimeout` |
-| Riverpod providers | function name + `Provider` suffix (generated) | `authNotifierProvider`, `dioProvider` |
+| Element                    | Convention                                    | Example                               |
+| -------------------------- | --------------------------------------------- | ------------------------------------- |
+| Files & directories        | `snake_case`                                  | `auth_repository.dart`                |
+| Classes / enums / typedefs | `PascalCase`                                  | `AttendanceRepository`, `WorkMode`    |
+| Members / variables        | `lowerCamelCase`                              | `checkInTime`                         |
+| Constants                  | `lowerCamelCase` (modern Dart)                | `defaultTimeout`                      |
+| Riverpod providers         | function name + `Provider` suffix (generated) | `authNotifierProvider`, `dioProvider` |
 
 **File role suffixes (be consistent):**
 
@@ -223,7 +229,7 @@ features. Mitigated by documenting *which* features get a domain layer (above).
 - `*_repository.dart` (abstract) / `*_repository_impl.dart` (impl).
 - `*_notifier.dart` — Riverpod ViewModels.
 - `*_state.dart` — state classes/unions.
-- `*_model.dart` — data-layer DTOs. *(We use `_model`, not `_dto`.)*
+- `*_model.dart` — data-layer DTOs. _(We use `_model`, not `_dto`.)_
 - `*_entity.dart` — domain entities.
 
 **JSON mapping rule:** Dart stays `camelCase`; JSON keys stay `snake_case` via
@@ -346,7 +352,7 @@ codegen and by `AsyncValue` covering the common case for free.
 - Keep DTOs (`*_model.dart`) in `data/`; map to domain `*_entity.dart` only in
   the features that have a domain layer (`auth`, `attendance`).
 
-**Why freezed day one:** it touches models *and* state — the exact layers we
+**Why freezed day one:** it touches models _and_ state — the exact layers we
 build first. Retrofitting freezed later means rewriting every model/state class
 and all call sites (`copyWith`, pattern matches). Installing it now avoids a
 costly migration. This was a deliberate reversal of an earlier "add later"
@@ -459,6 +465,27 @@ Generators in use: `freezed`, `json_serializable`, `riverpod_generator`,
 reproducibility and reviewability. If diffs become noisy we revisit
 `.gitattributes` to mark them as generated.
 
+### 14.1 Note on `freezed` prerelease & reproducibility (2026-07-03)
+
+- **`freezed` is currently pinned to a prerelease (`3.2.6-dev.1`).** This is
+  forced by analyzer compatibility: `riverpod_generator 4.0.4` requires
+  `analyzer ^12`, and the first `freezed` supporting analyzer 12 is
+  `3.2.6-dev.1`. We deliberately **do not** downgrade the Riverpod runtime to
+  obtain stable `freezed 3.2.5`, because `riverpod_generator` pulls the
+  transitive prerelease `riverpod_analyzer_utils` (no stable release exists yet)
+  regardless — so a downgrade would trade a newer shipped library for no real
+  gain. (Full analysis in the decision log / discussion.)
+- **`freezed` is a `dev_dependency` and does NOT ship in the runtime app.** It is
+  a build-time code generator only. The app binary depends on the *generated*
+  `*.freezed.dart` / `*.g.dart` files and on `freezed_annotation` (stable), not
+  on the `freezed` generator itself.
+- **Reproducible builds are guaranteed by committing two things:** the
+  **generated files** (`*.freezed.dart`, `*.g.dart`) and **`pubspec.lock`**.
+  With both committed, a fresh clone (or a future rebuild years later) resolves
+  to the exact same versions and can build without re-running codegen. This is
+  the primary safeguard for a hand-over-and-abandon project, and it holds
+  regardless of the prerelease label on the codegen tooling.
+
 ---
 
 ## 15. Development Workflow
@@ -473,8 +500,8 @@ reproducibility and reviewability. If diffs become noisy we revisit
 - Dev: `flutter run --dart-define=ENV=dev --dart-define=BASE_URL=<dev-url>`
 - Prod: `flutter run --dart-define=ENV=prod --dart-define=BASE_URL=<prod-url>`
 
-*(Exact flavor invocation finalized when flavors are implemented; the
-`--dart-define` contract is fixed.)*
+_(Exact flavor invocation finalized when flavors are implemented; the
+`--dart-define` contract is fixed.)_
 
 ### 15.3 Quality gates (run before pushing)
 
@@ -512,7 +539,7 @@ for faster integration over long-lived divergent branches.
 ---
 
 ## 17. Best Practices
- 
+
 - **Server is source of truth** for anything with integrity implications (§12).
 - **One state solution** (Riverpod). Do not introduce a second.
 - **No business logic in widgets.** Widgets render state and dispatch intents to
@@ -531,17 +558,17 @@ for faster integration over long-lived divergent branches.
 
 ## 18. Future Considerations (deliberately deferred)
 
-| Item | When to reconsider |
-|---|---|
-| `permission_handler` | Camera (selfie check-in), notifications, or photos added. |
-| Push notifications | Leave-approval / attendance-reminder feature scheduled. |
-| Offline read caching (Hive/Isar/Drift) | Requirement to view history/profile offline. |
-| Client-side geofence + maps | Server geofence lands and needs a client UX. |
-| Refresh-token auth | Backend adopts short-lived tokens. |
-| Product analytics | Explicit analytics requirement (mind privacy). |
-| Localization (multi-language) | Beyond `intl` formatting — full `.arb` l10n if a second language is required. |
-| CI/CD (build, test, distribute) | Team wants automated builds / store delivery. |
-| App icons / splash tooling | Branding pass (`flutter_launcher_icons`, `flutter_native_splash`). |
+| Item                                   | When to reconsider                                                            |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `permission_handler`                   | Camera (selfie check-in), notifications, or photos added.                     |
+| Push notifications                     | Leave-approval / attendance-reminder feature scheduled.                       |
+| Offline read caching (Hive/Isar/Drift) | Requirement to view history/profile offline.                                  |
+| Client-side geofence + maps            | Server geofence lands and needs a client UX.                                  |
+| Refresh-token auth                     | Backend adopts short-lived tokens.                                            |
+| Product analytics                      | Explicit analytics requirement (mind privacy).                                |
+| Localization (multi-language)          | Beyond `intl` formatting — full `.arb` l10n if a second language is required. |
+| CI/CD (build, test, distribute)        | Team wants automated builds / store delivery.                                 |
+| App icons / splash tooling             | Branding pass (`flutter_launcher_icons`, `flutter_native_splash`).            |
 
 ---
 
@@ -558,5 +585,5 @@ for faster integration over long-lived divergent branches.
 
 ---
 
-*End of document. Update this file first whenever an architectural decision
-changes.*
+_End of document. Update this file first whenever an architectural decision
+changes._
