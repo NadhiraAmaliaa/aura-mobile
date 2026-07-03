@@ -8,10 +8,7 @@ import 'auth_interceptor.dart';
 ///
 /// Base URL comes from [AppEnv]; the [AuthInterceptor] injects the bearer
 /// token. See the architecture doc §7.
-Dio buildDio({
-  required AppEnv env,
-  required SecureStorageService storage,
-}) {
+Dio buildDio({required AppEnv env, required SecureStorageService storage}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: env.baseUrl,
@@ -19,9 +16,7 @@ Dio buildDio({
       receiveTimeout: const Duration(seconds: 20),
       sendTimeout: const Duration(seconds: 20),
       responseType: ResponseType.json,
-      headers: const {
-        'Accept': 'application/json',
-      },
+      headers: const {'Accept': 'application/json'},
     ),
   );
 

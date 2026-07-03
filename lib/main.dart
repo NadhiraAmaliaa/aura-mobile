@@ -11,9 +11,7 @@ void main() {
   bootstrap(
     env: env,
     builder: () => ProviderScope(
-      overrides: [
-        appEnvProvider.overrideWithValue(env),
-      ],
+      overrides: [appEnvProvider.overrideWithValue(env)],
       child: const AuraApp(),
     ),
   );

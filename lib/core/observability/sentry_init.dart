@@ -18,12 +18,9 @@ Future<void> bootstrap({
     return;
   }
 
-  await SentryFlutter.init(
-    (options) {
-      options.dsn = env.sentryDsn;
-      options.environment = env.flavor.name;
-      options.tracesSampleRate = env.isProd ? 0.2 : 1.0;
-    },
-    appRunner: () => runApp(builder()),
-  );
+  await SentryFlutter.init((options) {
+    options.dsn = env.sentryDsn;
+    options.environment = env.flavor.name;
+    options.tracesSampleRate = env.isProd ? 0.2 : 1.0;
+  }, appRunner: () => runApp(builder()));
 }

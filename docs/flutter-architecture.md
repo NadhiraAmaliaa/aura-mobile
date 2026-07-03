@@ -169,14 +169,14 @@ features. Mitigated by documenting _which_ features get a domain layer (above).
 
 **Dev dependencies**
 
-| Package              | Role                                       |
-| -------------------- | ------------------------------------------ |
-| `build_runner`       | Codegen runner.                            |
-| `riverpod_generator` | `@riverpod` codegen.                       |
-| `freezed`            | Model/union codegen.                       |
-| `retrofit_generator` | Retrofit codegen.                          |
-| `json_serializable`  | `fromJson`/`toJson`.                       |
-| `mocktail`           | Mocking for tests, no codegen.             |
+| Package              | Role                           |
+| -------------------- | ------------------------------ |
+| `build_runner`       | Codegen runner.                |
+| `riverpod_generator` | `@riverpod` codegen.           |
+| `freezed`            | Model/union codegen.           |
+| `retrofit_generator` | Retrofit codegen.              |
+| `json_serializable`  | `fromJson`/`toJson`.           |
+| `mocktail`           | Mocking for tests, no codegen. |
 
 > **Note (2026-07-03):** `custom_lint` and `riverpod_lint` were **deferred at
 > install time**, not by choice but due to an ecosystem version conflict:
@@ -193,16 +193,16 @@ features. Mitigated by documenting _which_ features get a domain layer (above).
 
 ### 4.2 Deferred (do NOT install yet)
 
-| Package                                              | Why deferred                                                                                                                                    | Install trigger                                                              |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `permission_handler`                                 | `geolocator` handles location permissions itself. Redundant for a location-only v1. Adding later is cheap/non-invasive.                         | A second permission domain: camera (selfie check-in), notifications, photos. |
-| `custom_lint` / `riverpod_lint`                      | Foundational by intent, but currently **unresolvable** against `riverpod 3.3.2` (they cap at `riverpod ≤ 3.1.0`). Not worth downgrading the core library. | `riverpod_lint` publishes support for `riverpod 3.3.x`.                       |
-| `freezed` (as "later")                               | **Reversed — now installed day one.** Kept here for history: it touches models + state, so retrofitting is expensive; hence it is foundational. | N/A (installed).                                                             |
-| `hive` / `isar` / `drift`                            | No offline persistence requirement in v1. Local DB collides with anti-fraud (stale queued check-ins).                                           | A decision to support offline **read** caching or offline history.           |
-| `google_maps_flutter` / geofence libs                | Work-modes doc marks geofencing as **future, server-side**. `geolocator` already gives coordinates.                                             | Client-side map display or client geofence UX.                               |
-| `firebase_messaging` / `flutter_local_notifications` | Push (e.g., leave approval alerts) is a feature, not foundation.                                                                                | Notification feature is scheduled.                                           |
-| `google_maps_flutter`                                | See above.                                                                                                                                      | See above.                                                                   |
-| Analytics SDKs                                       | Not foundational; adds privacy surface.                                                                                                         | A product analytics requirement.                                             |
+| Package                                              | Why deferred                                                                                                                                              | Install trigger                                                              |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `permission_handler`                                 | `geolocator` handles location permissions itself. Redundant for a location-only v1. Adding later is cheap/non-invasive.                                   | A second permission domain: camera (selfie check-in), notifications, photos. |
+| `custom_lint` / `riverpod_lint`                      | Foundational by intent, but currently **unresolvable** against `riverpod 3.3.2` (they cap at `riverpod ≤ 3.1.0`). Not worth downgrading the core library. | `riverpod_lint` publishes support for `riverpod 3.3.x`.                      |
+| `freezed` (as "later")                               | **Reversed — now installed day one.** Kept here for history: it touches models + state, so retrofitting is expensive; hence it is foundational.           | N/A (installed).                                                             |
+| `hive` / `isar` / `drift`                            | No offline persistence requirement in v1. Local DB collides with anti-fraud (stale queued check-ins).                                                     | A decision to support offline **read** caching or offline history.           |
+| `google_maps_flutter` / geofence libs                | Work-modes doc marks geofencing as **future, server-side**. `geolocator` already gives coordinates.                                                       | Client-side map display or client geofence UX.                               |
+| `firebase_messaging` / `flutter_local_notifications` | Push (e.g., leave approval alerts) is a feature, not foundation.                                                                                          | Notification feature is scheduled.                                           |
+| `google_maps_flutter`                                | See above.                                                                                                                                                | See above.                                                                   |
+| Analytics SDKs                                       | Not foundational; adds privacy surface.                                                                                                                   | A product analytics requirement.                                             |
 
 ### 4.3 Explicitly rejected
 
@@ -483,7 +483,7 @@ reproducibility and reviewability. If diffs become noisy we revisit
   regardless — so a downgrade would trade a newer shipped library for no real
   gain. (Full analysis in the decision log / discussion.)
 - **`freezed` is a `dev_dependency` and does NOT ship in the runtime app.** It is
-  a build-time code generator only. The app binary depends on the *generated*
+  a build-time code generator only. The app binary depends on the _generated_
   `*.freezed.dart` / `*.g.dart` files and on `freezed_annotation` (stable), not
   on the `freezed` generator itself.
 - **Reproducible builds are guaranteed by committing two things:** the

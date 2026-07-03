@@ -31,17 +31,16 @@ extension ApiResultX<T> on ApiResult<T> {
 
   /// The data when successful, otherwise `null`.
   T? get dataOrNull => switch (this) {
-        Success<T>(:final data) => data,
-        Failure<T>() => null,
-      };
+    Success<T>(:final data) => data,
+    Failure<T>() => null,
+  };
 
   /// Folds both branches into a single value of type [R].
   R fold<R>({
     required R Function(T data) onSuccess,
     required R Function(AppException exception) onFailure,
-  }) =>
-      switch (this) {
-        Success<T>(:final data) => onSuccess(data),
-        Failure<T>(:final exception) => onFailure(exception),
-      };
+  }) => switch (this) {
+    Success<T>(:final data) => onSuccess(data),
+    Failure<T>(:final exception) => onFailure(exception),
+  };
 }
