@@ -7,7 +7,7 @@
 /// ```
 /// flutter run \
 ///   --dart-define=ENV=dev \
-///   --dart-define=BASE_URL=https://ptpn-intern-attendance.test/api \
+///   --dart-define=BASE_URL=http://ptpn-intern-attendance.test/api/v1 \
 ///   --dart-define=SENTRY_DSN=
 /// ```
 library;
@@ -28,7 +28,7 @@ class AppEnv {
     const env = String.fromEnvironment('ENV', defaultValue: 'dev');
     const baseUrl = String.fromEnvironment(
       'BASE_URL',
-      defaultValue: 'https://ptpn-intern-attendance.test/api',
+      defaultValue: 'http://ptpn-intern-attendance.test/api/v1',
     );
     const sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
@@ -42,7 +42,13 @@ class AppEnv {
   /// Active build flavor.
   final Flavor flavor;
 
-  /// Base URL of the Laravel REST API (includes the `/api` prefix).
+  /// Base URL of the versioned Laravel REST API (includes the `/api/v1`
+  /// prefix). Because Dio joins the base URL and request path by string
+  /// concatenation, endpoint paths must start with a leading slash
+  /// (e.g. `/auth/login`) so the version segment is preserved.
+  ///
+  /// The dev default targets the local Herd domain over HTTP; production
+  /// builds must pass an HTTPS URL via `--dart-define=BASE_URL=...`.
   final String baseUrl;
 
   /// Sentry DSN. Empty string disables crash reporting.

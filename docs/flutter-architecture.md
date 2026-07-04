@@ -284,6 +284,10 @@ Riverpod already does). **Trade-off:** codegen adds a build step (accepted).
 
 - A **single Dio instance** (`dio_client.dart`) configured with base URL (from
   `env.dart`), timeouts, and interceptors.
+- The **base URL includes the API version** (`.../api/v1`). Because Dio joins
+  the base URL and path by string concatenation, Retrofit endpoint paths must
+  start with a **leading slash** (e.g. `@POST('/auth/login')`) so the `v1`
+  segment is preserved.
 - **`auth_interceptor.dart`** attaches the bearer token from secure storage to
   every request and handles `401` by clearing the session and redirecting to
   login.
@@ -504,8 +508,8 @@ reproducibility and reviewability. If diffs become noisy we revisit
 
 ### 15.2 Running (flavor-aware)
 
-- Dev: `flutter run --dart-define=ENV=dev --dart-define=BASE_URL=<dev-url>`
-- Prod: `flutter run --dart-define=ENV=prod --dart-define=BASE_URL=<prod-url>`
+- Dev: `flutter run --dart-define=ENV=dev --dart-define=BASE_URL=http://ptpn-intern-attendance.test/api/v1`
+- Prod: `flutter run --dart-define=ENV=prod --dart-define=BASE_URL=https://<prod-host>/api/v1`
 
 _(Exact flavor invocation finalized when flavors are implemented; the
 `--dart-define` contract is fixed.)_
