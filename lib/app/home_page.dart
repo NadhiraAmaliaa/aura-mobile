@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/providers/auth_notifier.dart';
 import '../features/auth/presentation/providers/auth_state.dart';
+import 'router/routes.dart';
 
-/// Authenticated landing placeholder for the auth vertical slice.
+/// Authenticated landing screen: the main menu shell.
 ///
-/// This is deliberately minimal — it proves the session round-trips (login →
-/// token persisted → user available) and exposes logout. Attendance, history,
-/// leave, and profile land in later slices.
+/// Slice 0 turns the former auth placeholder into the app's home. It shows a
+/// greeting header and the four v1 menu destinations (Profile, Attendance,
+/// Leave, SPD). Only Attendance has a real screen so far; the others route to
+/// "coming soon" placeholders until their slices land.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -25,71 +28,100 @@ class HomePage extends ConsumerWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final intern = user.intern;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AURA Mobile'),
+        title: const Text('AURA'),
         actions: [
           IconButton(
-            tooltip: 'Log out',
+            tooltip: 'Keluar',
             icon: const Icon(Icons.logout),
             onPressed: () => ref.read(authProvider.notifier).logout(),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Welcome,', style: theme.textTheme.titleMedium),
-            Text(user.name, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 24),
-            if (intern != null) ...[
-              _InfoRow(label: 'NIM', value: intern.nim),
-              _InfoRow(label: 'Status', value: intern.status),
-              if (intern.startDate != null)
-                _InfoRow(label: 'Start date', value: intern.startDate!),
-              if (intern.endDate != null)
-                _InfoRow(label: 'End date', value: intern.endDate!),
-            ] else
-              Text(
-                'No intern profile attached to this account.',
-                style: theme.textTheme.bodyMedium,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Selamat datang,', style: theme.textTheme.titleMedium),
+              Text(user.name, style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 1,
+                  children: const [
+                    _MenuCard(
+                      label: 'Profil',
+                      icon: Icons.person_outline,
+                      path: RoutePaths.profile,
+                    ),
+                    _MenuCard(
+                      label: 'Absensi',
+                      icon: Icons.how_to_reg_outlined,
+                      path: RoutePaths.attendance,
+                    ),
+                    _MenuCard(
+                      label: 'Izin',
+                      icon: Icons.event_busy_outlined,
+                      path: RoutePaths.leave,
+                    ),
+                    _MenuCard(
+                      label: 'SPD',
+                      icon: Icons.card_travel_outlined,
+                      path: RoutePaths.spd,
+                    ),
+                  ],
+                ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+/// A single tappable menu tile in the home grid.
+class _MenuCard extends StatelessWidget {
+  const _MenuCard({
+    required this.label,
+    required this.icon,
+    required this.path,
+  });
 
   final String label;
-  final String value;
+  final IconData icon;
+  final String path;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push(path),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48, color: theme.colorScheme.primary),
+            const SizedBox(height: 12),
+            Text(
               label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyLarge)),
-        ],
+          ],
+        ),
       ),
     );
   }

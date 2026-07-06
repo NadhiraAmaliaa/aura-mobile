@@ -1,10 +1,12 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/attendance/presentation/screens/attendance_dashboard_screen.dart';
 import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../shared/widgets/placeholder_screen.dart';
 import '../home_page.dart';
 import '../splash_page.dart';
 import 'routes.dart';
@@ -60,6 +62,35 @@ GoRouter router(Ref ref) {
         path: RoutePaths.home,
         name: RouteNames.home,
         builder: (context, state) => const HomePage(),
+      ),
+      GoRoute(
+        path: RoutePaths.attendance,
+        name: RouteNames.attendance,
+        builder: (context, state) => const AttendanceDashboardScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.leave,
+        name: RouteNames.leave,
+        builder: (context, state) => const PlaceholderScreen(
+          title: 'Izin',
+          icon: Icons.event_busy_outlined,
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.spd,
+        name: RouteNames.spd,
+        builder: (context, state) => const PlaceholderScreen(
+          title: 'SPD',
+          icon: Icons.card_travel_outlined,
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.profile,
+        name: RouteNames.profile,
+        builder: (context, state) => const PlaceholderScreen(
+          title: 'Profil',
+          icon: Icons.person_outline,
+        ),
       ),
     ],
   );

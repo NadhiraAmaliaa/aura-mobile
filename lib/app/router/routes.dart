@@ -6,10 +6,22 @@ abstract final class RoutePaths {
   static const String splash = '/splash';
   static const String login = '/login';
   static const String home = '/';
+
+  // Main menu destinations (the four v1 features).
+  static const String attendance = '/attendance';
+  static const String leave = '/leave';
+  static const String spd = '/spd';
+  static const String profile = '/profile';
 }
 
 abstract final class RouteNames {
   static const String splash = 'splash';
   static const String login = 'login';
   static const String home = 'home';
+
+  // Main menu destinations (the four v1 features).
+  static const String attendance = 'attendance';
+  static const String leave = 'leave';
+  static const String spd = 'spd';
+  static const String profile = 'profile';
 }

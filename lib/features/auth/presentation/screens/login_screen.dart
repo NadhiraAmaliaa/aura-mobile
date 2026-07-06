@@ -30,7 +30,7 @@ class LoginScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'AURA Mobile',
+                    'AURA',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineSmall,
                   ),
