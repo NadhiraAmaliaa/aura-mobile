@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
 import '../../../../core/network/dio_error_mapper.dart';
+import '../../../../core/observability/error_reporter.dart';
 import '../datasources/lookup_api.dart';
 import '../models/university_model.dart';
 
@@ -20,8 +20,8 @@ class LookupRepository {
       return Success(universities);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
-    } catch (e) {
-      return Failure(UnknownException(cause: e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
 }

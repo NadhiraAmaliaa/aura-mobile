@@ -15,11 +15,7 @@ class SplashPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.eco_rounded,
-              size: 64,
-              color: theme.colorScheme.primary,
-            ),
+            Icon(Icons.eco_rounded, size: 64, color: theme.colorScheme.primary),
             const SizedBox(height: 24),
             const CircularProgressIndicator(),
           ],

@@ -187,10 +187,7 @@ class _UniversityField extends StatelessWidget {
           for (final university in universities)
             DropdownMenuItem<int>(
               value: university.id,
-              child: Text(
-                university.name,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(university.name, overflow: TextOverflow.ellipsis),
             ),
         ],
         onChanged: enabled ? onChanged : null,

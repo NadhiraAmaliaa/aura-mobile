@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
 import '../../../../core/network/dio_error_mapper.dart';
+import '../../../../core/observability/error_reporter.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/storage/storage_keys.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -27,8 +27,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return Success(response.user);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
-    } catch (e) {
-      return Failure(UnknownException(cause: e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
 
@@ -39,8 +39,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return Success(response.data);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
-    } catch (e) {
-      return Failure(UnknownException(cause: e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
 
@@ -51,8 +51,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Success<void>(null);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
-    } catch (e) {
-      return Failure(UnknownException(cause: e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
     } finally {
       // Always clear the local token, even if the server revoke call failed.
       await _storage.delete(StorageKeys.accessToken);
