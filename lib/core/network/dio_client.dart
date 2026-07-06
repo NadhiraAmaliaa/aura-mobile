@@ -16,6 +16,10 @@ Dio buildDio({required AppEnv env, required SecureStorageService storage}) {
       receiveTimeout: const Duration(seconds: 20),
       sendTimeout: const Duration(seconds: 20),
       responseType: ResponseType.json,
+      // Ensures request bodies are JSON-encoded (Dio's transformer only
+      // auto-encodes Map/List otherwise). jsonEncode invokes each DTO's
+      // generated `toJson()`, so typed @Body models serialize correctly.
+      contentType: Headers.jsonContentType,
       headers: const {'Accept': 'application/json'},
     ),
   );

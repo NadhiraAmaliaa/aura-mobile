@@ -8,29 +8,29 @@ part of 'app_router.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The app's [GoRouter].
+/// The app's [GoRouter], driven by [AuthNotifier].
 ///
-/// An auth-driven `redirect` + `refreshListenable` will be added with the auth
-/// feature (see the architecture doc §8). For now it exposes a single
-/// placeholder route so the shell is runnable.
+/// The redirect is pure and cheap: it only reads the current auth snapshot and
+/// returns a path. Re-evaluation is triggered by a [ValueNotifier] bumped
+/// whenever the auth state changes (see architecture doc §8).
 
 @ProviderFor(router)
 final routerProvider = RouterProvider._();
 
-/// The app's [GoRouter].
+/// The app's [GoRouter], driven by [AuthNotifier].
 ///
-/// An auth-driven `redirect` + `refreshListenable` will be added with the auth
-/// feature (see the architecture doc §8). For now it exposes a single
-/// placeholder route so the shell is runnable.
+/// The redirect is pure and cheap: it only reads the current auth snapshot and
+/// returns a path. Re-evaluation is triggered by a [ValueNotifier] bumped
+/// whenever the auth state changes (see architecture doc §8).
 
 final class RouterProvider
     extends $FunctionalProvider<GoRouter, GoRouter, GoRouter>
     with $Provider<GoRouter> {
-  /// The app's [GoRouter].
+  /// The app's [GoRouter], driven by [AuthNotifier].
   ///
-  /// An auth-driven `redirect` + `refreshListenable` will be added with the auth
-  /// feature (see the architecture doc §8). For now it exposes a single
-  /// placeholder route so the shell is runnable.
+  /// The redirect is pure and cheap: it only reads the current auth snapshot and
+  /// returns a path. Re-evaluation is triggered by a [ValueNotifier] bumped
+  /// whenever the auth state changes (see architecture doc §8).
   RouterProvider._()
     : super(
         from: null,
@@ -64,4 +64,4 @@ final class RouterProvider
   }
 }
 
-String _$routerHash() => r'3ae52b954dbecce9ce1488b6b67901149f78a5ae';
+String _$routerHash() => r'7cc3fad9a9f1ec3cdb4929cc6d7202d767056017';
