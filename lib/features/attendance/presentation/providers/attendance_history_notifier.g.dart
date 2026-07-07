@@ -56,7 +56,7 @@ final class AttendanceHistoryNotifierProvider
 }
 
 String _$attendanceHistoryNotifierHash() =>
-    r'886c5deee0ed14b15d4d42b90d1e1e415082ecc5';
+    r'fb3e54a849ba989d6034add6600b8b7854f46c4f';
 
 /// Loads and paginates the intern's attendance history.
 ///

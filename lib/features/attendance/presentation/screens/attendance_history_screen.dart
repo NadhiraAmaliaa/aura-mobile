@@ -112,10 +112,7 @@ class _HistoryTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                _StatusChip(
-                  label: record.statusLabel,
-                  status: record.status,
-                ),
+                _StatusChip(label: record.statusLabel, status: record.status),
               ],
             ),
             const SizedBox(height: 12),
@@ -167,10 +164,8 @@ class _StatusChip extends StatelessWidget {
     final (Color bg, Color fg) = switch (status) {
       'present' => (scheme.primaryContainer, scheme.onPrimaryContainer),
       'late' => (scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      'sick' || 'permission' => (
-        scheme.secondaryContainer,
-        scheme.onSecondaryContainer,
-      ),
+      'sick' ||
+      'permission' => (scheme.secondaryContainer, scheme.onSecondaryContainer),
       'absent' => (scheme.errorContainer, scheme.onErrorContainer),
       _ => (scheme.surfaceContainerHighest, scheme.onSurface),
     };
@@ -214,7 +209,10 @@ class _TimeCell extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: muted),
             const SizedBox(width: 4),
-            Text(label, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+            ),
           ],
         ),
         const SizedBox(height: 2),

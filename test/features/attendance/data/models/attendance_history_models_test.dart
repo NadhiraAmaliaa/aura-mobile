@@ -59,8 +59,9 @@ void main() {
     });
 
     test('decodes the pagination metadata', () {
-      final pagination =
-          AttendanceHistoryEnvelope.fromJson(historyJson).data.pagination;
+      final pagination = AttendanceHistoryEnvelope.fromJson(
+        historyJson,
+      ).data.pagination;
 
       expect(pagination.currentPage, 1);
       expect(pagination.perPage, 15);
