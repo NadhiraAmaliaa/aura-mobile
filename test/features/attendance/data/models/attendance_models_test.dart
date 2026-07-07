@@ -58,8 +58,9 @@ void main() {
     });
 
     test('decodes the attendance record with string coordinates', () {
-      final attendance =
-          AttendanceDashboardEnvelope.fromJson(dashboardJson).data.today.attendance;
+      final attendance = AttendanceDashboardEnvelope.fromJson(
+        dashboardJson,
+      ).data.today.attendance;
 
       expect(attendance, isNotNull);
       expect(attendance!.id, 42);
@@ -74,8 +75,9 @@ void main() {
     });
 
     test('decodes the monthly recap counts', () {
-      final summary =
-          AttendanceDashboardEnvelope.fromJson(dashboardJson).data.summary;
+      final summary = AttendanceDashboardEnvelope.fromJson(
+        dashboardJson,
+      ).data.summary;
 
       expect(summary.month, '2026-07');
       expect(summary.hadir, 4);

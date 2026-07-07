@@ -105,3 +105,41 @@ abstract class AttendanceDashboardEnvelope with _$AttendanceDashboardEnvelope {
   factory AttendanceDashboardEnvelope.fromJson(Map<String, dynamic> json) =>
       _$AttendanceDashboardEnvelopeFromJson(json);
 }
+
+/// Pagination metadata for a page of attendance history.
+@freezed
+abstract class PaginationModel with _$PaginationModel {
+  const factory PaginationModel({
+    @JsonKey(name: 'current_page') @Default(1) int currentPage,
+    @JsonKey(name: 'per_page') @Default(15) int perPage,
+    @Default(0) int total,
+    @JsonKey(name: 'last_page') @Default(1) int lastPage,
+    @JsonKey(name: 'has_more') @Default(false) bool hasMore,
+  }) = _PaginationModel;
+
+  factory PaginationModel.fromJson(Map<String, dynamic> json) =>
+      _$PaginationModelFromJson(json);
+}
+
+/// One page of attendance history: the records plus pagination metadata.
+@freezed
+abstract class AttendanceHistoryModel with _$AttendanceHistoryModel {
+  const factory AttendanceHistoryModel({
+    @Default(<AttendanceModel>[]) List<AttendanceModel> items,
+    required PaginationModel pagination,
+  }) = _AttendanceHistoryModel;
+
+  factory AttendanceHistoryModel.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceHistoryModelFromJson(json);
+}
+
+/// Envelope for `GET /attendance/history`, wrapping the page in `data`.
+@freezed
+abstract class AttendanceHistoryEnvelope with _$AttendanceHistoryEnvelope {
+  const factory AttendanceHistoryEnvelope({
+    required AttendanceHistoryModel data,
+  }) = _AttendanceHistoryEnvelope;
+
+  factory AttendanceHistoryEnvelope.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceHistoryEnvelopeFromJson(json);
+}

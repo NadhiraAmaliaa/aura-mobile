@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/app_exception.dart';
+import '../../../../app/router/routes.dart';
 import '../../data/models/attendance_models.dart';
 import '../providers/attendance_dashboard_notifier.dart';
 
@@ -17,7 +19,16 @@ class AttendanceDashboardScreen extends ConsumerWidget {
     final dashboard = ref.watch(attendanceDashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Absensi')),
+      appBar: AppBar(
+        title: const Text('Absensi'),
+        actions: [
+          IconButton(
+            tooltip: 'Riwayat',
+            icon: const Icon(Icons.history),
+            onPressed: () => context.pushNamed(RouteNames.attendanceHistory),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () =>
             ref.read(attendanceDashboardProvider.notifier).refresh(),
@@ -98,9 +109,9 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: 24),
         Text(
           'Rekapitulasi Presensi Bulan',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
@@ -309,8 +320,18 @@ class _SummaryTile extends StatelessWidget {
 /// self-contained; a shared formatter can absorb this later.
 String _formatIndoDate(String iso) {
   const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
 
   final date = DateTime.tryParse(iso);

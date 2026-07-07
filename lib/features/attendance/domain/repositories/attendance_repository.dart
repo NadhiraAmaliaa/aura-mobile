@@ -12,4 +12,7 @@ abstract interface class AttendanceRepository {
   /// Loads the attendance dashboard. [month] is an optional `YYYY-MM` filter
   /// for the monthly recap; null means the current month.
   Future<ApiResult<AttendanceDashboardModel>> dashboard({String? month});
+
+  /// Loads one page of attendance history, newest first. [page] is 1-based.
+  Future<ApiResult<AttendanceHistoryModel>> history({int? page, int? perPage});
 }

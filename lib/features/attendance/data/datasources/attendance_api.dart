@@ -15,7 +15,13 @@ abstract class AttendanceApi {
   /// Today's snapshot plus the monthly recap. [month] is an optional `YYYY-MM`
   /// filter for the recap; when null the backend uses the current month.
   @GET('/attendance/dashboard')
-  Future<AttendanceDashboardEnvelope> dashboard(
-    @Query('month') String? month,
+  Future<AttendanceDashboardEnvelope> dashboard(@Query('month') String? month);
+
+  /// A page of past attendance records, newest first. [page] is 1-based;
+  /// [perPage] is clamped server-side (max 50).
+  @GET('/attendance/history')
+  Future<AttendanceHistoryEnvelope> history(
+    @Query('page') int? page,
+    @Query('per_page') int? perPage,
   );
 }

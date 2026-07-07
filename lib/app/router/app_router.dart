@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/attendance/presentation/screens/attendance_dashboard_screen.dart';
+import '../../features/attendance/presentation/screens/attendance_history_screen.dart';
 import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -67,6 +68,13 @@ GoRouter router(Ref ref) {
         path: RoutePaths.attendance,
         name: RouteNames.attendance,
         builder: (context, state) => const AttendanceDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: RoutePaths.attendanceHistory,
+            name: RouteNames.attendanceHistory,
+            builder: (context, state) => const AttendanceHistoryScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: RoutePaths.leave,

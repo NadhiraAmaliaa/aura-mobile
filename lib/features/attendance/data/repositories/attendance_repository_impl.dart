@@ -26,4 +26,19 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
+
+  @override
+  Future<ApiResult<AttendanceHistoryModel>> history({
+    int? page,
+    int? perPage,
+  }) async {
+    try {
+      final response = await _api.history(page, perPage);
+      return Success(response.data);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
 }

@@ -127,3 +127,51 @@ _AttendanceDashboardEnvelope _$AttendanceDashboardEnvelopeFromJson(
 Map<String, dynamic> _$AttendanceDashboardEnvelopeToJson(
   _AttendanceDashboardEnvelope instance,
 ) => <String, dynamic>{'data': instance.data};
+
+_PaginationModel _$PaginationModelFromJson(Map<String, dynamic> json) =>
+    _PaginationModel(
+      currentPage: (json['current_page'] as num?)?.toInt() ?? 1,
+      perPage: (json['per_page'] as num?)?.toInt() ?? 15,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      lastPage: (json['last_page'] as num?)?.toInt() ?? 1,
+      hasMore: json['has_more'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$PaginationModelToJson(_PaginationModel instance) =>
+    <String, dynamic>{
+      'current_page': instance.currentPage,
+      'per_page': instance.perPage,
+      'total': instance.total,
+      'last_page': instance.lastPage,
+      'has_more': instance.hasMore,
+    };
+
+_AttendanceHistoryModel _$AttendanceHistoryModelFromJson(
+  Map<String, dynamic> json,
+) => _AttendanceHistoryModel(
+  items:
+      (json['items'] as List<dynamic>?)
+          ?.map((e) => AttendanceModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <AttendanceModel>[],
+  pagination: PaginationModel.fromJson(
+    json['pagination'] as Map<String, dynamic>,
+  ),
+);
+
+Map<String, dynamic> _$AttendanceHistoryModelToJson(
+  _AttendanceHistoryModel instance,
+) => <String, dynamic>{
+  'items': instance.items,
+  'pagination': instance.pagination,
+};
+
+_AttendanceHistoryEnvelope _$AttendanceHistoryEnvelopeFromJson(
+  Map<String, dynamic> json,
+) => _AttendanceHistoryEnvelope(
+  data: AttendanceHistoryModel.fromJson(json['data'] as Map<String, dynamic>),
+);
+
+Map<String, dynamic> _$AttendanceHistoryEnvelopeToJson(
+  _AttendanceHistoryEnvelope instance,
+) => <String, dynamic>{'data': instance.data};
