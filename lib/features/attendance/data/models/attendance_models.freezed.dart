@@ -2890,4 +2890,288 @@ $AttendanceHistoryModelCopyWith<$Res> get data {
 }
 }
 
+
+/// @nodoc
+mixin _$AttendanceMutationEnvelope {
+
+ String get message; AttendanceModel get data;
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AttendanceMutationEnvelopeCopyWith<AttendanceMutationEnvelope> get copyWith => _$AttendanceMutationEnvelopeCopyWithImpl<AttendanceMutationEnvelope>(this as AttendanceMutationEnvelope, _$identity);
+
+  /// Serializes this AttendanceMutationEnvelope to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttendanceMutationEnvelope&&(identical(other.message, message) || other.message == message)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,data);
+
+@override
+String toString() {
+  return 'AttendanceMutationEnvelope(message: $message, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AttendanceMutationEnvelopeCopyWith<$Res>  {
+  factory $AttendanceMutationEnvelopeCopyWith(AttendanceMutationEnvelope value, $Res Function(AttendanceMutationEnvelope) _then) = _$AttendanceMutationEnvelopeCopyWithImpl;
+@useResult
+$Res call({
+ String message, AttendanceModel data
+});
+
+
+$AttendanceModelCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class _$AttendanceMutationEnvelopeCopyWithImpl<$Res>
+    implements $AttendanceMutationEnvelopeCopyWith<$Res> {
+  _$AttendanceMutationEnvelopeCopyWithImpl(this._self, this._then);
+
+  final AttendanceMutationEnvelope _self;
+  final $Res Function(AttendanceMutationEnvelope) _then;
+
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? message = null,Object? data = null,}) {
+  return _then(_self.copyWith(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as AttendanceModel,
+  ));
+}
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AttendanceModelCopyWith<$Res> get data {
+  
+  return $AttendanceModelCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
+
+/// Adds pattern-matching-related methods to [AttendanceMutationEnvelope].
+extension AttendanceMutationEnvelopePatterns on AttendanceMutationEnvelope {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AttendanceMutationEnvelope value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AttendanceMutationEnvelope value)  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AttendanceMutationEnvelope value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String message,  AttendanceModel data)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope() when $default != null:
+return $default(_that.message,_that.data);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String message,  AttendanceModel data)  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope():
+return $default(_that.message,_that.data);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String message,  AttendanceModel data)?  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceMutationEnvelope() when $default != null:
+return $default(_that.message,_that.data);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _AttendanceMutationEnvelope implements AttendanceMutationEnvelope {
+  const _AttendanceMutationEnvelope({required this.message, required this.data});
+  factory _AttendanceMutationEnvelope.fromJson(Map<String, dynamic> json) => _$AttendanceMutationEnvelopeFromJson(json);
+
+@override final  String message;
+@override final  AttendanceModel data;
+
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AttendanceMutationEnvelopeCopyWith<_AttendanceMutationEnvelope> get copyWith => __$AttendanceMutationEnvelopeCopyWithImpl<_AttendanceMutationEnvelope>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AttendanceMutationEnvelopeToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttendanceMutationEnvelope&&(identical(other.message, message) || other.message == message)&&(identical(other.data, data) || other.data == data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message,data);
+
+@override
+String toString() {
+  return 'AttendanceMutationEnvelope(message: $message, data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AttendanceMutationEnvelopeCopyWith<$Res> implements $AttendanceMutationEnvelopeCopyWith<$Res> {
+  factory _$AttendanceMutationEnvelopeCopyWith(_AttendanceMutationEnvelope value, $Res Function(_AttendanceMutationEnvelope) _then) = __$AttendanceMutationEnvelopeCopyWithImpl;
+@override @useResult
+$Res call({
+ String message, AttendanceModel data
+});
+
+
+@override $AttendanceModelCopyWith<$Res> get data;
+
+}
+/// @nodoc
+class __$AttendanceMutationEnvelopeCopyWithImpl<$Res>
+    implements _$AttendanceMutationEnvelopeCopyWith<$Res> {
+  __$AttendanceMutationEnvelopeCopyWithImpl(this._self, this._then);
+
+  final _AttendanceMutationEnvelope _self;
+  final $Res Function(_AttendanceMutationEnvelope) _then;
+
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? message = null,Object? data = null,}) {
+  return _then(_AttendanceMutationEnvelope(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as AttendanceModel,
+  ));
+}
+
+/// Create a copy of AttendanceMutationEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AttendanceModelCopyWith<$Res> get data {
+  
+  return $AttendanceModelCopyWith<$Res>(_self.data, (value) {
+    return _then(_self.copyWith(data: value));
+  });
+}
+}
+
 // dart format on

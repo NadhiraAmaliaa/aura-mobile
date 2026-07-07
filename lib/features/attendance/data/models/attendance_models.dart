@@ -143,3 +143,16 @@ abstract class AttendanceHistoryEnvelope with _$AttendanceHistoryEnvelope {
   factory AttendanceHistoryEnvelope.fromJson(Map<String, dynamic> json) =>
       _$AttendanceHistoryEnvelopeFromJson(json);
 }
+
+/// Envelope for a mutation that returns the affected record, e.g.
+/// `POST /attendance/check-in` -> `{message, data: <attendance>}`.
+@freezed
+abstract class AttendanceMutationEnvelope with _$AttendanceMutationEnvelope {
+  const factory AttendanceMutationEnvelope({
+    required String message,
+    required AttendanceModel data,
+  }) = _AttendanceMutationEnvelope;
+
+  factory AttendanceMutationEnvelope.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceMutationEnvelopeFromJson(json);
+}

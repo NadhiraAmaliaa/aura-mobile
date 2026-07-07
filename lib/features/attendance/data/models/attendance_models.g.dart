@@ -175,3 +175,14 @@ _AttendanceHistoryEnvelope _$AttendanceHistoryEnvelopeFromJson(
 Map<String, dynamic> _$AttendanceHistoryEnvelopeToJson(
   _AttendanceHistoryEnvelope instance,
 ) => <String, dynamic>{'data': instance.data};
+
+_AttendanceMutationEnvelope _$AttendanceMutationEnvelopeFromJson(
+  Map<String, dynamic> json,
+) => _AttendanceMutationEnvelope(
+  message: json['message'] as String,
+  data: AttendanceModel.fromJson(json['data'] as Map<String, dynamic>),
+);
+
+Map<String, dynamic> _$AttendanceMutationEnvelopeToJson(
+  _AttendanceMutationEnvelope instance,
+) => <String, dynamic>{'message': instance.message, 'data': instance.data};

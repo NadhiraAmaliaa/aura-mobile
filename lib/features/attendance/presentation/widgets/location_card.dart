@@ -120,12 +120,12 @@ class _SuccessView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CoordRow(label: 'Lintang', value: position.latitude.toStringAsFixed(7)),
-        const SizedBox(height: 4),
         _CoordRow(
-          label: 'Bujur',
-          value: position.longitude.toStringAsFixed(7),
+          label: 'Lintang',
+          value: position.latitude.toStringAsFixed(7),
         ),
+        const SizedBox(height: 4),
+        _CoordRow(label: 'Bujur', value: position.longitude.toStringAsFixed(7)),
         if (position.accuracy != null) ...[
           const SizedBox(height: 4),
           Text(
@@ -201,15 +201,9 @@ class _FailureView extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 20,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 20, color: theme.colorScheme.error),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(message, style: theme.textTheme.bodyMedium),
-            ),
+            Expanded(child: Text(message, style: theme.textTheme.bodyMedium)),
           ],
         ),
         const SizedBox(height: 12),

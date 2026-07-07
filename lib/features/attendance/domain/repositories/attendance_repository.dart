@@ -15,4 +15,11 @@ abstract interface class AttendanceRepository {
 
   /// Loads one page of attendance history, newest first. [page] is 1-based.
   Future<ApiResult<AttendanceHistoryModel>> history({int? page, int? perPage});
+
+  /// Records today's check-in and returns the created record.
+  Future<ApiResult<AttendanceModel>> checkIn({
+    required String workMode,
+    double? latitude,
+    double? longitude,
+  });
 }

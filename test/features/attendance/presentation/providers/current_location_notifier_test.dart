@@ -40,10 +40,7 @@ void main() {
         const LocationFailure(LocationFailureKind.unknown, 'x'),
       );
 
-      expect(
-        container.read(currentLocationProvider),
-        isA<LocationIdle>(),
-      );
+      expect(container.read(currentLocationProvider), isA<LocationIdle>());
     });
 
     test('fetch transitions through loading to success', () async {

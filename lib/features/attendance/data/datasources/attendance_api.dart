@@ -24,4 +24,9 @@ abstract class AttendanceApi {
     @Query('page') int? page,
     @Query('per_page') int? perPage,
   );
+
+  /// Record today's check-in. Body: `work_mode` plus optional `latitude` /
+  /// `longitude`. Returns the created record.
+  @POST('/attendance/check-in')
+  Future<AttendanceMutationEnvelope> checkIn(@Body() Map<String, dynamic> body);
 }

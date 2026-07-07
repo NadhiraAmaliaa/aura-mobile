@@ -41,4 +41,25 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
+
+  @override
+  Future<ApiResult<AttendanceModel>> checkIn({
+    required String workMode,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'work_mode': workMode,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
+      };
+      final response = await _api.checkIn(body);
+      return Success(response.data);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
 }

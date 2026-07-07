@@ -23,7 +23,9 @@ class CurrentLocation extends _$CurrentLocation {
     final result = await ref.read(locationServiceProvider).getCurrentPosition();
 
     state = switch (result) {
-      LocationSuccess(:final position) => CurrentLocationState.success(position),
+      LocationSuccess(:final position) => CurrentLocationState.success(
+        position,
+      ),
       LocationFailure(:final kind, :final message) =>
         CurrentLocationState.failure(kind, message),
     };

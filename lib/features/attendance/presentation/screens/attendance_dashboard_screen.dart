@@ -6,7 +6,6 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../app/router/routes.dart';
 import '../../data/models/attendance_models.dart';
 import '../providers/attendance_dashboard_notifier.dart';
-import '../widgets/location_card.dart';
 
 /// Attendance landing / dashboard.
 ///
@@ -107,8 +106,15 @@ class _DashboardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _TodayCard(today: data.today),
-        const SizedBox(height: 16),
-        const LocationCard(),
+        if (data.today.attendance == null && data.today.leave == null) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () =>
+                context.pushNamed(RouteNames.attendanceCheckIn),
+            icon: const Icon(Icons.login),
+            label: const Text('Check In'),
+          ),
+        ],
         const SizedBox(height: 24),
         Text(
           'Rekapitulasi Presensi Bulan',
