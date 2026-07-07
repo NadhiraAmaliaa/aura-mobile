@@ -109,10 +109,18 @@ class _DashboardContent extends StatelessWidget {
         if (data.today.attendance == null && data.today.leave == null) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: () =>
-                context.pushNamed(RouteNames.attendanceCheckIn),
+            onPressed: () => context.pushNamed(RouteNames.attendanceCheckIn),
             icon: const Icon(Icons.login),
             label: const Text('Check In'),
+          ),
+        ],
+        if (data.today.attendance?.checkInTime != null &&
+            data.today.attendance?.checkOutTime == null) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => context.pushNamed(RouteNames.attendanceCheckOut),
+            icon: const Icon(Icons.logout),
+            label: const Text('Check Out'),
           ),
         ],
         const SizedBox(height: 24),

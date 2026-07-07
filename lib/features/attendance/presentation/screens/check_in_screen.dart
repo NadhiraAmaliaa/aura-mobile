@@ -48,9 +48,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         case CheckInSuccess():
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
-            ..showSnackBar(
-              const SnackBar(content: Text('Check In berhasil.')),
-            );
+            ..showSnackBar(const SnackBar(content: Text('Check In berhasil.')));
           context.pop();
         case CheckInFailure(:final message):
           ScaffoldMessenger.of(context)

@@ -3,33 +3,37 @@ import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/attendance/data/attendance_providers.dart';
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
-import 'package:aura_mobile/features/attendance/presentation/providers/check_in_notifier.dart';
-import 'package:aura_mobile/features/attendance/presentation/providers/check_in_state.dart';
+import 'package:aura_mobile/features/attendance/presentation/providers/check_out_notifier.dart';
+import 'package:aura_mobile/features/attendance/presentation/providers/check_out_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A repository whose `checkIn` returns a scripted result and records the
+/// A repository whose `checkOut` returns a scripted result and records the
 /// arguments it was called with. Other methods are unused here.
 class _FakeAttendanceRepository implements AttendanceRepository {
   _FakeAttendanceRepository(this.result);
 
   final ApiResult<AttendanceModel> result;
 
-  String? capturedWorkMode;
   double? capturedLatitude;
   double? capturedLongitude;
+
+  @override
+  Future<ApiResult<AttendanceModel>> checkOut({
+    double? latitude,
+    double? longitude,
+  }) async {
+    capturedLatitude = latitude;
+    capturedLongitude = longitude;
+    return result;
+  }
 
   @override
   Future<ApiResult<AttendanceModel>> checkIn({
     required String workMode,
     double? latitude,
     double? longitude,
-  }) async {
-    capturedWorkMode = workMode;
-    capturedLatitude = latitude;
-    capturedLongitude = longitude;
-    return result;
-  }
+  }) => throw UnimplementedError();
 
   @override
   Future<ApiResult<AttendanceDashboardModel>> dashboard({String? month}) =>
@@ -40,17 +44,13 @@ class _FakeAttendanceRepository implements AttendanceRepository {
     int? page,
     int? perPage,
   }) => throw UnimplementedError();
-
-  @override
-  Future<ApiResult<AttendanceModel>> checkOut({
-    double? latitude,
-    double? longitude,
-  }) => throw UnimplementedError();
 }
 
 ProviderContainer _containerFor(_FakeAttendanceRepository repository) {
   final container = ProviderContainer(
-    overrides: [attendanceRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      attendanceRepositoryProvider.overrideWithValue(repository),
+    ],
   );
   addTearDown(container.dispose);
   return container;
@@ -59,7 +59,8 @@ ProviderContainer _containerFor(_FakeAttendanceRepository repository) {
 const _record = AttendanceModel(
   id: 1,
   attendanceDate: '2026-07-06',
-  checkInTime: '07:50',
+  checkInTime: '08:00',
+  checkOutTime: '17:05',
   status: 'present',
   statusLabel: 'Hadir',
   workMode: 'wfo',
@@ -67,37 +68,35 @@ const _record = AttendanceModel(
 );
 
 void main() {
-  group('CheckInController', () {
+  group('CheckOutController', () {
     test('starts idle', () {
       final container = _containerFor(
         _FakeAttendanceRepository(const Success(_record)),
       );
 
-      expect(container.read(checkInControllerProvider), isA<CheckInIdle>());
+      expect(container.read(checkOutControllerProvider), isA<CheckOutIdle>());
     });
 
     test('submit transitions through submitting to success', () async {
       final repository = _FakeAttendanceRepository(const Success(_record));
       final container = _containerFor(repository);
-      final notifier = container.read(checkInControllerProvider.notifier);
+      final notifier = container.read(checkOutControllerProvider.notifier);
 
       final future = notifier.submit(
-        workMode: 'wfo',
         latitude: 3.5952000,
         longitude: 98.6722000,
       );
       // Submitting is set synchronously before awaiting the repository.
       expect(
-        container.read(checkInControllerProvider),
-        isA<CheckInSubmitting>(),
+        container.read(checkOutControllerProvider),
+        isA<CheckOutSubmitting>(),
       );
 
       await future;
 
-      final state = container.read(checkInControllerProvider);
-      expect(state, isA<CheckInSuccess>());
-      expect((state as CheckInSuccess).record.status, 'present');
-      expect(repository.capturedWorkMode, 'wfo');
+      final state = container.read(checkOutControllerProvider);
+      expect(state, isA<CheckOutSuccess>());
+      expect((state as CheckOutSuccess).record.checkOutTime, '17:05');
       expect(repository.capturedLatitude, 3.5952000);
       expect(repository.capturedLongitude, 98.6722000);
     });
@@ -106,21 +105,21 @@ void main() {
       final repository = _FakeAttendanceRepository(
         const Failure(
           ServerException(
-            message: 'Anda sudah melakukan Check In hari ini.',
-            statusCode: 409,
+            message: 'Anda harus Check In terlebih dahulu sebelum Check Out.',
+            statusCode: 422,
           ),
         ),
       );
       final container = _containerFor(repository);
-      final notifier = container.read(checkInControllerProvider.notifier);
+      final notifier = container.read(checkOutControllerProvider.notifier);
 
-      await notifier.submit(workMode: 'wfo');
+      await notifier.submit();
 
-      final state = container.read(checkInControllerProvider);
-      expect(state, isA<CheckInFailure>());
+      final state = container.read(checkOutControllerProvider);
+      expect(state, isA<CheckOutFailure>());
       expect(
-        (state as CheckInFailure).message,
-        'Anda sudah melakukan Check In hari ini.',
+        (state as CheckOutFailure).message,
+        'Anda harus Check In terlebih dahulu sebelum Check Out.',
       );
     });
   });

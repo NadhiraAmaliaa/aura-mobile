@@ -27,11 +27,7 @@ class CheckInController extends _$CheckInController {
 
     final result = await ref
         .read(attendanceRepositoryProvider)
-        .checkIn(
-          workMode: workMode,
-          latitude: latitude,
-          longitude: longitude,
-        );
+        .checkIn(workMode: workMode, latitude: latitude, longitude: longitude);
 
     state = result.fold(
       onSuccess: (record) {

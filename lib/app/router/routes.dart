@@ -11,6 +11,7 @@ abstract final class RoutePaths {
   static const String attendance = '/attendance';
   static const String attendanceHistory = 'history';
   static const String attendanceCheckIn = 'check-in';
+  static const String attendanceCheckOut = 'check-out';
   static const String leave = '/leave';
   static const String spd = '/spd';
   static const String profile = '/profile';
@@ -25,6 +26,7 @@ abstract final class RouteNames {
   static const String attendance = 'attendance';
   static const String attendanceHistory = 'attendance-history';
   static const String attendanceCheckIn = 'attendance-check-in';
+  static const String attendanceCheckOut = 'attendance-check-out';
   static const String leave = 'leave';
   static const String spd = 'spd';
   static const String profile = 'profile';

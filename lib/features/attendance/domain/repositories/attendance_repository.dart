@@ -22,4 +22,10 @@ abstract interface class AttendanceRepository {
     double? latitude,
     double? longitude,
   });
+
+  /// Records today's check-out and returns the updated record.
+  Future<ApiResult<AttendanceModel>> checkOut({
+    double? latitude,
+    double? longitude,
+  });
 }

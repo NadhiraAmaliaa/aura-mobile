@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/attendance/presentation/screens/attendance_dashboard_screen.dart';
 import '../../features/attendance/presentation/screens/attendance_history_screen.dart';
 import '../../features/attendance/presentation/screens/check_in_screen.dart';
+import '../../features/attendance/presentation/screens/check_out_screen.dart';
 import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -79,6 +80,11 @@ GoRouter router(Ref ref) {
             path: RoutePaths.attendanceCheckIn,
             name: RouteNames.attendanceCheckIn,
             builder: (context, state) => const CheckInScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.attendanceCheckOut,
+            name: RouteNames.attendanceCheckOut,
+            builder: (context, state) => const CheckOutScreen(),
           ),
         ],
       ),

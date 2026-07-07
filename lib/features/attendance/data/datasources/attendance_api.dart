@@ -29,4 +29,11 @@ abstract class AttendanceApi {
   /// `longitude`. Returns the created record.
   @POST('/attendance/check-in')
   Future<AttendanceMutationEnvelope> checkIn(@Body() Map<String, dynamic> body);
+
+  /// Record today's check-out. Body: optional `latitude` / `longitude`.
+  /// Returns the updated record.
+  @POST('/attendance/check-out')
+  Future<AttendanceMutationEnvelope> checkOut(
+    @Body() Map<String, dynamic> body,
+  );
 }
