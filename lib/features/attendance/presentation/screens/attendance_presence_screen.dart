@@ -16,9 +16,12 @@ import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
 import '../widgets/attendance_map.dart';
 
+/// Work mode that requires on-site (office radius) validation.
+const _workModeWfo = 'wfo';
+
 /// Selectable attendance types shown in the "JENIS ABSENSI" sheet.
 const _attendanceTypes = <({String value, String label, String hint})>[
-  (value: 'wfo', label: 'WFO', hint: 'Bekerja dari kantor'),
+  (value: _workModeWfo, label: 'WFO', hint: 'Bekerja dari kantor'),
   (value: 'wfh', label: 'WFH', hint: 'Bekerja dari rumah'),
   (value: 'dinas', label: 'Dinas', hint: 'Dinas luar / tugas lapangan'),
 ];
@@ -69,31 +72,8 @@ class _AttendancePresenceScreenState
 
     // WFO must be inside an office radius; WFH skips validation; Dinas defers
     // to the server's business rules.
-    if (type == 'wfo') {
-      if (position == null) {
-        _showSnack('Ambil lokasi Anda terlebih dahulu.');
-        return;
-      }
-      final offices = switch (ref.read(attendanceLocationsProvider)) {
-        AsyncData(:final value) => value,
-        _ => const <AttendanceLocationModel>[],
-      };
-      final verdict = evaluateGeofence(
-        offices,
-        position.latitude,
-        position.longitude,
-      );
-      if (verdict is! GeofenceInside) {
-        _showSnack(switch (verdict) {
-          GeofenceOutside(:final location, :final distanceMeters) =>
-            'Anda di luar radius kantor ${location.name} '
-                '(${distanceMeters.round()} m).',
-          GeofenceNoLocations() =>
-            'Belum ada lokasi kantor yang dikonfigurasi.',
-          _ => 'Lokasi tidak valid untuk WFO.',
-        });
-        return;
-      }
+    if (type == _workModeWfo && !_ensureWithinOfficeRadius(position)) {
+      return;
     }
 
     await ref
@@ -105,7 +85,44 @@ class _AttendancePresenceScreenState
         );
   }
 
-  Future<void> _onCheckOutPressed(GeoPosition? position) async {
+  /// Guards WFO submissions against the office radius, mirroring the check-in
+  /// policy. Returns `true` when submission may proceed; otherwise shows a
+  /// snackbar and returns `false`.
+  bool _ensureWithinOfficeRadius(GeoPosition? position) {
+    if (position == null) {
+      _showSnack('Ambil lokasi Anda terlebih dahulu.');
+      return false;
+    }
+    final offices = switch (ref.read(attendanceLocationsProvider)) {
+      AsyncData(:final value) => value,
+      _ => const <AttendanceLocationModel>[],
+    };
+    final verdict = evaluateGeofence(
+      offices,
+      position.latitude,
+      position.longitude,
+    );
+    if (verdict is GeofenceInside) return true;
+
+    _showSnack(switch (verdict) {
+      GeofenceOutside(:final location, :final distanceMeters) =>
+        'Anda di luar radius kantor ${location.name} '
+            '(${distanceMeters.round()} m).',
+      GeofenceNoLocations() => 'Belum ada lokasi kantor yang dikonfigurasi.',
+      _ => 'Lokasi tidak valid untuk WFO.',
+    });
+    return false;
+  }
+
+  Future<void> _onCheckOutPressed(
+    GeoPosition? position,
+    AttendanceModel attendance,
+  ) async {
+    // The work mode was fixed at check-in; only WFO is validated on-site.
+    if (attendance.workMode == _workModeWfo &&
+        !_ensureWithinOfficeRadius(position)) {
+      return;
+    }
     await ref
         .read(checkOutControllerProvider.notifier)
         .submit(latitude: position?.latitude, longitude: position?.longitude);
@@ -199,7 +216,7 @@ class _AttendancePresenceScreenState
                       child: _CheckOutButton(
                         busy: isCheckingOut,
                         onPressed: canCheckOut
-                            ? () => _onCheckOutPressed(position)
+                            ? () => _onCheckOutPressed(position, attendance)
                             : null,
                       ),
                     ),
@@ -343,15 +360,7 @@ class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
 
 /// Formats [dt] as e.g. "Rabu 8 Juli 2026, 15:43:01" (Indonesian).
 String _formatIndoDateTime(DateTime dt) {
-  const days = [
-    'Senin',
-    'Selasa',
-    'Rabu',
-    'Kamis',
-    'Jumat',
-    'Sabtu',
-    'Minggu',
-  ];
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
   const months = [
     'Januari',
     'Februari',
