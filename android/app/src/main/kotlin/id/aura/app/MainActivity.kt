@@ -1,4 +1,4 @@
-package com.example.aura_mobile
+package id.aura.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -55,11 +55,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       };
       geofenceAllowsSubmit =
           locations != null &&
-          evaluateGeofence(
-                locations,
-                position.latitude,
-                position.longitude,
-              )
+          evaluateGeofence(locations, position.latitude, position.longitude)
               is GeofenceInside;
     } else if (isWfo) {
       // No position yet -> nothing to validate against, block until captured.

@@ -187,4 +187,3 @@ abstract class AttendanceLocationsEnvelope with _$AttendanceLocationsEnvelope {
   factory AttendanceLocationsEnvelope.fromJson(Map<String, dynamic> json) =>
       _$AttendanceLocationsEnvelopeFromJson(json);
 }
-

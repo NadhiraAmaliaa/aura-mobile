@@ -61,7 +61,9 @@ void main() {
         _FakeAttendanceRepository(const Success([_office])),
       );
 
-      final locations = await container.read(attendanceLocationsProvider.future);
+      final locations = await container.read(
+        attendanceLocationsProvider.future,
+      );
 
       expect(locations, hasLength(1));
       expect(locations.first.name, 'Kantor Pusat');

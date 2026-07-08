@@ -123,7 +123,8 @@ class _EvaluationView extends StatelessWidget {
         icon: Icons.error_outline,
         color: theme.colorScheme.error,
         title: 'Lokasi kantor belum dikonfigurasi.',
-        detail: 'Silakan hubungi administrator untuk mengaktifkan lokasi absen.',
+        detail:
+            'Silakan hubungi administrator untuk mengaktifkan lokasi absen.',
       ),
       GeofenceInside(:final location, :final distanceMeters) => _StatusMessage(
         icon: Icons.check_circle_outline,

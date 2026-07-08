@@ -20,10 +20,13 @@ const _farOffice = AttendanceLocationModel(
 
 void main() {
   group('evaluateGeofence', () {
-    test('returns GeofenceNoLocations when the list is empty (fail-closed)', () {
-      final result = evaluateGeofence(const [], 3.5952, 98.6722);
-      expect(result, isA<GeofenceNoLocations>());
-    });
+    test(
+      'returns GeofenceNoLocations when the list is empty (fail-closed)',
+      () {
+        final result = evaluateGeofence(const [], 3.5952, 98.6722);
+        expect(result, isA<GeofenceNoLocations>());
+      },
+    );
 
     test('returns GeofenceInside when within the radius', () {
       final result = evaluateGeofence([_office], 3.5952, 98.6722);

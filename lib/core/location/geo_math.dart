@@ -13,7 +13,10 @@ double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
 
   final a =
       sin(dLat / 2) * sin(dLat / 2) +
-      cos(_degToRad(lat1)) * cos(_degToRad(lat2)) * sin(dLng / 2) * sin(dLng / 2);
+      cos(_degToRad(lat1)) *
+          cos(_degToRad(lat2)) *
+          sin(dLng / 2) *
+          sin(dLng / 2);
 
   return 2 * earthRadiusMeters * asin(sqrt(a));
 }
