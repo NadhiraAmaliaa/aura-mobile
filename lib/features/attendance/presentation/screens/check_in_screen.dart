@@ -31,6 +31,8 @@ class CheckInScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
+  static const double _mapSectionHeight = 260;
+
   String _workMode = 'wfo';
 
   @override
@@ -96,62 +98,75 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Check In')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          Text(
-            'Mode Kehadiran',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+          // Fixed map section pinned at the top (AGHRIS-style). Living outside
+          // the scroll view keeps its pan/pinch/rotate/tilt gestures from
+          // competing with the page scroll.
+          if (isWfo)
+            SizedBox(
+              height: _mapSectionHeight,
+              width: double.infinity,
+              child: CheckInMap(userPosition: position),
+            ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const LocationCard(),
+                if (isWfo && position != null) ...[
+                  const SizedBox(height: 16),
+                  WfoGeofenceCard(position: position),
+                ],
+                const SizedBox(height: 24),
+                Text(
+                  'Mode Kehadiran',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _WorkModeSelector(
+                  selected: _workMode,
+                  onChanged: isSubmitting
+                      ? null
+                      : (value) => setState(() => _workMode = value),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: canSubmit
+                      ? () => ref
+                            .read(checkInControllerProvider.notifier)
+                            .submit(
+                              workMode: _workMode,
+                              latitude: position.latitude,
+                              longitude: position.longitude,
+                            )
+                      : null,
+                  icon: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.login),
+                  label: Text(
+                    isSubmitting ? 'Memproses...' : 'Check In Sekarang',
+                  ),
+                ),
+                if (position == null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ambil lokasi Anda terlebih dahulu untuk melakukan Check In.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          _WorkModeSelector(
-            selected: _workMode,
-            onChanged: isSubmitting
-                ? null
-                : (value) => setState(() => _workMode = value),
-          ),
-          const SizedBox(height: 24),
-          const LocationCard(),
-          if (isWfo) ...[
-            const SizedBox(height: 16),
-            CheckInMap(userPosition: position),
-          ],
-          if (isWfo && position != null) ...[
-            const SizedBox(height: 16),
-            WfoGeofenceCard(position: position),
-          ],
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: canSubmit
-                ? () => ref
-                      .read(checkInControllerProvider.notifier)
-                      .submit(
-                        workMode: _workMode,
-                        latitude: position.latitude,
-                        longitude: position.longitude,
-                      )
-                : null,
-            icon: isSubmitting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.login),
-            label: Text(isSubmitting ? 'Memproses...' : 'Check In Sekarang'),
-          ),
-          if (position == null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Ambil lokasi Anda terlebih dahulu untuk melakukan Check In.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
         ],
       ),
     );

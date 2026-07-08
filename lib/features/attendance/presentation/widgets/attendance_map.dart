@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show Factory;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,7 +39,6 @@ class CheckInMap extends ConsumerStatefulWidget {
 }
 
 class _CheckInMapState extends ConsumerState<CheckInMap> {
-  static const double _mapHeight = 240;
   static const double _defaultZoom = 18.5;
 
   final Completer<GoogleMapController> _controller = Completer();
@@ -95,35 +96,30 @@ class _CheckInMapState extends ConsumerState<CheckInMap> {
     final theme = Theme.of(context);
     final locationsAsync = ref.watch(attendanceLocationsProvider);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: _mapHeight,
-        child: locationsAsync.when(
-          loading: () => const _MapMessage(child: CircularProgressIndicator()),
-          error: (_, _) => _MapMessage(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Gagal memuat peta lokasi kantor.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(attendanceLocationsProvider),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Coba Lagi'),
-                ),
-              ],
+    // Fills whatever bounded box the parent provides. The Check In screen pins
+    // it as a fixed top section, so it never competes with the page scroll.
+    return locationsAsync.when(
+      loading: () => const _MapMessage(child: CircularProgressIndicator()),
+      error: (_, _) => _MapMessage(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Gagal memuat peta lokasi kantor.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
+              ),
             ),
-          ),
-          data: _buildMap,
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => ref.invalidate(attendanceLocationsProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
         ),
       ),
+      data: _buildMap,
     );
   }
 
@@ -184,6 +180,11 @@ class _CheckInMapState extends ConsumerState<CheckInMap> {
           zoomGesturesEnabled: true,
           rotateGesturesEnabled: true,
           tiltGesturesEnabled: true,
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<OneSequenceGestureRecognizer>(
+              () => EagerGestureRecognizer(),
+            ),
+          },
           onMapCreated: (controller) {
             if (!_controller.isCompleted) _controller.complete(controller);
             _recenterOnUser();
@@ -265,7 +266,9 @@ class _MapMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Center(child: Padding(padding: const EdgeInsets.all(16), child: child)),
+      child: Center(
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
+      ),
     );
   }
 }
