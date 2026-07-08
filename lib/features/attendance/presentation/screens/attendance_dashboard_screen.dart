@@ -106,23 +106,15 @@ class _DashboardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _TodayCard(today: data.today),
-        if (data.today.attendance == null && data.today.leave == null) ...[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => context.pushNamed(RouteNames.attendanceCheckIn),
-            icon: const Icon(Icons.login),
-            label: const Text('Check In'),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () => context.pushNamed(RouteNames.attendancePresence),
+          icon: const Icon(Icons.how_to_reg_outlined),
+          label: const Text('Presensi Magang'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-        ],
-        if (data.today.attendance?.checkInTime != null &&
-            data.today.attendance?.checkOutTime == null) ...[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => context.pushNamed(RouteNames.attendanceCheckOut),
-            icon: const Icon(Icons.logout),
-            label: const Text('Check Out'),
-          ),
-        ],
+        ),
         const SizedBox(height: 24),
         Text(
           'Rekapitulasi Presensi Bulan',
