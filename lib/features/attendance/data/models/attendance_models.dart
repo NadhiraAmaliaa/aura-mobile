@@ -156,3 +156,35 @@ abstract class AttendanceMutationEnvelope with _$AttendanceMutationEnvelope {
   factory AttendanceMutationEnvelope.fromJson(Map<String, dynamic> json) =>
       _$AttendanceMutationEnvelopeFromJson(json);
 }
+
+/// An active office attendance location (WFO geofence centre), mirroring the
+/// backend `AttendanceLocationResource`.
+///
+/// Coordinates are numbers (not the record's `decimal:7` strings) so they can
+/// feed a map SDK later; [radius] is in metres. Used for client-side WFO
+/// pre-validation — the server remains authoritative.
+@freezed
+abstract class AttendanceLocationModel with _$AttendanceLocationModel {
+  const factory AttendanceLocationModel({
+    required int id,
+    required String name,
+    required double latitude,
+    required double longitude,
+    required int radius,
+  }) = _AttendanceLocationModel;
+
+  factory AttendanceLocationModel.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceLocationModelFromJson(json);
+}
+
+/// Envelope for `GET /attendance/locations`, wrapping the list in `data`.
+@freezed
+abstract class AttendanceLocationsEnvelope with _$AttendanceLocationsEnvelope {
+  const factory AttendanceLocationsEnvelope({
+    @Default(<AttendanceLocationModel>[]) List<AttendanceLocationModel> data,
+  }) = _AttendanceLocationsEnvelope;
+
+  factory AttendanceLocationsEnvelope.fromJson(Map<String, dynamic> json) =>
+      _$AttendanceLocationsEnvelopeFromJson(json);
+}
+

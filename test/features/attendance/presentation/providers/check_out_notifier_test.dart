@@ -44,13 +44,15 @@ class _FakeAttendanceRepository implements AttendanceRepository {
     int? page,
     int? perPage,
   }) => throw UnimplementedError();
+
+  @override
+  Future<ApiResult<List<AttendanceLocationModel>>> locations() =>
+      throw UnimplementedError();
 }
 
 ProviderContainer _containerFor(_FakeAttendanceRepository repository) {
   final container = ProviderContainer(
-    overrides: [
-      attendanceRepositoryProvider.overrideWithValue(repository),
-    ],
+    overrides: [attendanceRepositoryProvider.overrideWithValue(repository)],
   );
   addTearDown(container.dispose);
   return container;

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../geofence_evaluation.dart';
+import '../providers/attendance_locations_provider.dart';
 import '../providers/check_in_notifier.dart';
 import '../providers/check_in_state.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
 import '../widgets/location_card.dart';
+import '../widgets/wfo_geofence_card.dart';
 
 /// Available work modes, mirroring the backend `Attendance::workModeLabels()`.
 const _workModes = <({String value, String label, String hint})>[
@@ -40,7 +43,30 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       _ => null,
     };
     final isSubmitting = checkInState is CheckInSubmitting;
-    final canSubmit = position != null && !isSubmitting;
+
+    // WFO check-ins are pre-validated against the office geofence. For other
+    // modes the geofence does not apply. The server remains authoritative.
+    final isWfo = _workMode == 'wfo';
+    var geofenceAllowsSubmit = true;
+    if (isWfo && position != null) {
+      final locations = switch (ref.watch(attendanceLocationsProvider)) {
+        AsyncData(:final value) => value,
+        _ => null,
+      };
+      geofenceAllowsSubmit =
+          locations != null &&
+          evaluateGeofence(
+                locations,
+                position.latitude,
+                position.longitude,
+              )
+              is GeofenceInside;
+    } else if (isWfo) {
+      // No position yet -> nothing to validate against, block until captured.
+      geofenceAllowsSubmit = false;
+    }
+
+    final canSubmit = position != null && !isSubmitting && geofenceAllowsSubmit;
 
     // React to submission outcomes: toast + return to the dashboard on success.
     ref.listen<CheckInState>(checkInControllerProvider, (previous, next) {
@@ -79,6 +105,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           ),
           const SizedBox(height: 24),
           const LocationCard(),
+          if (isWfo && position != null) ...[
+            const SizedBox(height: 16),
+            WfoGeofenceCard(position: position),
+          ],
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: canSubmit

@@ -81,4 +81,16 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return Failure(reportUnexpectedError(e, stackTrace));
     }
   }
+
+  @override
+  Future<ApiResult<List<AttendanceLocationModel>>> locations() async {
+    try {
+      final response = await _api.locations();
+      return Success(response.data);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
 }

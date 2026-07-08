@@ -36,4 +36,9 @@ abstract class AttendanceApi {
   Future<AttendanceMutationEnvelope> checkOut(
     @Body() Map<String, dynamic> body,
   );
+
+  /// The active office locations for WFO geofence pre-validation. Coordinates
+  /// are numeric; radius is in metres.
+  @GET('/attendance/locations')
+  Future<AttendanceLocationsEnvelope> locations();
 }

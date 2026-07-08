@@ -46,6 +46,10 @@ class _FakeAttendanceRepository implements AttendanceRepository {
     double? latitude,
     double? longitude,
   }) => throw UnimplementedError();
+
+  @override
+  Future<ApiResult<List<AttendanceLocationModel>>> locations() =>
+      throw UnimplementedError();
 }
 
 ProviderContainer _containerFor(_FakeAttendanceRepository repository) {

@@ -3174,4 +3174,548 @@ $AttendanceModelCopyWith<$Res> get data {
 }
 }
 
+
+/// @nodoc
+mixin _$AttendanceLocationModel {
+
+ int get id; String get name; double get latitude; double get longitude; int get radius;
+/// Create a copy of AttendanceLocationModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AttendanceLocationModelCopyWith<AttendanceLocationModel> get copyWith => _$AttendanceLocationModelCopyWithImpl<AttendanceLocationModel>(this as AttendanceLocationModel, _$identity);
+
+  /// Serializes this AttendanceLocationModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttendanceLocationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.radius, radius) || other.radius == radius));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,latitude,longitude,radius);
+
+@override
+String toString() {
+  return 'AttendanceLocationModel(id: $id, name: $name, latitude: $latitude, longitude: $longitude, radius: $radius)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AttendanceLocationModelCopyWith<$Res>  {
+  factory $AttendanceLocationModelCopyWith(AttendanceLocationModel value, $Res Function(AttendanceLocationModel) _then) = _$AttendanceLocationModelCopyWithImpl;
+@useResult
+$Res call({
+ int id, String name, double latitude, double longitude, int radius
+});
+
+
+
+
+}
+/// @nodoc
+class _$AttendanceLocationModelCopyWithImpl<$Res>
+    implements $AttendanceLocationModelCopyWith<$Res> {
+  _$AttendanceLocationModelCopyWithImpl(this._self, this._then);
+
+  final AttendanceLocationModel _self;
+  final $Res Function(AttendanceLocationModel) _then;
+
+/// Create a copy of AttendanceLocationModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? latitude = null,Object? longitude = null,Object? radius = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,latitude: null == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double,longitude: null == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double,radius: null == radius ? _self.radius : radius // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [AttendanceLocationModel].
+extension AttendanceLocationModelPatterns on AttendanceLocationModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AttendanceLocationModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AttendanceLocationModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AttendanceLocationModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  double latitude,  double longitude,  int radius)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AttendanceLocationModel() when $default != null:
+return $default(_that.id,_that.name,_that.latitude,_that.longitude,_that.radius);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  double latitude,  double longitude,  int radius)  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceLocationModel():
+return $default(_that.id,_that.name,_that.latitude,_that.longitude,_that.radius);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  double latitude,  double longitude,  int radius)?  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceLocationModel() when $default != null:
+return $default(_that.id,_that.name,_that.latitude,_that.longitude,_that.radius);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _AttendanceLocationModel implements AttendanceLocationModel {
+  const _AttendanceLocationModel({required this.id, required this.name, required this.latitude, required this.longitude, required this.radius});
+  factory _AttendanceLocationModel.fromJson(Map<String, dynamic> json) => _$AttendanceLocationModelFromJson(json);
+
+@override final  int id;
+@override final  String name;
+@override final  double latitude;
+@override final  double longitude;
+@override final  int radius;
+
+/// Create a copy of AttendanceLocationModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AttendanceLocationModelCopyWith<_AttendanceLocationModel> get copyWith => __$AttendanceLocationModelCopyWithImpl<_AttendanceLocationModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AttendanceLocationModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttendanceLocationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude)&&(identical(other.radius, radius) || other.radius == radius));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,latitude,longitude,radius);
+
+@override
+String toString() {
+  return 'AttendanceLocationModel(id: $id, name: $name, latitude: $latitude, longitude: $longitude, radius: $radius)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AttendanceLocationModelCopyWith<$Res> implements $AttendanceLocationModelCopyWith<$Res> {
+  factory _$AttendanceLocationModelCopyWith(_AttendanceLocationModel value, $Res Function(_AttendanceLocationModel) _then) = __$AttendanceLocationModelCopyWithImpl;
+@override @useResult
+$Res call({
+ int id, String name, double latitude, double longitude, int radius
+});
+
+
+
+
+}
+/// @nodoc
+class __$AttendanceLocationModelCopyWithImpl<$Res>
+    implements _$AttendanceLocationModelCopyWith<$Res> {
+  __$AttendanceLocationModelCopyWithImpl(this._self, this._then);
+
+  final _AttendanceLocationModel _self;
+  final $Res Function(_AttendanceLocationModel) _then;
+
+/// Create a copy of AttendanceLocationModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? latitude = null,Object? longitude = null,Object? radius = null,}) {
+  return _then(_AttendanceLocationModel(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,latitude: null == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double,longitude: null == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double,radius: null == radius ? _self.radius : radius // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$AttendanceLocationsEnvelope {
+
+ List<AttendanceLocationModel> get data;
+/// Create a copy of AttendanceLocationsEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AttendanceLocationsEnvelopeCopyWith<AttendanceLocationsEnvelope> get copyWith => _$AttendanceLocationsEnvelopeCopyWithImpl<AttendanceLocationsEnvelope>(this as AttendanceLocationsEnvelope, _$identity);
+
+  /// Serializes this AttendanceLocationsEnvelope to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttendanceLocationsEnvelope&&const DeepCollectionEquality().equals(other.data, data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+
+@override
+String toString() {
+  return 'AttendanceLocationsEnvelope(data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AttendanceLocationsEnvelopeCopyWith<$Res>  {
+  factory $AttendanceLocationsEnvelopeCopyWith(AttendanceLocationsEnvelope value, $Res Function(AttendanceLocationsEnvelope) _then) = _$AttendanceLocationsEnvelopeCopyWithImpl;
+@useResult
+$Res call({
+ List<AttendanceLocationModel> data
+});
+
+
+
+
+}
+/// @nodoc
+class _$AttendanceLocationsEnvelopeCopyWithImpl<$Res>
+    implements $AttendanceLocationsEnvelopeCopyWith<$Res> {
+  _$AttendanceLocationsEnvelopeCopyWithImpl(this._self, this._then);
+
+  final AttendanceLocationsEnvelope _self;
+  final $Res Function(AttendanceLocationsEnvelope) _then;
+
+/// Create a copy of AttendanceLocationsEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
+  return _then(_self.copyWith(
+data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as List<AttendanceLocationModel>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [AttendanceLocationsEnvelope].
+extension AttendanceLocationsEnvelopePatterns on AttendanceLocationsEnvelope {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AttendanceLocationsEnvelope value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AttendanceLocationsEnvelope value)  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AttendanceLocationsEnvelope value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AttendanceLocationModel> data)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope() when $default != null:
+return $default(_that.data);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AttendanceLocationModel> data)  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope():
+return $default(_that.data);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AttendanceLocationModel> data)?  $default,) {final _that = this;
+switch (_that) {
+case _AttendanceLocationsEnvelope() when $default != null:
+return $default(_that.data);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _AttendanceLocationsEnvelope implements AttendanceLocationsEnvelope {
+  const _AttendanceLocationsEnvelope({final  List<AttendanceLocationModel> data = const <AttendanceLocationModel>[]}): _data = data;
+  factory _AttendanceLocationsEnvelope.fromJson(Map<String, dynamic> json) => _$AttendanceLocationsEnvelopeFromJson(json);
+
+ final  List<AttendanceLocationModel> _data;
+@override@JsonKey() List<AttendanceLocationModel> get data {
+  if (_data is EqualUnmodifiableListView) return _data;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_data);
+}
+
+
+/// Create a copy of AttendanceLocationsEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AttendanceLocationsEnvelopeCopyWith<_AttendanceLocationsEnvelope> get copyWith => __$AttendanceLocationsEnvelopeCopyWithImpl<_AttendanceLocationsEnvelope>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AttendanceLocationsEnvelopeToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttendanceLocationsEnvelope&&const DeepCollectionEquality().equals(other._data, _data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+
+@override
+String toString() {
+  return 'AttendanceLocationsEnvelope(data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AttendanceLocationsEnvelopeCopyWith<$Res> implements $AttendanceLocationsEnvelopeCopyWith<$Res> {
+  factory _$AttendanceLocationsEnvelopeCopyWith(_AttendanceLocationsEnvelope value, $Res Function(_AttendanceLocationsEnvelope) _then) = __$AttendanceLocationsEnvelopeCopyWithImpl;
+@override @useResult
+$Res call({
+ List<AttendanceLocationModel> data
+});
+
+
+
+
+}
+/// @nodoc
+class __$AttendanceLocationsEnvelopeCopyWithImpl<$Res>
+    implements _$AttendanceLocationsEnvelopeCopyWith<$Res> {
+  __$AttendanceLocationsEnvelopeCopyWithImpl(this._self, this._then);
+
+  final _AttendanceLocationsEnvelope _self;
+  final $Res Function(_AttendanceLocationsEnvelope) _then;
+
+/// Create a copy of AttendanceLocationsEnvelope
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? data = null,}) {
+  return _then(_AttendanceLocationsEnvelope(
+data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
+as List<AttendanceLocationModel>,
+  ));
+}
+
+
+}
+
 // dart format on

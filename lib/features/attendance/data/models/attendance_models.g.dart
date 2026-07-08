@@ -186,3 +186,39 @@ _AttendanceMutationEnvelope _$AttendanceMutationEnvelopeFromJson(
 Map<String, dynamic> _$AttendanceMutationEnvelopeToJson(
   _AttendanceMutationEnvelope instance,
 ) => <String, dynamic>{'message': instance.message, 'data': instance.data};
+
+_AttendanceLocationModel _$AttendanceLocationModelFromJson(
+  Map<String, dynamic> json,
+) => _AttendanceLocationModel(
+  id: (json['id'] as num).toInt(),
+  name: json['name'] as String,
+  latitude: (json['latitude'] as num).toDouble(),
+  longitude: (json['longitude'] as num).toDouble(),
+  radius: (json['radius'] as num).toInt(),
+);
+
+Map<String, dynamic> _$AttendanceLocationModelToJson(
+  _AttendanceLocationModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'latitude': instance.latitude,
+  'longitude': instance.longitude,
+  'radius': instance.radius,
+};
+
+_AttendanceLocationsEnvelope _$AttendanceLocationsEnvelopeFromJson(
+  Map<String, dynamic> json,
+) => _AttendanceLocationsEnvelope(
+  data:
+      (json['data'] as List<dynamic>?)
+          ?.map(
+            (e) => AttendanceLocationModel.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const <AttendanceLocationModel>[],
+);
+
+Map<String, dynamic> _$AttendanceLocationsEnvelopeToJson(
+  _AttendanceLocationsEnvelope instance,
+) => <String, dynamic>{'data': instance.data};

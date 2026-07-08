@@ -28,4 +28,7 @@ abstract interface class AttendanceRepository {
     double? latitude,
     double? longitude,
   });
+
+  /// Loads the active office locations for WFO geofence pre-validation.
+  Future<ApiResult<List<AttendanceLocationModel>>> locations();
 }
