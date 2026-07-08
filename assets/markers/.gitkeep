@@ -1,0 +1,8 @@
+# Map marker icons for the attendance check-in map.
+#
+# Save the two provided custom markers here (exact filenames):
+#   user_marker.png    -> green person pin (intern's current position)
+#   office_marker.png  -> red building pin (office location)
+#
+# Referenced by AttendanceMarkerAssets in
+# lib/features/attendance/presentation/widgets/attendance_map.dart.

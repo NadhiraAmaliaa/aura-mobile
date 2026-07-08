@@ -8,6 +8,7 @@ import '../providers/check_in_notifier.dart';
 import '../providers/check_in_state.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
+import '../widgets/attendance_map.dart';
 import '../widgets/location_card.dart';
 import '../widgets/wfo_geofence_card.dart';
 
@@ -31,6 +32,18 @@ class CheckInScreen extends ConsumerStatefulWidget {
 
 class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   String _workMode = 'wfo';
+
+  @override
+  void initState() {
+    super.initState();
+    // Automatically request permission and acquire the location as soon as the
+    // screen opens, so the map can centre on the intern without an extra tap.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(currentLocationProvider) is LocationIdle) {
+        ref.read(currentLocationProvider.notifier).fetch();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +114,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           ),
           const SizedBox(height: 24),
           const LocationCard(),
+          if (isWfo) ...[
+            const SizedBox(height: 16),
+            CheckInMap(userPosition: position),
+          ],
           if (isWfo && position != null) ...[
             const SizedBox(height: 16),
             WfoGeofenceCard(position: position),

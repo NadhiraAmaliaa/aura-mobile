@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Google Maps API key is kept out of source control: it lives in the
+// git-ignored local.properties and is injected as a manifest placeholder.
+val mapsApiKey: String =
+    run {
+        val properties = Properties()
+        val localFile = rootProject.file("local.properties")
+        if (localFile.exists()) {
+            localFile.inputStream().use { properties.load(it) }
+        }
+        properties.getProperty("MAPS_API_KEY") ?: ""
+    }
 
 android {
     namespace = "id.aura.app"
@@ -23,6 +37,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Consumed by AndroidManifest.xml -> com.google.android.geo.API_KEY.
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
