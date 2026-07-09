@@ -200,6 +200,13 @@ class _AttendancePresenceScreenState
                         ref.read(currentLocationProvider.notifier).fetch(),
                   ),
                 ],
+                const SizedBox(height: 12),
+                _CoordinatesCard(
+                  position: position,
+                  loading: locationState is LocationLoading,
+                  onRefresh: () =>
+                      ref.read(currentLocationProvider.notifier).fetch(),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -452,6 +459,90 @@ class _CheckOutButton extends StatelessWidget {
                 Text('Check Out'),
               ],
             ),
+    );
+  }
+}
+
+/// Verification read-out of the current GPS coordinates and accuracy.
+///
+/// Surfaces the raw latitude/longitude (and the reported horizontal accuracy)
+/// so the fix can be eyeballed against the office location before checking in.
+class _CoordinatesCard extends StatelessWidget {
+  const _CoordinatesCard({
+    required this.position,
+    required this.loading,
+    required this.onRefresh,
+  });
+
+  final GeoPosition? position;
+  final bool loading;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pos = position;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.my_location, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Koordinat Anda',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (loading && pos == null)
+                  Text('Mengambil lokasi…', style: theme.textTheme.bodySmall)
+                else if (pos == null)
+                  Text(
+                    'Lokasi belum tersedia',
+                    style: theme.textTheme.bodySmall,
+                  )
+                else ...[
+                  Text(
+                    '${pos.latitude.toStringAsFixed(7)}, '
+                    '${pos.longitude.toStringAsFixed(7)}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (pos.accuracy != null)
+                    Text(
+                      'Akurasi ±${pos.accuracy!.toStringAsFixed(0)} m',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: loading ? null : onRefresh,
+            icon: loading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+            tooltip: 'Perbarui lokasi',
+          ),
+        ],
+      ),
     );
   }
 }
