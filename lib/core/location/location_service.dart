@@ -60,6 +60,15 @@ class GeolocatorLocationService implements LocationService {
   /// optimisation only — it never rejects a fix.
   static const _defaultAcceptableAccuracy = 20.0;
 
+  /// Returned when the platform flags the fix as coming from a mock provider
+  /// (Android API 18+, or an iOS 15+ simulated location). Blocks Fake GPS /
+  /// Mock Location spoofing before the attendance request is submitted.
+  static const _mockedLocationFailure = LocationFailure(
+    LocationFailureKind.mocked,
+    'Lokasi palsu terdeteksi. Nonaktifkan aplikasi Fake GPS / Mock Location '
+    'terlebih dahulu, lalu coba lagi.',
+  );
+
   @override
   Future<LocationResult> getCurrentPosition() async {
     final failure = await _ensureLocationUsable();
@@ -69,7 +78,7 @@ class GeolocatorLocationService implements LocationService {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: _settings,
       );
-      return LocationSuccess(_toGeoPosition(position));
+      return _resolvePosition(position);
     } on TimeoutException {
       return const LocationFailure(
         LocationFailureKind.timeout,
@@ -98,7 +107,7 @@ class GeolocatorLocationService implements LocationService {
 
     try {
       final position = await _acquireBestPosition(warmUp, acceptableAccuracy);
-      return LocationSuccess(_toGeoPosition(position));
+      return _resolvePosition(position);
     } on TimeoutException {
       return const LocationFailure(
         LocationFailureKind.timeout,
@@ -164,21 +173,21 @@ class GeolocatorLocationService implements LocationService {
     Position? best;
     StreamSubscription<Position>? subscription;
 
-    subscription = Geolocator.getPositionStream(
-      locationSettings: _warmUpSettings,
-    ).listen(
-      (position) {
-        if (best == null || position.accuracy < best!.accuracy) {
-          best = position;
-        }
-        if (position.accuracy <= acceptableAccuracy && !completer.isCompleted) {
-          completer.complete(position);
-        }
-      },
-      onError: (Object error) {
-        if (!completer.isCompleted) completer.completeError(error);
-      },
-    );
+    subscription =
+        Geolocator.getPositionStream(locationSettings: _warmUpSettings).listen(
+          (position) {
+            if (best == null || position.accuracy < best!.accuracy) {
+              best = position;
+            }
+            if (position.accuracy <= acceptableAccuracy &&
+                !completer.isCompleted) {
+              completer.complete(position);
+            }
+          },
+          onError: (Object error) {
+            if (!completer.isCompleted) completer.completeError(error);
+          },
+        );
 
     try {
       return await completer.future.timeout(warmUp);
@@ -190,6 +199,13 @@ class GeolocatorLocationService implements LocationService {
     } finally {
       await subscription.cancel();
     }
+  }
+
+  /// Convert a resolved [Position] into a [LocationResult], rejecting fixes the
+  /// platform reports as mocked so spoofed coordinates never reach the backend.
+  LocationResult _resolvePosition(Position position) {
+    if (position.isMocked) return _mockedLocationFailure;
+    return LocationSuccess(_toGeoPosition(position));
   }
 
   GeoPosition _toGeoPosition(Position position) => GeoPosition(

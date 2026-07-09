@@ -124,5 +124,43 @@ void main() {
       expect(acquired, isNull);
       expect(container.read(currentLocationProvider), isA<LocationError>());
     });
+
+    test(
+      'acquireFresh rejects a mocked fix as a mocked failure (no position)',
+      () async {
+        final container = _containerFor(
+          const LocationFailure(
+            LocationFailureKind.mocked,
+            'Lokasi palsu terdeteksi. Nonaktifkan aplikasi Fake GPS / Mock '
+            'Location terlebih dahulu, lalu coba lagi.',
+          ),
+        );
+        final notifier = container.read(currentLocationProvider.notifier);
+
+        final acquired = await notifier.acquireFresh();
+
+        expect(acquired, isNull);
+        final state = container.read(currentLocationProvider);
+        expect(state, isA<LocationError>());
+        final error = state as LocationError;
+        expect(error.kind, LocationFailureKind.mocked);
+        expect(error.message, contains('Fake GPS'));
+      },
+    );
+
+    test('acquireFresh accepts a genuine (non-mocked) fix', () async {
+      const position = GeoPosition(
+        latitude: 3.5952000,
+        longitude: 98.6722000,
+        accuracy: 5,
+      );
+      final container = _containerFor(const LocationSuccess(position));
+      final notifier = container.read(currentLocationProvider.notifier);
+
+      final acquired = await notifier.acquireFresh();
+
+      expect(acquired, isNotNull);
+      expect(container.read(currentLocationProvider), isA<LocationReady>());
+    });
   });
 }

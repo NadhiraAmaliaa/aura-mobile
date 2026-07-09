@@ -40,6 +40,9 @@ enum LocationFailureKind {
   /// The fix took longer than the allotted time.
   timeout,
 
+  /// The fix was reported by a mock/fake location provider (spoofed GPS).
+  mocked,
+
   /// Anything else (hardware error, platform exception).
   unknown,
 }

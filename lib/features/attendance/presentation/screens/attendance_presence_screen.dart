@@ -85,6 +85,9 @@ class _AttendancePresenceScreenState
           .acquireFresh();
       if (!mounted) return;
 
+      // Reject spoofed/mocked GPS for every work mode before submitting.
+      if (!_ensureLocationTrusted()) return;
+
       // WFO must be inside an office radius; WFH skips validation; Dinas defers
       // to the server's business rules.
       if (type == _workModeWfo && !_ensureWithinOfficeRadius(position)) {
@@ -101,6 +104,19 @@ class _AttendancePresenceScreenState
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
+  }
+
+  /// Guards every work mode against a spoofed/mocked GPS fix. The location
+  /// service rejects a mocked fix as a [LocationFailureKind.mocked] failure;
+  /// this surfaces that reason and blocks submission. Returns `true` when the
+  /// fix is trusted (or the failure was unrelated to mocking).
+  bool _ensureLocationTrusted() {
+    final state = ref.read(currentLocationProvider);
+    if (state is LocationError && state.kind == LocationFailureKind.mocked) {
+      _showSnack(state.message);
+      return false;
+    }
+    return true;
   }
 
   /// Guards WFO submissions against the office radius, mirroring the check-in
@@ -140,6 +156,9 @@ class _AttendancePresenceScreenState
           .read(currentLocationProvider.notifier)
           .acquireFresh();
       if (!mounted) return;
+
+      // Reject spoofed/mocked GPS for every work mode before submitting.
+      if (!_ensureLocationTrusted()) return;
 
       // The work mode was fixed at check-in; only WFO is validated on-site.
       if (attendance.workMode == _workModeWfo &&
