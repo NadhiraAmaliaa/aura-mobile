@@ -31,6 +31,28 @@ class CurrentLocation extends _$CurrentLocation {
     };
   }
 
+  /// Acquire the freshest, best-available fix immediately before an attendance
+  /// action (Check In / Check Out).
+  ///
+  /// Uses a short GPS warm-up so submission uses a current fix rather than the
+  /// one captured when the page opened. Updates [state] so the map and
+  /// coordinate read-out reflect the fresh position, and returns it (or `null`
+  /// when acquisition failed).
+  Future<GeoPosition?> acquireFresh() async {
+    state = const CurrentLocationState.loading();
+
+    final result = await ref.read(locationServiceProvider).getBestPosition();
+
+    switch (result) {
+      case LocationSuccess(:final position):
+        state = CurrentLocationState.success(position);
+        return position;
+      case LocationFailure(:final kind, :final message):
+        state = CurrentLocationState.failure(kind, message);
+        return null;
+    }
+  }
+
   /// Open OS app settings (for a permanently denied permission).
   Future<void> openAppSettings() =>
       ref.read(locationServiceProvider).openAppSettings();

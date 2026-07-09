@@ -16,6 +16,17 @@ abstract interface class LocationService {
   /// [LocationFailure] rather than thrown.
   Future<LocationResult> getCurrentPosition();
 
+  /// Acquire the freshest, best-available position using a short warm-up.
+  ///
+  /// Listens to the location stream for up to [warmUp]; returns immediately as
+  /// soon as a fix at or below [acceptableAccuracy] metres arrives, otherwise
+  /// returns the most accurate fix seen within the window. Same permission
+  /// handling and failure model as [getCurrentPosition].
+  Future<LocationResult> getBestPosition({
+    Duration warmUp,
+    double acceptableAccuracy,
+  });
+
   /// Open the OS app-settings page so the user can re-enable a permanently
   /// denied permission. Returns whether the page was opened.
   Future<bool> openAppSettings();
@@ -35,8 +46,82 @@ class GeolocatorLocationService implements LocationService {
     timeLimit: Duration(seconds: 20),
   );
 
+  /// Streaming settings for the warm-up (no per-fix time limit; the caller
+  /// bounds the total wait).
+  static const _warmUpSettings = LocationSettings(
+    accuracy: LocationAccuracy.high,
+  );
+
+  /// Default warm-up window: brief, so Check In/Out stay responsive.
+  static const _defaultWarmUp = Duration(seconds: 3);
+
+  /// A fix at or below this horizontal accuracy (metres) is good enough to use
+  /// immediately without waiting out the warm-up window. This is an early-exit
+  /// optimisation only — it never rejects a fix.
+  static const _defaultAcceptableAccuracy = 20.0;
+
   @override
   Future<LocationResult> getCurrentPosition() async {
+    final failure = await _ensureLocationUsable();
+    if (failure != null) return failure;
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: _settings,
+      );
+      return LocationSuccess(_toGeoPosition(position));
+    } on TimeoutException {
+      return const LocationFailure(
+        LocationFailureKind.timeout,
+        'Gagal mendapatkan lokasi (waktu habis). Coba lagi.',
+      );
+    } on LocationServiceDisabledException {
+      return const LocationFailure(
+        LocationFailureKind.serviceDisabled,
+        'Layanan lokasi (GPS) tidak aktif. Aktifkan lalu coba lagi.',
+      );
+    } catch (_) {
+      return const LocationFailure(
+        LocationFailureKind.unknown,
+        'Gagal mendapatkan lokasi. Coba lagi.',
+      );
+    }
+  }
+
+  @override
+  Future<LocationResult> getBestPosition({
+    Duration warmUp = _defaultWarmUp,
+    double acceptableAccuracy = _defaultAcceptableAccuracy,
+  }) async {
+    final failure = await _ensureLocationUsable();
+    if (failure != null) return failure;
+
+    try {
+      final position = await _acquireBestPosition(warmUp, acceptableAccuracy);
+      return LocationSuccess(_toGeoPosition(position));
+    } on TimeoutException {
+      return const LocationFailure(
+        LocationFailureKind.timeout,
+        'Gagal mendapatkan lokasi (waktu habis). Coba lagi.',
+      );
+    } on LocationServiceDisabledException {
+      return const LocationFailure(
+        LocationFailureKind.serviceDisabled,
+        'Layanan lokasi (GPS) tidak aktif. Aktifkan lalu coba lagi.',
+      );
+    } catch (_) {
+      return const LocationFailure(
+        LocationFailureKind.unknown,
+        'Gagal mendapatkan lokasi. Coba lagi.',
+      );
+    }
+  }
+
+  /// Verify location services are on and permission is granted.
+  ///
+  /// Returns `null` when the caller may proceed, or a [LocationFailure]
+  /// describing why it cannot.
+  Future<LocationFailure?> _ensureLocationUsable() async {
     // 1. Location services (GPS) must be switched on at the OS level.
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -65,35 +150,53 @@ class GeolocatorLocationService implements LocationService {
       );
     }
 
-    // 3. Permission granted (whileInUse / always) -> get a fix.
+    return null;
+  }
+
+  /// Collect location fixes for up to [warmUp], returning the first fix at or
+  /// below [acceptableAccuracy], else the most accurate fix observed. Falls
+  /// back to a single high-accuracy read when the stream yields nothing.
+  Future<Position> _acquireBestPosition(
+    Duration warmUp,
+    double acceptableAccuracy,
+  ) async {
+    final completer = Completer<Position>();
+    Position? best;
+    StreamSubscription<Position>? subscription;
+
+    subscription = Geolocator.getPositionStream(
+      locationSettings: _warmUpSettings,
+    ).listen(
+      (position) {
+        if (best == null || position.accuracy < best!.accuracy) {
+          best = position;
+        }
+        if (position.accuracy <= acceptableAccuracy && !completer.isCompleted) {
+          completer.complete(position);
+        }
+      },
+      onError: (Object error) {
+        if (!completer.isCompleted) completer.completeError(error);
+      },
+    );
+
     try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: _settings,
-      );
-      return LocationSuccess(
-        GeoPosition(
-          latitude: position.latitude,
-          longitude: position.longitude,
-          accuracy: position.accuracy,
-        ),
-      );
+      return await completer.future.timeout(warmUp);
     } on TimeoutException {
-      return const LocationFailure(
-        LocationFailureKind.timeout,
-        'Gagal mendapatkan lokasi (waktu habis). Coba lagi.',
-      );
-    } on LocationServiceDisabledException {
-      return const LocationFailure(
-        LocationFailureKind.serviceDisabled,
-        'Layanan lokasi (GPS) tidak aktif. Aktifkan lalu coba lagi.',
-      );
-    } catch (_) {
-      return const LocationFailure(
-        LocationFailureKind.unknown,
-        'Gagal mendapatkan lokasi. Coba lagi.',
-      );
+      // No sufficiently-accurate fix within the window: use the best one seen,
+      // or fall back to a single bounded read if the stream produced nothing.
+      return best ??
+          await Geolocator.getCurrentPosition(locationSettings: _settings);
+    } finally {
+      await subscription.cancel();
     }
   }
+
+  GeoPosition _toGeoPosition(Position position) => GeoPosition(
+    latitude: position.latitude,
+    longitude: position.longitude,
+    accuracy: position.accuracy,
+  );
 
   @override
   Future<bool> openAppSettings() => Geolocator.openAppSettings();

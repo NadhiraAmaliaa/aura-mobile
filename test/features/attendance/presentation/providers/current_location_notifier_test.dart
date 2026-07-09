@@ -17,6 +17,12 @@ class _FakeLocationService implements LocationService {
   Future<LocationResult> getCurrentPosition() async => result;
 
   @override
+  Future<LocationResult> getBestPosition({
+    Duration warmUp = const Duration(seconds: 3),
+    double acceptableAccuracy = 20,
+  }) async => result;
+
+  @override
   Future<bool> openAppSettings() async => true;
 
   @override
@@ -82,6 +88,41 @@ void main() {
       final error = state as LocationError;
       expect(error.kind, LocationFailureKind.permissionDeniedForever);
       expect(error.message, contains('Pengaturan'));
+    });
+
+    test('acquireFresh returns the position and sets it as state', () async {
+      const position = GeoPosition(
+        latitude: 3.5952000,
+        longitude: 98.6722000,
+        accuracy: 6,
+      );
+      final container = _containerFor(const LocationSuccess(position));
+      final notifier = container.read(currentLocationProvider.notifier);
+
+      final future = notifier.acquireFresh();
+      // Loading is set synchronously before awaiting the service.
+      expect(container.read(currentLocationProvider), isA<LocationLoading>());
+
+      final acquired = await future;
+
+      expect(acquired, isNotNull);
+      expect(acquired!.latitude, 3.5952000);
+      expect(container.read(currentLocationProvider), isA<LocationReady>());
+    });
+
+    test('acquireFresh returns null and sets error on failure', () async {
+      final container = _containerFor(
+        const LocationFailure(
+          LocationFailureKind.timeout,
+          'Gagal mendapatkan lokasi (waktu habis). Coba lagi.',
+        ),
+      );
+      final notifier = container.read(currentLocationProvider.notifier);
+
+      final acquired = await notifier.acquireFresh();
+
+      expect(acquired, isNull);
+      expect(container.read(currentLocationProvider), isA<LocationError>());
     });
   });
 }

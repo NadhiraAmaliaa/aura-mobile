@@ -19,6 +19,9 @@ import '../widgets/attendance_map.dart';
 /// Work mode that requires on-site (office radius) validation.
 const _workModeWfo = 'wfo';
 
+/// The attendance action currently in progress (acquiring a fix / submitting).
+enum _PendingAction { checkIn, checkOut }
+
 /// Selectable attendance types shown in the "JENIS ABSENSI" sheet.
 const _attendanceTypes = <({String value, String label, String hint})>[
   (value: _workModeWfo, label: 'WFO', hint: 'Bekerja dari kantor'),
@@ -46,6 +49,10 @@ class _AttendancePresenceScreenState
     extends ConsumerState<AttendancePresenceScreen> {
   static const double _mapSectionHeight = 260;
 
+  /// Which action is currently acquiring a fresh fix / submitting, so the
+  /// pressed button shows progress and both buttons stay disabled meanwhile.
+  _PendingAction? _pendingAction;
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +69,7 @@ class _AttendancePresenceScreenState
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _onCheckInPressed(GeoPosition? position) async {
+  Future<void> _onCheckInPressed() async {
     final type = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -70,19 +77,30 @@ class _AttendancePresenceScreenState
     );
     if (type == null || !mounted) return;
 
-    // WFO must be inside an office radius; WFH skips validation; Dinas defers
-    // to the server's business rules.
-    if (type == _workModeWfo && !_ensureWithinOfficeRadius(position)) {
-      return;
-    }
+    setState(() => _pendingAction = _PendingAction.checkIn);
+    try {
+      // Always submit against a fresh fix rather than the one captured on open.
+      final position = await ref
+          .read(currentLocationProvider.notifier)
+          .acquireFresh();
+      if (!mounted) return;
 
-    await ref
-        .read(checkInControllerProvider.notifier)
-        .submit(
-          workMode: type,
-          latitude: position?.latitude,
-          longitude: position?.longitude,
-        );
+      // WFO must be inside an office radius; WFH skips validation; Dinas defers
+      // to the server's business rules.
+      if (type == _workModeWfo && !_ensureWithinOfficeRadius(position)) {
+        return;
+      }
+
+      await ref
+          .read(checkInControllerProvider.notifier)
+          .submit(
+            workMode: type,
+            latitude: position?.latitude,
+            longitude: position?.longitude,
+          );
+    } finally {
+      if (mounted) setState(() => _pendingAction = null);
+    }
   }
 
   /// Guards WFO submissions against the office radius, mirroring the check-in
@@ -114,18 +132,27 @@ class _AttendancePresenceScreenState
     return false;
   }
 
-  Future<void> _onCheckOutPressed(
-    GeoPosition? position,
-    AttendanceModel attendance,
-  ) async {
-    // The work mode was fixed at check-in; only WFO is validated on-site.
-    if (attendance.workMode == _workModeWfo &&
-        !_ensureWithinOfficeRadius(position)) {
-      return;
+  Future<void> _onCheckOutPressed(AttendanceModel attendance) async {
+    setState(() => _pendingAction = _PendingAction.checkOut);
+    try {
+      // Always submit against a fresh fix rather than the one captured on open.
+      final position = await ref
+          .read(currentLocationProvider.notifier)
+          .acquireFresh();
+      if (!mounted) return;
+
+      // The work mode was fixed at check-in; only WFO is validated on-site.
+      if (attendance.workMode == _workModeWfo &&
+          !_ensureWithinOfficeRadius(position)) {
+        return;
+      }
+
+      await ref
+          .read(checkOutControllerProvider.notifier)
+          .submit(latitude: position?.latitude, longitude: position?.longitude);
+    } finally {
+      if (mounted) setState(() => _pendingAction = null);
     }
-    await ref
-        .read(checkOutControllerProvider.notifier)
-        .submit(latitude: position?.latitude, longitude: position?.longitude);
   }
 
   @override
@@ -149,8 +176,12 @@ class _AttendancePresenceScreenState
     final hasCheckedIn = attendance != null;
     final hasCheckedOut = attendance?.checkOutTime != null;
 
-    final isCheckingIn = checkInState is CheckInSubmitting;
-    final isCheckingOut = checkOutState is CheckOutSubmitting;
+    final isCheckingIn =
+        checkInState is CheckInSubmitting ||
+        _pendingAction == _PendingAction.checkIn;
+    final isCheckingOut =
+        checkOutState is CheckOutSubmitting ||
+        _pendingAction == _PendingAction.checkOut;
     final isBusy = isCheckingIn || isCheckingOut;
 
     final canCheckIn =
@@ -213,9 +244,7 @@ class _AttendancePresenceScreenState
                     Expanded(
                       child: _CheckInButton(
                         busy: isCheckingIn,
-                        onPressed: canCheckIn
-                            ? () => _onCheckInPressed(position)
-                            : null,
+                        onPressed: canCheckIn ? _onCheckInPressed : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -223,7 +252,7 @@ class _AttendancePresenceScreenState
                       child: _CheckOutButton(
                         busy: isCheckingOut,
                         onPressed: canCheckOut
-                            ? () => _onCheckOutPressed(position, attendance)
+                            ? () => _onCheckOutPressed(attendance)
                             : null,
                       ),
                     ),
