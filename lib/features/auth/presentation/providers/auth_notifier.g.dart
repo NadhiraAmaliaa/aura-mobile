@@ -14,6 +14,12 @@ part of 'auth_notifier.dart';
 /// validates it via `/auth/me`). The surrounding [AsyncValue] models the
 /// resolving phase, so the router can show a splash while `loading`. Login and
 /// logout flip the resolved [AuthState].
+///
+/// Offline resilience: a transient validation failure (no network, timeout,
+/// unreachable server, 5xx) must NOT drop a previously authenticated user. The
+/// session is restored from the on-device user cache in that case; only an
+/// explicit `401` (invalid/expired token) clears the session and requires a new
+/// login.
 
 @ProviderFor(AuthNotifier)
 final authProvider = AuthNotifierProvider._();
@@ -24,6 +30,12 @@ final authProvider = AuthNotifierProvider._();
 /// validates it via `/auth/me`). The surrounding [AsyncValue] models the
 /// resolving phase, so the router can show a splash while `loading`. Login and
 /// logout flip the resolved [AuthState].
+///
+/// Offline resilience: a transient validation failure (no network, timeout,
+/// unreachable server, 5xx) must NOT drop a previously authenticated user. The
+/// session is restored from the on-device user cache in that case; only an
+/// explicit `401` (invalid/expired token) clears the session and requires a new
+/// login.
 final class AuthNotifierProvider
     extends $AsyncNotifierProvider<AuthNotifier, AuthState> {
   /// Global session ViewModel.
@@ -32,6 +44,12 @@ final class AuthNotifierProvider
   /// validates it via `/auth/me`). The surrounding [AsyncValue] models the
   /// resolving phase, so the router can show a splash while `loading`. Login and
   /// logout flip the resolved [AuthState].
+  ///
+  /// Offline resilience: a transient validation failure (no network, timeout,
+  /// unreachable server, 5xx) must NOT drop a previously authenticated user. The
+  /// session is restored from the on-device user cache in that case; only an
+  /// explicit `401` (invalid/expired token) clears the session and requires a new
+  /// login.
   AuthNotifierProvider._()
     : super(
         from: null,
@@ -51,7 +69,7 @@ final class AuthNotifierProvider
   AuthNotifier create() => AuthNotifier();
 }
 
-String _$authNotifierHash() => r'8071ba460e7ce8338a0b901a568c4064f82ea707';
+String _$authNotifierHash() => r'8ead2ca059efa8fea938cce94b6ae29a61361de1';
 
 /// Global session ViewModel.
 ///
@@ -59,6 +77,12 @@ String _$authNotifierHash() => r'8071ba460e7ce8338a0b901a568c4064f82ea707';
 /// validates it via `/auth/me`). The surrounding [AsyncValue] models the
 /// resolving phase, so the router can show a splash while `loading`. Login and
 /// logout flip the resolved [AuthState].
+///
+/// Offline resilience: a transient validation failure (no network, timeout,
+/// unreachable server, 5xx) must NOT drop a previously authenticated user. The
+/// session is restored from the on-device user cache in that case; only an
+/// explicit `401` (invalid/expired token) clears the session and requires a new
+/// login.
 
 abstract class _$AuthNotifier extends $AsyncNotifier<AuthState> {
   FutureOr<AuthState> build();

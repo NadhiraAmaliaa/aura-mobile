@@ -56,7 +56,7 @@ final class CurrentLocationProvider
   }
 }
 
-String _$currentLocationHash() => r'73e3cd97d7df42ee620b93e4ca39f10ca647d1bd';
+String _$currentLocationHash() => r'4fa204d09d94d41e37f6cb4a16ed97a756fa7cf4';
 
 /// Drives the "get my current location" flow for attendance.
 ///

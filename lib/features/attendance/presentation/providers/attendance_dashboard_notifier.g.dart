@@ -11,8 +11,11 @@ part of 'attendance_dashboard_notifier.dart';
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. On failure the typed `AppException` is
-/// surfaced through `AsyncError` for the UI to present and retry.
+/// loading / error / data exhaustively. A successful load is cached on-device;
+/// when the backend is unreachable (offline / timeout / 5xx) the cached
+/// snapshot is served so the screen stays usable instead of erroring or
+/// spinning forever. Only an explicit `401` surfaces as an error — a transient
+/// failure must never look like a broken session.
 
 @ProviderFor(AttendanceDashboardNotifier)
 final attendanceDashboardProvider = AttendanceDashboardNotifierProvider._();
@@ -20,8 +23,11 @@ final attendanceDashboardProvider = AttendanceDashboardNotifierProvider._();
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. On failure the typed `AppException` is
-/// surfaced through `AsyncError` for the UI to present and retry.
+/// loading / error / data exhaustively. A successful load is cached on-device;
+/// when the backend is unreachable (offline / timeout / 5xx) the cached
+/// snapshot is served so the screen stays usable instead of erroring or
+/// spinning forever. Only an explicit `401` surfaces as an error — a transient
+/// failure must never look like a broken session.
 final class AttendanceDashboardNotifierProvider
     extends
         $AsyncNotifierProvider<
@@ -31,8 +37,11 @@ final class AttendanceDashboardNotifierProvider
   /// Loads the attendance dashboard (today's snapshot + monthly recap).
   ///
   /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-  /// loading / error / data exhaustively. On failure the typed `AppException` is
-  /// surfaced through `AsyncError` for the UI to present and retry.
+  /// loading / error / data exhaustively. A successful load is cached on-device;
+  /// when the backend is unreachable (offline / timeout / 5xx) the cached
+  /// snapshot is served so the screen stays usable instead of erroring or
+  /// spinning forever. Only an explicit `401` surfaces as an error — a transient
+  /// failure must never look like a broken session.
   AttendanceDashboardNotifierProvider._()
     : super(
         from: null,
@@ -53,13 +62,16 @@ final class AttendanceDashboardNotifierProvider
 }
 
 String _$attendanceDashboardNotifierHash() =>
-    r'10448cf299c26610d5b47d29732efbec1db00f85';
+    r'cca1cf596e3411d2a115b688921966ca9474016a';
 
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. On failure the typed `AppException` is
-/// surfaced through `AsyncError` for the UI to present and retry.
+/// loading / error / data exhaustively. A successful load is cached on-device;
+/// when the backend is unreachable (offline / timeout / 5xx) the cached
+/// snapshot is served so the screen stays usable instead of erroring or
+/// spinning forever. Only an explicit `401` surfaces as an error — a transient
+/// failure must never look like a broken session.
 
 abstract class _$AttendanceDashboardNotifier
     extends $AsyncNotifier<AttendanceDashboardModel> {

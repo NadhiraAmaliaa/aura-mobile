@@ -22,4 +22,8 @@ abstract interface class AuthRepository {
 
   /// The persisted bearer token, if any.
   Future<String?> currentToken();
+
+  /// The last authenticated user cached on-device, if any. Used to restore the
+  /// session on cold start when the backend is unreachable.
+  Future<UserModel?> cachedUser();
 }

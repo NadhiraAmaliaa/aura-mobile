@@ -26,6 +26,9 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<ApiResult<void>> logout() async => const Success<void>(null);
+
+  @override
+  Future<UserModel?> cachedUser() async => null;
 }
 
 /// Returns an empty list synchronously so the dropdown resolves to its data

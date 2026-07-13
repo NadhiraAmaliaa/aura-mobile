@@ -5,6 +5,7 @@ import '../../../../core/network/dio_error_mapper.dart';
 import '../../../../core/observability/error_reporter.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../datasources/attendance_api.dart';
+import '../local/attendance_queue_entry.dart';
 import '../models/attendance_models.dart';
 
 /// Network-backed [AttendanceRepository]. Unwraps the `data` envelope and maps
@@ -43,37 +44,30 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   }
 
   @override
-  Future<ApiResult<AttendanceModel>> checkIn({
-    required String workMode,
-    double? latitude,
-    double? longitude,
-  }) async {
+  Future<ApiResult<AttendanceModel>> syncEvent(
+    AttendanceQueueEntry entry,
+  ) async {
     try {
       final body = <String, dynamic>{
-        'work_mode': workMode,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
+        'client_event_id': entry.clientEventId,
+        'captured_at': entry.capturedAt,
+        'latitude': ?entry.latitude,
+        'longitude': ?entry.longitude,
+        'office_id': ?entry.officeId,
+        'office_latitude': ?entry.officeLatitude,
+        'office_longitude': ?entry.officeLongitude,
+        'office_radius': ?entry.officeRadius,
+        'office_name': ?entry.officeName,
+        'auto_time_enabled': ?entry.autoTimeEnabled,
       };
-      final response = await _api.checkIn(body);
-      return Success(response.data);
-    } on DioException catch (e) {
-      return Failure(mapDioException(e));
-    } catch (e, stackTrace) {
-      return Failure(reportUnexpectedError(e, stackTrace));
-    }
-  }
 
-  @override
-  Future<ApiResult<AttendanceModel>> checkOut({
-    double? latitude,
-    double? longitude,
-  }) async {
-    try {
-      final body = <String, dynamic>{
-        'latitude': ?latitude,
-        'longitude': ?longitude,
+      final response = switch (entry.type) {
+        AttendanceEventType.checkIn => await _api.checkIn({
+            ...body,
+            'work_mode': entry.workMode,
+          }),
+        AttendanceEventType.checkOut => await _api.checkOut(body),
       };
-      final response = await _api.checkOut(body);
       return Success(response.data);
     } on DioException catch (e) {
       return Failure(mapDioException(e));

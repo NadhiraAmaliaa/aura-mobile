@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_result.dart';
@@ -24,6 +26,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final response = await _api.login(request);
       await _storage.write(StorageKeys.accessToken, response.token);
+      await _cacheUser(response.user);
       return Success(response.user);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
@@ -36,6 +39,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<ApiResult<UserModel>> me() async {
     try {
       final response = await _api.me();
+      await _cacheUser(response.data);
       return Success(response.data);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
@@ -54,11 +58,29 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e, stackTrace) {
       return Failure(reportUnexpectedError(e, stackTrace));
     } finally {
-      // Always clear the local token, even if the server revoke call failed.
+      // Always clear the local session, even if the server revoke call failed.
       await _storage.delete(StorageKeys.accessToken);
+      await _storage.delete(StorageKeys.cachedUser);
     }
   }
 
   @override
   Future<String?> currentToken() => _storage.read(StorageKeys.accessToken);
+
+  @override
+  Future<UserModel?> cachedUser() async {
+    final raw = await _storage.read(StorageKeys.cachedUser);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      return UserModel.fromJson(decoded);
+    } on Object {
+      // A corrupt/legacy cache is treated as "no cache" rather than fatal.
+      return null;
+    }
+  }
+
+  Future<void> _cacheUser(UserModel user) =>
+      _storage.write(StorageKeys.cachedUser, jsonEncode(user.toJson()));
 }

@@ -4,14 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/location/location_result.dart';
+import '../../data/local/attendance_queue_entry.dart';
 import '../../data/models/attendance_models.dart';
 import '../geofence_evaluation.dart';
 import '../providers/attendance_dashboard_notifier.dart';
 import '../providers/attendance_locations_provider.dart';
-import '../providers/check_in_notifier.dart';
-import '../providers/check_in_state.dart';
-import '../providers/check_out_notifier.dart';
-import '../providers/check_out_state.dart';
+import '../providers/attendance_queue_controller.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
 import '../widgets/attendance_map.dart';
@@ -57,9 +55,11 @@ class _AttendancePresenceScreenState
   void initState() {
     super.initState();
     // Refresh the current location every time the page opens, before any
-    // attendance action, so submissions use a fresh fix.
+    // attendance action, so submissions use a fresh fix. Also drain any events
+    // left pending from a previous session.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(currentLocationProvider.notifier).fetch();
+      ref.read(attendanceQueueControllerProvider.notifier).flush();
     });
   }
 
@@ -89,18 +89,25 @@ class _AttendancePresenceScreenState
       if (!_ensureLocationTrusted()) return;
 
       // WFO must be inside an office radius; WFH skips validation; Dinas defers
-      // to the server's business rules.
-      if (type == _workModeWfo && !_ensureWithinOfficeRadius(position)) {
-        return;
+      // to the server's business rules. For WFO we also freeze the matched
+      // office as the geofence snapshot sent to the backend.
+      AttendanceLocationModel? office;
+      if (type == _workModeWfo) {
+        office = await _resolveOfficeForWfo(position);
+        if (office == null) return;
       }
 
-      await ref
-          .read(checkInControllerProvider.notifier)
-          .submit(
+      final entry = await ref
+          .read(attendanceQueueControllerProvider.notifier)
+          .capture(
+            type: AttendanceEventType.checkIn,
             workMode: type,
             latitude: position?.latitude,
             longitude: position?.longitude,
+            office: office,
           );
+      if (!mounted) return;
+      _showCaptureOutcome(entry, syncedMessage: 'Check In berhasil.');
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
@@ -119,24 +126,26 @@ class _AttendancePresenceScreenState
     return true;
   }
 
-  /// Guards WFO submissions against the office radius, mirroring the check-in
-  /// policy. Returns `true` when submission may proceed; otherwise shows a
-  /// snackbar and returns `false`.
-  bool _ensureWithinOfficeRadius(GeoPosition? position) {
+  /// Resolves the office a WFO action is standing in, mirroring the check-in
+  /// policy. Uses the live office list when available, otherwise the on-device
+  /// cache (so it still works offline). Returns the matched office, or `null`
+  /// after showing a snackbar when the action may not proceed.
+  Future<AttendanceLocationModel?> _resolveOfficeForWfo(
+    GeoPosition? position,
+  ) async {
     if (position == null) {
       _showSnack('Ambil lokasi Anda terlebih dahulu.');
-      return false;
+      return null;
     }
-    final offices = switch (ref.read(attendanceLocationsProvider)) {
-      AsyncData(:final value) => value,
-      _ => const <AttendanceLocationModel>[],
-    };
+    final offices = await ref.read(geofenceOfficesProvider.future);
+    if (!mounted) return null;
+
     final verdict = evaluateGeofence(
       offices,
       position.latitude,
       position.longitude,
     );
-    if (verdict is GeofenceInside) return true;
+    if (verdict is GeofenceInside) return verdict.location;
 
     _showSnack(switch (verdict) {
       GeofenceOutside(:final location, :final distanceMeters) =>
@@ -145,10 +154,24 @@ class _AttendancePresenceScreenState
       GeofenceNoLocations() => 'Belum ada lokasi kantor yang dikonfigurasi.',
       _ => 'Lokasi tidak valid untuk WFO.',
     });
-    return false;
+    return null;
   }
 
-  Future<void> _onCheckOutPressed(AttendanceModel attendance) async {
+  /// Turns a captured queue entry into a user-facing snackbar.
+  void _showCaptureOutcome(
+    AttendanceQueueEntry entry, {
+    required String syncedMessage,
+  }) {
+    _showSnack(switch (entry.status) {
+      QueuedEventStatus.synced => syncedMessage,
+      QueuedEventStatus.pending =>
+        'Absensi tersimpan. Akan dikirim otomatis saat online.',
+      QueuedEventStatus.rejected =>
+        entry.lastError ?? 'Absensi ditolak oleh server.',
+    });
+  }
+
+  Future<void> _onCheckOutPressed(String? workMode) async {
     setState(() => _pendingAction = _PendingAction.checkOut);
     try {
       // Always submit against a fresh fix rather than the one captured on open.
@@ -161,14 +184,22 @@ class _AttendancePresenceScreenState
       if (!_ensureLocationTrusted()) return;
 
       // The work mode was fixed at check-in; only WFO is validated on-site.
-      if (attendance.workMode == _workModeWfo &&
-          !_ensureWithinOfficeRadius(position)) {
-        return;
+      AttendanceLocationModel? office;
+      if (workMode == _workModeWfo) {
+        office = await _resolveOfficeForWfo(position);
+        if (office == null) return;
       }
 
-      await ref
-          .read(checkOutControllerProvider.notifier)
-          .submit(latitude: position?.latitude, longitude: position?.longitude);
+      final entry = await ref
+          .read(attendanceQueueControllerProvider.notifier)
+          .capture(
+            type: AttendanceEventType.checkOut,
+            latitude: position?.latitude,
+            longitude: position?.longitude,
+            office: office,
+          );
+      if (!mounted) return;
+      _showCaptureOutcome(entry, syncedMessage: 'Check Out berhasil.');
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
@@ -178,8 +209,6 @@ class _AttendancePresenceScreenState
   Widget build(BuildContext context) {
     final locationState = ref.watch(currentLocationProvider);
     final dashboard = ref.watch(attendanceDashboardProvider);
-    final checkInState = ref.watch(checkInControllerProvider);
-    final checkOutState = ref.watch(checkOutControllerProvider);
 
     final position = switch (locationState) {
       LocationReady(:final position) => position,
@@ -192,41 +221,28 @@ class _AttendancePresenceScreenState
     };
     final attendance = today?.attendance;
     final onLeave = today?.leave != null;
-    final hasCheckedIn = attendance != null;
-    final hasCheckedOut = attendance?.checkOutTime != null;
 
-    final isCheckingIn =
-        checkInState is CheckInSubmitting ||
-        _pendingAction == _PendingAction.checkIn;
-    final isCheckingOut =
-        checkOutState is CheckOutSubmitting ||
-        _pendingAction == _PendingAction.checkOut;
+    // Fold in today's queued (offline) actions so the screen reflects a capture
+    // immediately — before it has synced to the server-backed dashboard.
+    final pendingActions = ref.watch(pendingAttendanceActionsProvider);
+    final hasCheckedIn = attendance != null || pendingActions.hasCheckIn;
+    final hasCheckedOut =
+        attendance?.checkOutTime != null || pendingActions.hasCheckOut;
+    // Work mode to gate an offline WFO check-out: the server record if present,
+    // otherwise the queued check-in's mode.
+    final checkOutWorkMode =
+        attendance?.workMode ?? pendingActions.checkInWorkMode;
+
+    final isCheckingIn = _pendingAction == _PendingAction.checkIn;
+    final isCheckingOut = _pendingAction == _PendingAction.checkOut;
     final isBusy = isCheckingIn || isCheckingOut;
 
+    // Offline-friendly: the dashboard resolves to cached data when unreachable,
+    // so check-in stays enabled. A truly empty state (error, no cache) still
+    // blocks until the user can load once.
     final canCheckIn =
         !isBusy && dashboard is AsyncData && !hasCheckedIn && !onLeave;
     final canCheckOut = !isBusy && hasCheckedIn && !hasCheckedOut;
-
-    ref.listen<CheckInState>(checkInControllerProvider, (_, next) {
-      switch (next) {
-        case CheckInSuccess():
-          _showSnack('Check In berhasil.');
-        case CheckInFailure(:final message):
-          _showSnack(message);
-        default:
-          break;
-      }
-    });
-    ref.listen<CheckOutState>(checkOutControllerProvider, (_, next) {
-      switch (next) {
-        case CheckOutSuccess():
-          _showSnack('Check Out berhasil.');
-        case CheckOutFailure(:final message):
-          _showSnack(message);
-        default:
-          break;
-      }
-    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi')),
@@ -242,6 +258,7 @@ class _AttendancePresenceScreenState
               padding: const EdgeInsets.all(16),
               children: [
                 const _LiveDateTimeCard(),
+                const _PendingSyncNotice(),
                 if (locationState is LocationError) ...[
                   const SizedBox(height: 12),
                   _LocationErrorNotice(
@@ -271,7 +288,7 @@ class _AttendancePresenceScreenState
                       child: _CheckOutButton(
                         busy: isCheckingOut,
                         onPressed: canCheckOut
-                            ? () => _onCheckOutPressed(attendance)
+                            ? () => _onCheckOutPressed(checkOutWorkMode)
                             : null,
                       ),
                     ),
@@ -349,6 +366,113 @@ class _AttendanceTypeSheetState extends State<_AttendanceTypeSheet> {
               onPressed: () => Navigator.of(context).pop(_selected),
               icon: const Icon(Icons.arrow_forward),
               label: const Text('Absen'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows an inline notice when attendance events are queued but not yet synced,
+/// with a manual retry. Renders nothing when the queue is drained.
+class _PendingSyncNotice extends ConsumerStatefulWidget {
+  const _PendingSyncNotice();
+
+  @override
+  ConsumerState<_PendingSyncNotice> createState() =>
+      _PendingSyncNoticeState();
+}
+
+class _PendingSyncNoticeState extends ConsumerState<_PendingSyncNotice> {
+  bool _flushing = false;
+
+  Future<void> _flush() async {
+    if (_flushing) return;
+    setState(() => _flushing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final summary = await ref
+          .read(attendanceQueueControllerProvider.notifier)
+          .flush();
+      if (!mounted) return;
+
+      final String message;
+      if (summary.synced > 0 && summary.stillPending == 0) {
+        message = '${summary.synced} absensi berhasil dikirim.';
+      } else if (summary.rejected > 0 && summary.stillPending == 0) {
+        message = 'Absensi ditolak server. Periksa detailnya.';
+      } else if (summary.stillPending > 0) {
+        message = 'Gagal mengirim: ${_pendingReason()}';
+      } else {
+        message = 'Tidak ada absensi untuk dikirim.';
+      }
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal mengirim: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _flushing = false);
+    }
+  }
+
+  /// The error recorded on the oldest entry still awaiting sync, so the user
+  /// sees the concrete reason (timeout, connection refused, server error, …)
+  /// instead of a silent no-op.
+  String _pendingReason() {
+    final entries =
+        ref.read(attendanceQueueControllerProvider).asData?.value ??
+            const <AttendanceQueueEntry>[];
+    final pending = entries
+        .where((entry) => entry.status == QueuedEventStatus.pending)
+        .toList();
+    final reason = pending.isNotEmpty ? pending.last.lastError : null;
+    return (reason == null || reason.isEmpty)
+        ? 'menunggu koneksi. Coba lagi.'
+        : reason;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = ref.watch(pendingAttendanceCountProvider);
+    if (pending == 0) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.tertiaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.cloud_upload_outlined,
+              size: 20,
+              color: theme.colorScheme.onTertiaryContainer,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '$pending absensi menunggu dikirim.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _flushing ? null : _flush,
+              child: _flushing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Kirim'),
             ),
           ],
         ),

@@ -1,5 +1,9 @@
+import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/attendance/data/attendance_providers.dart';
+import 'package:aura_mobile/features/attendance/data/local/attendance_queue_entry.dart';
+import 'package:aura_mobile/features/attendance/data/local/office_config_cache_store.dart';
+import 'package:aura_mobile/features/attendance/data/local/offline_providers.dart';
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_locations_provider.dart';
@@ -17,19 +21,6 @@ class _FakeAttendanceRepository implements AttendanceRepository {
   Future<ApiResult<List<AttendanceLocationModel>>> locations() async => result;
 
   @override
-  Future<ApiResult<AttendanceModel>> checkIn({
-    required String workMode,
-    double? latitude,
-    double? longitude,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<ApiResult<AttendanceModel>> checkOut({
-    double? latitude,
-    double? longitude,
-  }) => throw UnimplementedError();
-
-  @override
   Future<ApiResult<AttendanceDashboardModel>> dashboard({String? month}) =>
       throw UnimplementedError();
 
@@ -38,6 +29,24 @@ class _FakeAttendanceRepository implements AttendanceRepository {
     int? page,
     int? perPage,
   }) => throw UnimplementedError();
+
+  @override
+  Future<ApiResult<AttendanceModel>> syncEvent(AttendanceQueueEntry entry) =>
+      throw UnimplementedError();
+}
+
+/// In-memory office cache, so the offline path can be tested without a real DB.
+class _FakeOfficeCache implements OfficeConfigCacheStore {
+  _FakeOfficeCache(this._offices);
+
+  List<AttendanceLocationModel> _offices;
+
+  @override
+  Future<List<AttendanceLocationModel>> all() async => _offices;
+
+  @override
+  Future<void> replaceAll(List<AttendanceLocationModel> offices) async =>
+      _offices = offices;
 }
 
 ProviderContainer _containerFor(_FakeAttendanceRepository repository) {
@@ -68,5 +77,33 @@ void main() {
       expect(locations, hasLength(1));
       expect(locations.first.name, 'Kantor Pusat');
     });
+  });
+
+  group('geofenceOffices offline fallback', () {
+    test(
+      'resolves WFO offices from the sqflite cache when locations fail',
+      () async {
+        // Live locations are unreachable (offline)...
+        final container = ProviderContainer.test(
+          overrides: [
+            attendanceRepositoryProvider.overrideWithValue(
+              _FakeAttendanceRepository(Failure(const NetworkException())),
+            ),
+            // ...but the office config was cached on a previous online load.
+            officeConfigCacheStoreProvider.overrideWith(
+              (ref) async => _FakeOfficeCache([_office]),
+            ),
+          ],
+        );
+        // Keep the provider mounted across its async cache fallback.
+        final sub = container.listen(geofenceOfficesProvider, (_, _) {});
+        addTearDown(sub.close);
+
+        final offices = await container.read(geofenceOfficesProvider.future);
+
+        expect(offices, hasLength(1));
+        expect(offices.first.name, 'Kantor Pusat');
+      },
+    );
   });
 }

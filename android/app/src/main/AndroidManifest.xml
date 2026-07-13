@@ -2,6 +2,8 @@
     <!-- Device location for attendance check-in/out (real GPS coordinates). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Connectivity changes trigger a flush of the offline attendance queue. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
         android:label="AURA"
         android:name="${applicationName}"
