@@ -47,6 +47,7 @@ abstract class AttendanceQueueEntry with _$AttendanceQueueEntry {
   const factory AttendanceQueueEntry({
     required String clientEventId,
     required AttendanceEventType type,
+    int? userId,
     String? workMode,
     String? latitude,
     String? longitude,

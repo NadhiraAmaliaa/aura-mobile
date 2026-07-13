@@ -22,8 +22,11 @@ void main() {
     await db.close();
   });
 
+  const userId = 7;
+
   AttendanceQueueEntry entry(
     String id, {
+    int owner = userId,
     AttendanceEventType type = AttendanceEventType.checkIn,
     QueuedEventStatus status = QueuedEventStatus.pending,
     DateTime? createdAt,
@@ -31,6 +34,7 @@ void main() {
   }) {
     return AttendanceQueueEntry(
       clientEventId: id,
+      userId: owner,
       type: type,
       workMode: type == AttendanceEventType.checkIn ? 'wfo' : null,
       latitude: '3.5952000',
@@ -50,7 +54,7 @@ void main() {
   test('saves and reads back an entry with all fields intact', () async {
     await store.save(entry('a', autoTime: true));
 
-    final all = await store.allEntries();
+    final all = await store.allEntries(userId);
 
     expect(all, hasLength(1));
     final saved = all.single;
@@ -70,7 +74,7 @@ void main() {
   test('preserves a null auto-time flag', () async {
     await store.save(entry('a'));
 
-    final saved = (await store.allEntries()).single;
+    final saved = (await store.allEntries(userId)).single;
 
     expect(saved.autoTimeEnabled, isNull);
   });
@@ -81,7 +85,7 @@ void main() {
       entry('a').copyWith(status: QueuedEventStatus.synced, attempts: 2),
     );
 
-    final all = await store.allEntries();
+    final all = await store.allEntries(userId);
 
     expect(all, hasLength(1));
     expect(all.single.status, QueuedEventStatus.synced);
@@ -91,14 +95,10 @@ void main() {
   test('pendingEntries returns only pending rows, oldest first', () async {
     await store.save(entry('new', createdAt: DateTime(2026, 7, 12, 10)));
     await store.save(entry('old', createdAt: DateTime(2026, 7, 12, 8)));
-    await store.save(
-      entry('done', status: QueuedEventStatus.synced),
-    );
-    await store.save(
-      entry('rejected', status: QueuedEventStatus.rejected),
-    );
+    await store.save(entry('done', status: QueuedEventStatus.synced));
+    await store.save(entry('rejected', status: QueuedEventStatus.rejected));
 
-    final pending = await store.pendingEntries();
+    final pending = await store.pendingEntries(userId);
 
     expect(pending.map((e) => e.clientEventId), ['old', 'new']);
   });
@@ -108,7 +108,7 @@ void main() {
     await store.save(entry('b'));
     await store.save(entry('c', status: QueuedEventStatus.synced));
 
-    expect(await store.pendingCount(), 2);
+    expect(await store.pendingCount(userId), 2);
   });
 
   test('purgeSyncedBefore removes only old synced rows', () async {
@@ -126,13 +126,48 @@ void main() {
         createdAt: DateTime(2026, 7, 20),
       ),
     );
+    await store.save(entry('old-pending', createdAt: DateTime(2026, 7, 1)));
+
+    await store.purgeSyncedBefore(userId, DateTime(2026, 7, 10));
+
+    final ids =
+        (await store.allEntries(userId)).map((e) => e.clientEventId).toSet();
+    expect(ids, {'new-synced', 'old-pending'});
+  });
+
+  test('every read is isolated to its owning user', () async {
+    const other = 8;
+    await store.save(entry('a-in', createdAt: DateTime(2026, 7, 12, 8)));
+    await store.save(entry('a-done', status: QueuedEventStatus.synced));
+    await store.save(entry('b-in', owner: other));
     await store.save(
-      entry('old-pending', createdAt: DateTime(2026, 7, 1)),
+      entry(
+        'b-old-synced',
+        owner: other,
+        status: QueuedEventStatus.synced,
+        createdAt: DateTime(2026, 7, 1),
+      ),
     );
 
-    await store.purgeSyncedBefore(DateTime(2026, 7, 10));
+    // Account 7 only ever sees its own rows.
+    expect(
+      (await store.allEntries(userId)).map((e) => e.clientEventId).toSet(),
+      {'a-in', 'a-done'},
+    );
+    expect((await store.pendingEntries(userId)).single.clientEventId, 'a-in');
+    expect(await store.pendingCount(userId), 1);
 
-    final ids = (await store.allEntries()).map((e) => e.clientEventId).toSet();
-    expect(ids, {'new-synced', 'old-pending'});
+    // Account 8 only ever sees its own rows.
+    expect(
+      (await store.allEntries(other)).map((e) => e.clientEventId).toSet(),
+      {'b-in', 'b-old-synced'},
+    );
+
+    // Purging one user's synced rows never touches the other's.
+    await store.purgeSyncedBefore(userId, DateTime(2026, 7, 10));
+    expect(
+      (await store.allEntries(other)).map((e) => e.clientEventId).toSet(),
+      {'b-in', 'b-old-synced'},
+    );
   });
 }

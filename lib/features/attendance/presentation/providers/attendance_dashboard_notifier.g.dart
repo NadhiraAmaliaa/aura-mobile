@@ -11,11 +11,17 @@ part of 'attendance_dashboard_notifier.dart';
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. A successful load is cached on-device;
-/// when the backend is unreachable (offline / timeout / 5xx) the cached
-/// snapshot is served so the screen stays usable instead of erroring or
-/// spinning forever. Only an explicit `401` surfaces as an error — a transient
-/// failure must never look like a broken session.
+/// loading / error / data exhaustively. A successful load is cached on-device
+/// under the current user; when the backend is unreachable (offline / timeout /
+/// 5xx) that user's cached snapshot is served so the screen stays usable instead
+/// of erroring or spinning forever. Only an explicit `401` surfaces as an error
+/// — a transient failure must never look like a broken session.
+///
+/// The cache is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch reloads against the new owner, so account B never renders account
+/// A's cached attendance. A user with no cache of their own falls through to the
+/// transient error (proper "offline data unavailable" state), never another
+/// user's data.
 
 @ProviderFor(AttendanceDashboardNotifier)
 final attendanceDashboardProvider = AttendanceDashboardNotifierProvider._();
@@ -23,11 +29,17 @@ final attendanceDashboardProvider = AttendanceDashboardNotifierProvider._();
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. A successful load is cached on-device;
-/// when the backend is unreachable (offline / timeout / 5xx) the cached
-/// snapshot is served so the screen stays usable instead of erroring or
-/// spinning forever. Only an explicit `401` surfaces as an error — a transient
-/// failure must never look like a broken session.
+/// loading / error / data exhaustively. A successful load is cached on-device
+/// under the current user; when the backend is unreachable (offline / timeout /
+/// 5xx) that user's cached snapshot is served so the screen stays usable instead
+/// of erroring or spinning forever. Only an explicit `401` surfaces as an error
+/// — a transient failure must never look like a broken session.
+///
+/// The cache is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch reloads against the new owner, so account B never renders account
+/// A's cached attendance. A user with no cache of their own falls through to the
+/// transient error (proper "offline data unavailable" state), never another
+/// user's data.
 final class AttendanceDashboardNotifierProvider
     extends
         $AsyncNotifierProvider<
@@ -37,11 +49,17 @@ final class AttendanceDashboardNotifierProvider
   /// Loads the attendance dashboard (today's snapshot + monthly recap).
   ///
   /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-  /// loading / error / data exhaustively. A successful load is cached on-device;
-  /// when the backend is unreachable (offline / timeout / 5xx) the cached
-  /// snapshot is served so the screen stays usable instead of erroring or
-  /// spinning forever. Only an explicit `401` surfaces as an error — a transient
-  /// failure must never look like a broken session.
+  /// loading / error / data exhaustively. A successful load is cached on-device
+  /// under the current user; when the backend is unreachable (offline / timeout /
+  /// 5xx) that user's cached snapshot is served so the screen stays usable instead
+  /// of erroring or spinning forever. Only an explicit `401` surfaces as an error
+  /// — a transient failure must never look like a broken session.
+  ///
+  /// The cache is scoped to the authenticated user ([currentUserIdProvider]): a
+  /// user switch reloads against the new owner, so account B never renders account
+  /// A's cached attendance. A user with no cache of their own falls through to the
+  /// transient error (proper "offline data unavailable" state), never another
+  /// user's data.
   AttendanceDashboardNotifierProvider._()
     : super(
         from: null,
@@ -62,16 +80,22 @@ final class AttendanceDashboardNotifierProvider
 }
 
 String _$attendanceDashboardNotifierHash() =>
-    r'cca1cf596e3411d2a115b688921966ca9474016a';
+    r'525c0369ef6caa92636edcb6cc94cb9596ca2b3c';
 
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///
 /// Exposed as `AsyncValue<AttendanceDashboardModel>` so the screen can render
-/// loading / error / data exhaustively. A successful load is cached on-device;
-/// when the backend is unreachable (offline / timeout / 5xx) the cached
-/// snapshot is served so the screen stays usable instead of erroring or
-/// spinning forever. Only an explicit `401` surfaces as an error — a transient
-/// failure must never look like a broken session.
+/// loading / error / data exhaustively. A successful load is cached on-device
+/// under the current user; when the backend is unreachable (offline / timeout /
+/// 5xx) that user's cached snapshot is served so the screen stays usable instead
+/// of erroring or spinning forever. Only an explicit `401` surfaces as an error
+/// — a transient failure must never look like a broken session.
+///
+/// The cache is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch reloads against the new owner, so account B never renders account
+/// A's cached attendance. A user with no cache of their own falls through to the
+/// transient error (proper "offline data unavailable" state), never another
+/// user's data.
 
 abstract class _$AttendanceDashboardNotifier
     extends $AsyncNotifier<AttendanceDashboardModel> {

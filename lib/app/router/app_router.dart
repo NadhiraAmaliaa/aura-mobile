@@ -9,6 +9,8 @@ import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../shared/widgets/placeholder_screen.dart';
+import '../bootstrap/bootstrap_page.dart';
+import '../bootstrap/offline_bootstrap_provider.dart';
 import '../home_page.dart';
 import '../splash_page.dart';
 import 'routes.dart';
@@ -24,6 +26,7 @@ part 'app_router.g.dart';
 GoRouter router(Ref ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(authProvider, (_, _) => refresh.value++);
+  ref.listen(offlineBootstrapProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -41,12 +44,22 @@ GoRouter router(Ref ref) {
       final isAuthenticated = auth.value is Authenticated;
       final atLogin = location == RoutePaths.login;
       final atSplash = location == RoutePaths.splash;
+      final atBootstrap = location == RoutePaths.bootstrap;
 
       if (!isAuthenticated) {
         return atLogin ? null : RoutePaths.login;
       }
-      // Authenticated users have no business on splash/login.
-      if (atLogin || atSplash) return RoutePaths.home;
+
+      // Authenticated, but the minimum offline dataset must be prepared before
+      // the app is usable. Hold on the bootstrap page (spinner / retry) until
+      // it is ready for this user.
+      final bootstrap = ref.read(offlineBootstrapProvider);
+      if (!bootstrap.hasValue || bootstrap.hasError) {
+        return atBootstrap ? null : RoutePaths.bootstrap;
+      }
+
+      // Ready. Authenticated users have no business on splash/login/bootstrap.
+      if (atLogin || atSplash || atBootstrap) return RoutePaths.home;
       return null;
     },
     routes: [
@@ -59,6 +72,11 @@ GoRouter router(Ref ref) {
         path: RoutePaths.login,
         name: RouteNames.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.bootstrap,
+        name: RouteNames.bootstrap,
+        builder: (context, state) => const BootstrapPage(),
       ),
       GoRoute(
         path: RoutePaths.home,

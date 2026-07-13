@@ -1,5 +1,6 @@
 import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
+import 'package:aura_mobile/core/network/connectivity_providers.dart';
 import 'package:aura_mobile/features/attendance/data/attendance_providers.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_entry.dart';
 import 'package:aura_mobile/features/attendance/data/local/office_config_cache_store.dart';
@@ -7,6 +8,7 @@ import 'package:aura_mobile/features/attendance/data/local/offline_providers.dar
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_locations_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -49,9 +51,40 @@ class _FakeOfficeCache implements OfficeConfigCacheStore {
       _offices = offices;
 }
 
-ProviderContainer _containerFor(_FakeAttendanceRepository repository) {
+/// A [Connectivity] whose result is scripted, so the plugin channel is never
+/// touched in tests. Defaults to "online".
+class _FakeConnectivity implements Connectivity {
+  _FakeConnectivity({this.connected = true});
+
+  final bool connected;
+
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async =>
+      connected ? [ConnectivityResult.wifi] : [ConnectivityResult.none];
+
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged =>
+      const Stream.empty();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+ProviderContainer _containerFor(
+  _FakeAttendanceRepository repository, {
+  bool connected = true,
+  List<AttendanceLocationModel> cachedOffices = const [],
+}) {
   return ProviderContainer.test(
-    overrides: [attendanceRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      attendanceRepositoryProvider.overrideWithValue(repository),
+      connectivityProvider.overrideWithValue(
+        _FakeConnectivity(connected: connected),
+      ),
+      officeConfigCacheStoreProvider.overrideWith(
+        (ref) async => _FakeOfficeCache([...cachedOffices]),
+      ),
+    ],
   );
 }
 
@@ -76,6 +109,67 @@ void main() {
 
       expect(locations, hasLength(1));
       expect(locations.first.name, 'Kantor Pusat');
+    });
+
+    test(
+      'falls back to the cached offices when the backend is unreachable',
+      () async {
+        // Online, but the request fails (timeout / connection refused / 5xx)...
+        final container = _containerFor(
+          _FakeAttendanceRepository(Failure(const NetworkException())),
+          // ...and a previous online load left the office config cached.
+          cachedOffices: const [_office],
+        );
+        final sub = container.listen(attendanceLocationsProvider, (_, _) {});
+        addTearDown(sub.close);
+
+        final locations = await container.read(
+          attendanceLocationsProvider.future,
+        );
+
+        expect(locations, hasLength(1));
+        expect(locations.first.name, 'Kantor Pusat');
+      },
+    );
+
+    test('serves the cache without a request when there is no transport', () async {
+      // No network at all: the doomed request must be skipped entirely.
+      final container = _containerFor(
+        _FakeAttendanceRepository(Failure(const NetworkException())),
+        connected: false,
+        cachedOffices: const [_office],
+      );
+      final sub = container.listen(attendanceLocationsProvider, (_, _) {});
+      addTearDown(sub.close);
+
+      final locations = await container.read(
+        attendanceLocationsProvider.future,
+      );
+
+      expect(locations, hasLength(1));
+    });
+
+    test('surfaces an explicit 401 instead of the cache', () async {
+      final container = ProviderContainer.test(
+        // Never retry, so the error settles for the expectation.
+        retry: (_, _) => null,
+        overrides: [
+          attendanceRepositoryProvider.overrideWithValue(
+            _FakeAttendanceRepository(Failure(const UnauthorizedException())),
+          ),
+          connectivityProvider.overrideWithValue(_FakeConnectivity()),
+          officeConfigCacheStoreProvider.overrideWith(
+            (ref) async => _FakeOfficeCache([_office]),
+          ),
+        ],
+      );
+      final sub = container.listen(attendanceLocationsProvider, (_, _) {});
+      addTearDown(sub.close);
+
+      await expectLater(
+        container.read(attendanceLocationsProvider.future),
+        throwsA(isA<UnauthorizedException>()),
+      );
     });
   });
 

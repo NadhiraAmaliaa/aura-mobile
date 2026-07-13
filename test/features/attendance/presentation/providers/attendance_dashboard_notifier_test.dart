@@ -8,6 +8,7 @@ import 'package:aura_mobile/features/attendance/data/local/offline_providers.dar
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_dashboard_notifier.dart';
+import 'package:aura_mobile/features/auth/presentation/providers/current_user_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,28 +21,30 @@ class _FakeConnectivity implements Connectivity {
   final bool connected;
 
   @override
-  Future<List<ConnectivityResult>> checkConnectivity() async => connected
-      ? [ConnectivityResult.wifi]
-      : [ConnectivityResult.none];
+  Future<List<ConnectivityResult>> checkConnectivity() async =>
+      connected ? [ConnectivityResult.wifi] : [ConnectivityResult.none];
 
   @override
   Stream<List<ConnectivityResult>> get onConnectivityChanged =>
       const Stream.empty();
 }
 
-/// In-memory dashboard cache that records writes.
+/// In-memory dashboard cache keyed by user id, so cross-account isolation can
+/// be exercised. A positional seed is stored for the default test user (7).
 class _FakeDashboardCache implements DashboardCacheStore {
-  _FakeDashboardCache([this._cached]);
+  _FakeDashboardCache([AttendanceDashboardModel? seedForUser7]) {
+    if (seedForUser7 != null) _byUser[7] = seedForUser7;
+  }
 
-  AttendanceDashboardModel? _cached;
+  final Map<int, AttendanceDashboardModel> _byUser = {};
   int saves = 0;
 
   @override
-  Future<AttendanceDashboardModel?> read() async => _cached;
+  Future<AttendanceDashboardModel?> read(int userId) async => _byUser[userId];
 
   @override
-  Future<void> save(AttendanceDashboardModel dashboard) async {
-    _cached = dashboard;
+  Future<void> save(int userId, AttendanceDashboardModel dashboard) async {
+    _byUser[userId] = dashboard;
     saves++;
   }
 }
@@ -60,8 +63,10 @@ class _FakeAttendanceRepository implements AttendanceRepository {
   }
 
   @override
-  Future<ApiResult<AttendanceHistoryModel>> history({int? page, int? perPage}) =>
-      throw UnimplementedError();
+  Future<ApiResult<AttendanceHistoryModel>> history({
+    int? page,
+    int? perPage,
+  }) => throw UnimplementedError();
 
   @override
   Future<ApiResult<AttendanceModel>> syncEvent(AttendanceQueueEntry entry) =>
@@ -85,12 +90,14 @@ ProviderContainer _container({
   required bool connected,
   required _FakeAttendanceRepository repository,
   required _FakeDashboardCache cache,
+  int userId = 7,
 }) {
   return ProviderContainer.test(
     // Disable Riverpod's default error-retry so a failed load settles to a
     // stable AsyncError instead of looping through AsyncLoading(retrying).
     retry: (_, _) => null,
     overrides: [
+      currentUserIdProvider.overrideWithValue(userId),
       connectivityProvider.overrideWithValue(
         _FakeConnectivity(connected: connected),
       ),
@@ -118,84 +125,124 @@ void main() {
       expect(cache.saves, 1);
     });
 
-    test('serves the cached snapshot without a network call when offline', () async {
-      final repository = _FakeAttendanceRepository(
-        Failure(const NetworkException()),
-      );
-      final cache = _FakeDashboardCache(_dashboard);
-      final container = _container(
-        connected: false,
-        repository: repository,
-        cache: cache,
-      );
+    test(
+      'serves the cached snapshot without a network call when offline',
+      () async {
+        final repository = _FakeAttendanceRepository(
+          Failure(const NetworkException()),
+        );
+        final cache = _FakeDashboardCache(_dashboard);
+        final container = _container(
+          connected: false,
+          repository: repository,
+          cache: cache,
+        );
 
-      final data = await container.read(attendanceDashboardProvider.future);
+        final data = await container.read(attendanceDashboardProvider.future);
 
-      expect(data, _dashboard);
-      // Offline short-circuit: the doomed request is never attempted.
-      expect(repository.dashboardCalls, 0);
-    });
+        expect(data, _dashboard);
+        // Offline short-circuit: the doomed request is never attempted.
+        expect(repository.dashboardCalls, 0);
+      },
+    );
 
-    test('falls back to cache when connected but the server is unreachable', () async {
-      final repository = _FakeAttendanceRepository(
-        Failure(const RequestTimeoutException()),
-      );
-      final cache = _FakeDashboardCache(_dashboard);
-      final container = _container(
-        connected: true,
-        repository: repository,
-        cache: cache,
-      );
+    test(
+      'falls back to cache when connected but the server is unreachable',
+      () async {
+        final repository = _FakeAttendanceRepository(
+          Failure(const RequestTimeoutException()),
+        );
+        final cache = _FakeDashboardCache(_dashboard);
+        final container = _container(
+          connected: true,
+          repository: repository,
+          cache: cache,
+        );
 
-      final data = await container.read(attendanceDashboardProvider.future);
+        final data = await container.read(attendanceDashboardProvider.future);
 
-      expect(data, _dashboard);
-      expect(repository.dashboardCalls, 1);
-    });
+        expect(data, _dashboard);
+        expect(repository.dashboardCalls, 1);
+      },
+    );
 
-    test('surfaces an explicit 401 as an error even if a cache exists', () async {
-      final repository = _FakeAttendanceRepository(
-        Failure(const UnauthorizedException()),
-      );
-      final cache = _FakeDashboardCache(_dashboard);
-      final container = _container(
-        connected: true,
-        repository: repository,
-        cache: cache,
-      );
-      // Keep the provider mounted so its error survives autoDispose.
-      final sub = container.listen(attendanceDashboardProvider, (_, _) {});
-      addTearDown(sub.close);
-      await pumpEventQueue();
+    test(
+      'surfaces an explicit 401 as an error even if a cache exists',
+      () async {
+        final repository = _FakeAttendanceRepository(
+          Failure(const UnauthorizedException()),
+        );
+        final cache = _FakeDashboardCache(_dashboard);
+        final container = _container(
+          connected: true,
+          repository: repository,
+          cache: cache,
+        );
+        // Keep the provider mounted so its error survives autoDispose.
+        final sub = container.listen(attendanceDashboardProvider, (_, _) {});
+        addTearDown(sub.close);
+        await pumpEventQueue();
 
-      final state = container.read(attendanceDashboardProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<UnauthorizedException>());
-    });
+        final state = container.read(attendanceDashboardProvider);
+        expect(state.hasError, isTrue);
+        expect(state.error, isA<UnauthorizedException>());
+      },
+    );
 
-    test('completes with an error (never loads forever) offline with no cache', () async {
-      final repository = _FakeAttendanceRepository(
-        Failure(const NetworkException()),
-      );
-      final cache = _FakeDashboardCache();
-      final container = _container(
-        connected: false,
-        repository: repository,
-        cache: cache,
-      );
-      // Keep the provider mounted so its error survives autoDispose.
-      final sub = container.listen(attendanceDashboardProvider, (_, _) {});
-      addTearDown(sub.close);
+    test(
+      'completes with an error (never loads forever) offline with no cache',
+      () async {
+        final repository = _FakeAttendanceRepository(
+          Failure(const NetworkException()),
+        );
+        final cache = _FakeDashboardCache();
+        final container = _container(
+          connected: false,
+          repository: repository,
+          cache: cache,
+        );
+        // Keep the provider mounted so its error survives autoDispose.
+        final sub = container.listen(attendanceDashboardProvider, (_, _) {});
+        addTearDown(sub.close);
 
-      // Proves the load resolves to a surfaced error instead of spinning
-      // forever — the screen can show a retry, never an endless spinner.
-      await expectLater(
-        container.read(attendanceDashboardProvider.future),
-        throwsA(isA<NetworkException>()),
-      );
-      final state = container.read(attendanceDashboardProvider);
-      expect(state.isLoading, isFalse);
-      expect(state.error, isA<NetworkException>());
-    });
+        // Proves the load resolves to a surfaced error instead of spinning
+        // forever — the screen can show a retry, never an endless spinner.
+        await expectLater(
+          container.read(attendanceDashboardProvider.future),
+          throwsA(isA<NetworkException>()),
+        );
+        final state = container.read(attendanceDashboardProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.error, isA<NetworkException>());
+      },
+    );
+
+    test(
+      'never renders another user\'s cached snapshot offline (shows empty '
+      'state instead)',
+      () async {
+        // Only user 7 has a cached snapshot...
+        final repository = _FakeAttendanceRepository(
+          Failure(const NetworkException()),
+        );
+        final cache = _FakeDashboardCache(_dashboard);
+        // ...but user 8 is the one signed in and offline.
+        final container = _container(
+          connected: false,
+          repository: repository,
+          cache: cache,
+          userId: 8,
+        );
+        final sub = container.listen(attendanceDashboardProvider, (_, _) {});
+        addTearDown(sub.close);
+
+        // Account 8 must see a surfaced "offline data unavailable" error, never
+        // account 7's cached attendance.
+        await expectLater(
+          container.read(attendanceDashboardProvider.future),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
   });
 }

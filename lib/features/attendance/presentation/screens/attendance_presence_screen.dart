@@ -380,8 +380,7 @@ class _PendingSyncNotice extends ConsumerStatefulWidget {
   const _PendingSyncNotice();
 
   @override
-  ConsumerState<_PendingSyncNotice> createState() =>
-      _PendingSyncNoticeState();
+  ConsumerState<_PendingSyncNotice> createState() => _PendingSyncNoticeState();
 }
 
 class _PendingSyncNoticeState extends ConsumerState<_PendingSyncNotice> {
@@ -410,9 +409,7 @@ class _PendingSyncNoticeState extends ConsumerState<_PendingSyncNotice> {
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Gagal mengirim: $error')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Gagal mengirim: $error')));
     } finally {
       if (mounted) setState(() => _flushing = false);
     }
@@ -424,7 +421,7 @@ class _PendingSyncNoticeState extends ConsumerState<_PendingSyncNotice> {
   String _pendingReason() {
     final entries =
         ref.read(attendanceQueueControllerProvider).asData?.value ??
-            const <AttendanceQueueEntry>[];
+        const <AttendanceQueueEntry>[];
     final pending = entries
         .where((entry) => entry.status == QueuedEventStatus.pending)
         .toList();

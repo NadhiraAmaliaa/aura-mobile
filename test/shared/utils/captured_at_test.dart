@@ -27,8 +27,10 @@ void main() {
       final expectedOffset = source.timeZoneOffset;
       final sign = expectedOffset.isNegative ? '-' : '+';
       final hh = expectedOffset.abs().inHours.toString().padLeft(2, '0');
-      final mm =
-          (expectedOffset.abs().inMinutes % 60).toString().padLeft(2, '0');
+      final mm = (expectedOffset.abs().inMinutes % 60).toString().padLeft(
+        2,
+        '0',
+      );
 
       expect(formatCapturedAt(source), endsWith('$sign$hh:$mm'));
     });

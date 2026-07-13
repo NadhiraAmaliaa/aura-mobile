@@ -12,17 +12,18 @@ abstract interface class AttendanceQueueStore {
   /// [AttendanceQueueEntry.clientEventId].
   Future<void> save(AttendanceQueueEntry entry);
 
-  /// Entries still awaiting sync, oldest first.
-  Future<List<AttendanceQueueEntry>> pendingEntries();
+  /// Entries owned by [userId] still awaiting sync, oldest first.
+  Future<List<AttendanceQueueEntry>> pendingEntries(int userId);
 
-  /// All entries, newest first (for UI / diagnostics).
-  Future<List<AttendanceQueueEntry>> allEntries();
+  /// All entries owned by [userId], newest first (for UI / diagnostics).
+  Future<List<AttendanceQueueEntry>> allEntries(int userId);
 
-  /// Number of entries still awaiting sync.
-  Future<int> pendingCount();
+  /// Number of entries owned by [userId] still awaiting sync.
+  Future<int> pendingCount(int userId);
 
-  /// Removes synced entries created before [cutoff] to keep the queue small.
-  Future<void> purgeSyncedBefore(DateTime cutoff);
+  /// Removes [userId]'s synced entries created before [cutoff] to keep the
+  /// queue small.
+  Future<void> purgeSyncedBefore(int userId, DateTime cutoff);
 }
 
 class SqfliteAttendanceQueueStore implements AttendanceQueueStore {
@@ -40,65 +41,73 @@ class SqfliteAttendanceQueueStore implements AttendanceQueueStore {
   }
 
   @override
-  Future<List<AttendanceQueueEntry>> pendingEntries() async {
+  Future<List<AttendanceQueueEntry>> pendingEntries(int userId) async {
     final rows = await _db.query(
       attendanceQueueTable,
-      where: 'status = ?',
-      whereArgs: [QueuedEventStatus.pending.wire],
+      where: 'user_id = ? AND status = ?',
+      whereArgs: [userId, QueuedEventStatus.pending.wire],
       orderBy: 'created_at ASC',
     );
     return rows.map(_fromRow).toList();
   }
 
   @override
-  Future<List<AttendanceQueueEntry>> allEntries() async {
+  Future<List<AttendanceQueueEntry>> allEntries(int userId) async {
     final rows = await _db.query(
       attendanceQueueTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
       orderBy: 'created_at DESC',
     );
     return rows.map(_fromRow).toList();
   }
 
   @override
-  Future<int> pendingCount() async {
+  Future<int> pendingCount(int userId) async {
     final result = await _db.rawQuery(
-      'SELECT COUNT(*) AS c FROM $attendanceQueueTable WHERE status = ?',
-      [QueuedEventStatus.pending.wire],
+      'SELECT COUNT(*) AS c FROM $attendanceQueueTable '
+      'WHERE user_id = ? AND status = ?',
+      [userId, QueuedEventStatus.pending.wire],
     );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
   @override
-  Future<void> purgeSyncedBefore(DateTime cutoff) async {
+  Future<void> purgeSyncedBefore(int userId, DateTime cutoff) async {
     await _db.delete(
       attendanceQueueTable,
-      where: 'status = ? AND created_at < ?',
-      whereArgs: [QueuedEventStatus.synced.wire, cutoff.toIso8601String()],
+      where: 'user_id = ? AND status = ? AND created_at < ?',
+      whereArgs: [
+        userId,
+        QueuedEventStatus.synced.wire,
+        cutoff.toIso8601String(),
+      ],
     );
   }
 }
 
 Map<String, Object?> _toRow(AttendanceQueueEntry entry) => {
-      'client_event_id': entry.clientEventId,
-      'event_type': entry.type.wire,
-      'work_mode': entry.workMode,
-      'latitude': entry.latitude,
-      'longitude': entry.longitude,
-      'captured_at': entry.capturedAt,
-      'office_id': entry.officeId,
-      'office_name': entry.officeName,
-      'office_latitude': entry.officeLatitude,
-      'office_longitude': entry.officeLongitude,
-      'office_radius': entry.officeRadius,
-      'auto_time_enabled': entry.autoTimeEnabled == null
-          ? null
-          : (entry.autoTimeEnabled! ? 1 : 0),
-      'status': entry.status.wire,
-      'attempts': entry.attempts,
-      'last_error': entry.lastError,
-      'created_at': entry.createdAt.toIso8601String(),
-      'synced_at': entry.syncedAt?.toIso8601String(),
-    };
+  'client_event_id': entry.clientEventId,
+  'user_id': entry.userId,
+  'event_type': entry.type.wire,
+  'work_mode': entry.workMode,
+  'latitude': entry.latitude,
+  'longitude': entry.longitude,
+  'captured_at': entry.capturedAt,
+  'office_id': entry.officeId,
+  'office_name': entry.officeName,
+  'office_latitude': entry.officeLatitude,
+  'office_longitude': entry.officeLongitude,
+  'office_radius': entry.officeRadius,
+  'auto_time_enabled': entry.autoTimeEnabled == null
+      ? null
+      : (entry.autoTimeEnabled! ? 1 : 0),
+  'status': entry.status.wire,
+  'attempts': entry.attempts,
+  'last_error': entry.lastError,
+  'created_at': entry.createdAt.toIso8601String(),
+  'synced_at': entry.syncedAt?.toIso8601String(),
+};
 
 AttendanceQueueEntry _fromRow(Map<String, Object?> row) {
   final autoTime = row['auto_time_enabled'] as int?;
@@ -106,6 +115,7 @@ AttendanceQueueEntry _fromRow(Map<String, Object?> row) {
   return AttendanceQueueEntry(
     clientEventId: row['client_event_id']! as String,
     type: AttendanceEventType.fromWire(row['event_type']! as String),
+    userId: row['user_id'] as int?,
     workMode: row['work_mode'] as String?,
     latitude: row['latitude'] as String?,
     longitude: row['longitude'] as String?,

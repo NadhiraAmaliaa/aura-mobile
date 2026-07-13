@@ -12,11 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// A scriptable auth repository: a stored token, a scripted `/auth/me` result,
 /// and an optional cached profile. Records whether the session was cleared.
 class _FakeAuthRepository implements AuthRepository {
-  _FakeAuthRepository({
-    this.token,
-    required this.meResult,
-    this.cached,
-  });
+  _FakeAuthRepository({this.token, required this.meResult, this.cached});
 
   String? token;
   ApiResult<UserModel> meResult;

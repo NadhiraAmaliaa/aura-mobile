@@ -40,14 +40,16 @@ void main() {
     await db.close();
   });
 
+  const userId = 7;
+
   test('returns null when nothing has been cached', () async {
-    expect(await store.read(), isNull);
+    expect(await store.read(userId), isNull);
   });
 
   test('round-trips the dashboard payload verbatim', () async {
-    await store.save(_dashboard);
+    await store.save(userId, _dashboard);
 
-    final cached = await store.read();
+    final cached = await store.read(userId);
 
     expect(cached, isNotNull);
     expect(cached!.today.attendance?.id, 42);
@@ -57,19 +59,44 @@ void main() {
     expect(cached.summary.terlambat, 1);
   });
 
-  test('keeps only the latest snapshot (single row)', () async {
-    await store.save(_dashboard);
+  test('keeps only the latest snapshot per user (single row)', () async {
+    await store.save(userId, _dashboard);
     await store.save(
+      userId,
       _dashboard.copyWith(
         summary: const MonthlySummaryModel(month: '2026-08', hadir: 9),
       ),
     );
 
-    final rows = await db.query(dashboardCacheTable);
+    final rows = await db.query(
+      dashboardCacheTable,
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
     expect(rows, hasLength(1));
 
-    final cached = await store.read();
+    final cached = await store.read(userId);
     expect(cached!.summary.month, '2026-08');
     expect(cached.summary.hadir, 9);
+  });
+
+  test('one user never reads another user\'s snapshot', () async {
+    const other = 8;
+    await store.save(userId, _dashboard);
+
+    // Account 8 has cached nothing of its own yet.
+    expect(await store.read(other), isNull);
+
+    // Account 8 caches its own distinct snapshot.
+    await store.save(
+      other,
+      _dashboard.copyWith(
+        summary: const MonthlySummaryModel(month: '2026-09', hadir: 1),
+      ),
+    );
+
+    // Each account reads only its own row.
+    expect((await store.read(userId))!.summary.hadir, 5);
+    expect((await store.read(other))!.summary.month, '2026-09');
   });
 }

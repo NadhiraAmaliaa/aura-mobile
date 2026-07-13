@@ -63,9 +63,9 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
 
       final response = switch (entry.type) {
         AttendanceEventType.checkIn => await _api.checkIn({
-            ...body,
-            'work_mode': entry.workMode,
-          }),
+          ...body,
+          'work_mode': entry.workMode,
+        }),
         AttendanceEventType.checkOut => await _api.checkOut(body),
       };
       return Success(response.data);

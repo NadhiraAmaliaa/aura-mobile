@@ -13,7 +13,7 @@ import 'package:sqflite/sqflite.dart';
 /// an in-memory database via `sqflite_common_ffi`; production uses the default
 /// platform factory and the app's databases directory.
 const _databaseName = 'aura_mobile.db';
-const _databaseVersion = 2;
+const _databaseVersion = 3;
 
 /// Queued attendance events awaiting (or done with) sync.
 const attendanceQueueTable = 'attendance_queue';
@@ -25,7 +25,10 @@ const officeConfigCacheTable = 'office_config_cache';
 /// screens render offline instead of waiting on the network.
 const dashboardCacheTable = 'dashboard_cache';
 
-Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
+Future<Database> openAppDatabase({
+  DatabaseFactory? factory,
+  String? path,
+}) async {
   final resolvedFactory = factory ?? databaseFactory;
   final resolvedPath = path ?? await _defaultDatabasePath();
 
@@ -48,6 +51,7 @@ Future<void> _onCreate(Database db, int version) async {
   await db.execute('''
     CREATE TABLE $attendanceQueueTable (
       client_event_id   TEXT PRIMARY KEY,
+      user_id           INTEGER,
       event_type        TEXT NOT NULL,
       work_mode         TEXT,
       latitude          TEXT,
@@ -68,8 +72,8 @@ Future<void> _onCreate(Database db, int version) async {
   ''');
 
   await db.execute(
-    'CREATE INDEX idx_${attendanceQueueTable}_status_created '
-    'ON $attendanceQueueTable (status, created_at)',
+    'CREATE INDEX idx_${attendanceQueueTable}_user_status_created '
+    'ON $attendanceQueueTable (user_id, status, created_at)',
   );
 
   await db.execute('''
@@ -92,14 +96,30 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
   if (oldVersion < 2) {
     await _createDashboardCacheTable(db);
   }
+  if (oldVersion < 3) {
+    // Scope user-specific caches by their owner so one account can never read
+    // or sync another account's attendance data.
+    await db.execute(
+      'ALTER TABLE $attendanceQueueTable ADD COLUMN user_id INTEGER',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_${attendanceQueueTable}_user_status_created '
+      'ON $attendanceQueueTable (user_id, status, created_at)',
+    );
+    // The dashboard cache changes from a single global row to one row per user;
+    // recreate it (a cache is safe to drop — it repopulates on the next load).
+    await db.execute('DROP TABLE IF EXISTS $dashboardCacheTable');
+    await _createDashboardCacheTable(db);
+  }
 }
 
-/// Single-row (`id = 1`) cache of the latest attendance dashboard, stored as
-/// the JSON payload the API returned so it can be rehydrated verbatim offline.
+/// Per-user (`user_id` primary key) cache of the latest attendance dashboard,
+/// stored as the JSON payload the API returned so it can be rehydrated verbatim
+/// offline for its owner only.
 Future<void> _createDashboardCacheTable(Database db) async {
   await db.execute('''
     CREATE TABLE $dashboardCacheTable (
-      id         INTEGER PRIMARY KEY,
+      user_id    INTEGER PRIMARY KEY,
       payload    TEXT NOT NULL,
       cached_at  TEXT NOT NULL
     )

@@ -17,27 +17,37 @@ class _FakeQueueStore implements AttendanceQueueStore {
   }
 
   @override
-  Future<List<AttendanceQueueEntry>> pendingEntries() async {
-    final pending = entries.values
-        .where((e) => e.status == QueuedEventStatus.pending)
-        .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  Future<List<AttendanceQueueEntry>> pendingEntries(int userId) async {
+    final pending =
+        entries.values
+            .where(
+              (e) =>
+                  e.userId == userId &&
+                  e.status == QueuedEventStatus.pending,
+            )
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return pending;
   }
 
   @override
-  Future<List<AttendanceQueueEntry>> allEntries() async =>
-      entries.values.toList();
+  Future<List<AttendanceQueueEntry>> allEntries(int userId) async =>
+      entries.values.where((e) => e.userId == userId).toList();
 
   @override
-  Future<int> pendingCount() async =>
-      entries.values.where((e) => e.status == QueuedEventStatus.pending).length;
+  Future<int> pendingCount(int userId) async => entries.values
+      .where(
+        (e) => e.userId == userId && e.status == QueuedEventStatus.pending,
+      )
+      .length;
 
   @override
-  Future<void> purgeSyncedBefore(DateTime cutoff) async {
+  Future<void> purgeSyncedBefore(int userId, DateTime cutoff) async {
     entries.removeWhere(
       (_, e) =>
-          e.status == QueuedEventStatus.synced && e.createdAt.isBefore(cutoff),
+          e.userId == userId &&
+          e.status == QueuedEventStatus.synced &&
+          e.createdAt.isBefore(cutoff),
     );
   }
 }
@@ -56,7 +66,9 @@ class _ScriptedRepository implements AttendanceRepository {
   final List<String> calls = [];
 
   @override
-  Future<ApiResult<AttendanceModel>> syncEvent(AttendanceQueueEntry entry) async {
+  Future<ApiResult<AttendanceModel>> syncEvent(
+    AttendanceQueueEntry entry,
+  ) async {
     calls.add(entry.clientEventId);
     return byEventId[entry.clientEventId] ?? fallback;
   }
@@ -66,8 +78,10 @@ class _ScriptedRepository implements AttendanceRepository {
       throw UnimplementedError();
 
   @override
-  Future<ApiResult<AttendanceHistoryModel>> history({int? page, int? perPage}) =>
-      throw UnimplementedError();
+  Future<ApiResult<AttendanceHistoryModel>> history({
+    int? page,
+    int? perPage,
+  }) => throw UnimplementedError();
 
   @override
   Future<ApiResult<List<AttendanceLocationModel>>> locations() =>
@@ -76,12 +90,12 @@ class _ScriptedRepository implements AttendanceRepository {
 
 const _ok = AttendanceModel(id: 1, status: 'present', statusLabel: 'Hadir');
 
-AttendanceQueueEntry _entry(
-  String id, {
-  DateTime? createdAt,
-}) {
+const _userId = 7;
+
+AttendanceQueueEntry _entry(String id, {int owner = _userId, DateTime? createdAt}) {
   return AttendanceQueueEntry(
     clientEventId: id,
+    userId: owner,
     type: AttendanceEventType.checkIn,
     workMode: 'wfo',
     latitude: '3.5952000',
@@ -153,9 +167,7 @@ void main() {
     test('keeps the entry pending on a 5xx server error', () async {
       final service = serviceWith(
         _ScriptedRepository(
-          byEventId: {
-            'a': const Failure(ServerException(statusCode: 503)),
-          },
+          byEventId: {'a': const Failure(ServerException(statusCode: 503))},
         ),
       );
 
@@ -167,9 +179,7 @@ void main() {
     test('rejects on a non-auth 4xx server error', () async {
       final service = serviceWith(
         _ScriptedRepository(
-          byEventId: {
-            'a': const Failure(ServerException(statusCode: 409)),
-          },
+          byEventId: {'a': const Failure(ServerException(statusCode: 409))},
         ),
       );
 
@@ -178,18 +188,20 @@ void main() {
       expect(result.status, QueuedEventStatus.rejected);
     });
 
-    test('keeps the entry pending on a 401 so it retries after re-auth',
-        () async {
-      final service = serviceWith(
-        _ScriptedRepository(
-          byEventId: {'a': const Failure(UnauthorizedException())},
-        ),
-      );
+    test(
+      'keeps the entry pending on a 401 so it retries after re-auth',
+      () async {
+        final service = serviceWith(
+          _ScriptedRepository(
+            byEventId: {'a': const Failure(UnauthorizedException())},
+          ),
+        );
 
-      final result = await service.enqueue(_entry('a'));
+        final result = await service.enqueue(_entry('a'));
 
-      expect(result.status, QueuedEventStatus.pending);
-    });
+        expect(result.status, QueuedEventStatus.pending);
+      },
+    );
   });
 
   group('flush', () {
@@ -199,7 +211,7 @@ void main() {
       final repository = _ScriptedRepository();
       final service = serviceWith(repository);
 
-      final summary = await service.flush();
+      final summary = await service.flush(_userId);
 
       expect(repository.calls, ['old', 'new']);
       expect(summary.synced, 2);
@@ -216,7 +228,7 @@ void main() {
       );
       final service = serviceWith(repository);
 
-      final summary = await service.flush();
+      final summary = await service.flush(_userId);
 
       // 'third' is never attempted.
       expect(repository.calls, ['first', 'second']);
@@ -235,7 +247,7 @@ void main() {
       );
       final service = serviceWith(repository);
 
-      final summary = await service.flush();
+      final summary = await service.flush(_userId);
 
       expect(repository.calls, ['bad', 'good']);
       expect(summary.synced, 1);
@@ -253,10 +265,26 @@ void main() {
       final repository = _ScriptedRepository();
       final service = serviceWith(repository);
 
-      final summary = await service.flush();
+      final summary = await service.flush(_userId);
 
       expect(repository.calls, isEmpty);
       expect(summary.synced, 0);
+    });
+
+    test('only syncs the requested user\'s pending entries', () async {
+      await store.save(_entry('a-in', createdAt: DateTime(2026, 7, 12, 8)));
+      await store.save(
+        _entry('b-in', owner: 8, createdAt: DateTime(2026, 7, 12, 9)),
+      );
+      final repository = _ScriptedRepository();
+      final service = serviceWith(repository);
+
+      final summary = await service.flush(_userId);
+
+      // Account 8's entry is never sent under account 7's flush.
+      expect(repository.calls, ['a-in']);
+      expect(summary.synced, 1);
+      expect(store.entries['b-in']!.status, QueuedEventStatus.pending);
     });
   });
 }

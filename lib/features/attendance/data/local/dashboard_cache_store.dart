@@ -9,13 +9,14 @@ import '../models/attendance_models.dart';
 ///
 /// Persisted as the raw JSON payload so it rehydrates verbatim, letting the
 /// presence/dashboard screens render offline (last-known today status + recap)
-/// instead of blocking on the network. A single row (`id = 1`) is kept.
+/// instead of blocking on the network. One row per user (`user_id`), so an
+/// account only ever reads its own snapshot.
 abstract interface class DashboardCacheStore {
-  /// Overwrites the cached snapshot with [dashboard].
-  Future<void> save(AttendanceDashboardModel dashboard);
+  /// Overwrites [userId]'s cached snapshot with [dashboard].
+  Future<void> save(int userId, AttendanceDashboardModel dashboard);
 
-  /// Returns the cached snapshot, or `null` when nothing is cached yet.
-  Future<AttendanceDashboardModel?> read();
+  /// Returns [userId]'s cached snapshot, or `null` when nothing is cached yet.
+  Future<AttendanceDashboardModel?> read(int userId);
 }
 
 class SqfliteDashboardCacheStore implements DashboardCacheStore {
@@ -23,23 +24,21 @@ class SqfliteDashboardCacheStore implements DashboardCacheStore {
 
   final Database _db;
 
-  static const _rowId = 1;
-
   @override
-  Future<void> save(AttendanceDashboardModel dashboard) async {
+  Future<void> save(int userId, AttendanceDashboardModel dashboard) async {
     await _db.insert(dashboardCacheTable, {
-      'id': _rowId,
+      'user_id': userId,
       'payload': jsonEncode(dashboard.toJson()),
       'cached_at': DateTime.now().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   @override
-  Future<AttendanceDashboardModel?> read() async {
+  Future<AttendanceDashboardModel?> read(int userId) async {
     final rows = await _db.query(
       dashboardCacheTable,
-      where: 'id = ?',
-      whereArgs: [_rowId],
+      where: 'user_id = ?',
+      whereArgs: [userId],
       limit: 1,
     );
     if (rows.isEmpty) return null;

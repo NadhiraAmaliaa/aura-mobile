@@ -30,6 +30,7 @@ void main() {
 
   AttendanceQueueEntry pendingCheckIn(String id) => AttendanceQueueEntry(
     clientEventId: id,
+    userId: 7,
     type: AttendanceEventType.checkIn,
     workMode: 'wfo',
     latitude: '3.5952000',
@@ -45,16 +46,13 @@ void main() {
 
   test('a queued offline capture survives an app restart', () async {
     // First launch: capture while offline, then the process dies.
-    var db = await openAppDatabase(
-      factory: databaseFactoryFfi,
-      path: dbPath,
-    );
+    var db = await openAppDatabase(factory: databaseFactoryFfi, path: dbPath);
     await SqfliteAttendanceQueueStore(db).save(pendingCheckIn('evt-1'));
     await db.close();
 
     // Second launch: reopen the same on-disk database.
     db = await openAppDatabase(factory: databaseFactoryFfi, path: dbPath);
-    final pending = await SqfliteAttendanceQueueStore(db).pendingEntries();
+    final pending = await SqfliteAttendanceQueueStore(db).pendingEntries(7);
     await db.close();
 
     expect(pending, hasLength(1));

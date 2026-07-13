@@ -8,11 +8,15 @@ part of 'attendance_locations_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The active office locations for WFO geofence pre-validation.
+/// The active office locations for WFO geofence pre-validation, used to render
+/// the map.
 ///
 /// Loaded lazily — the check-in screen only watches this once the user selects
-/// the WFO work mode. On failure the typed `AppException` is surfaced through
-/// `AsyncError` so the UI can present it and retry (via `ref.invalidate`).
+/// the WFO work mode. Offline-resilient like the dashboard: when the backend is
+/// unreachable (no network / timeout / 5xx) the on-device office cache is served
+/// so the map still renders instead of spinning forever. Only an explicit `401`
+/// surfaces as an error; a truly empty state (never loaded online) surfaces the
+/// transient error so the map can offer "Coba Lagi".
 ///
 /// A successful load is mirrored into the on-device office cache so an offline
 /// capture can still freeze the geofence snapshot (see [geofenceOffices]).
@@ -20,11 +24,15 @@ part of 'attendance_locations_provider.dart';
 @ProviderFor(AttendanceLocations)
 final attendanceLocationsProvider = AttendanceLocationsProvider._();
 
-/// The active office locations for WFO geofence pre-validation.
+/// The active office locations for WFO geofence pre-validation, used to render
+/// the map.
 ///
 /// Loaded lazily — the check-in screen only watches this once the user selects
-/// the WFO work mode. On failure the typed `AppException` is surfaced through
-/// `AsyncError` so the UI can present it and retry (via `ref.invalidate`).
+/// the WFO work mode. Offline-resilient like the dashboard: when the backend is
+/// unreachable (no network / timeout / 5xx) the on-device office cache is served
+/// so the map still renders instead of spinning forever. Only an explicit `401`
+/// surfaces as an error; a truly empty state (never loaded online) surfaces the
+/// transient error so the map can offer "Coba Lagi".
 ///
 /// A successful load is mirrored into the on-device office cache so an offline
 /// capture can still freeze the geofence snapshot (see [geofenceOffices]).
@@ -34,11 +42,15 @@ final class AttendanceLocationsProvider
           AttendanceLocations,
           List<AttendanceLocationModel>
         > {
-  /// The active office locations for WFO geofence pre-validation.
+  /// The active office locations for WFO geofence pre-validation, used to render
+  /// the map.
   ///
   /// Loaded lazily — the check-in screen only watches this once the user selects
-  /// the WFO work mode. On failure the typed `AppException` is surfaced through
-  /// `AsyncError` so the UI can present it and retry (via `ref.invalidate`).
+  /// the WFO work mode. Offline-resilient like the dashboard: when the backend is
+  /// unreachable (no network / timeout / 5xx) the on-device office cache is served
+  /// so the map still renders instead of spinning forever. Only an explicit `401`
+  /// surfaces as an error; a truly empty state (never loaded online) surfaces the
+  /// transient error so the map can offer "Coba Lagi".
   ///
   /// A successful load is mirrored into the on-device office cache so an offline
   /// capture can still freeze the geofence snapshot (see [geofenceOffices]).
@@ -62,13 +74,17 @@ final class AttendanceLocationsProvider
 }
 
 String _$attendanceLocationsHash() =>
-    r'4b9254738e4c6ea76db089e991db3085e0bf9db2';
+    r'5c9cc51358e9c5c1b397272ae91799d7b3dbc9fc';
 
-/// The active office locations for WFO geofence pre-validation.
+/// The active office locations for WFO geofence pre-validation, used to render
+/// the map.
 ///
 /// Loaded lazily — the check-in screen only watches this once the user selects
-/// the WFO work mode. On failure the typed `AppException` is surfaced through
-/// `AsyncError` so the UI can present it and retry (via `ref.invalidate`).
+/// the WFO work mode. Offline-resilient like the dashboard: when the backend is
+/// unreachable (no network / timeout / 5xx) the on-device office cache is served
+/// so the map still renders instead of spinning forever. Only an explicit `401`
+/// surfaces as an error; a truly empty state (never loaded online) surfaces the
+/// transient error so the map can offer "Coba Lagi".
 ///
 /// A successful load is mirrored into the on-device office cache so an offline
 /// capture can still freeze the geofence snapshot (see [geofenceOffices]).
@@ -100,14 +116,28 @@ abstract class _$AttendanceLocations
   }
 }
 
-/// The office locations to evaluate the geofence against, resilient to being
-/// offline: the live list when it loads, otherwise the on-device cache.
+/// The office locations to evaluate the geofence against for an attendance
+/// capture.
+///
+/// Capture must NEVER block on the live map or its network retry loop, so this
+/// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
+/// serves the on-device office cache (refreshed on every successful live load)
+/// and resolves instantly offline. Only when the cache is cold (never loaded
+/// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
+/// never a provider retry loop — and skips even that when there is no transport.
 
 @ProviderFor(geofenceOffices)
 final geofenceOfficesProvider = GeofenceOfficesProvider._();
 
-/// The office locations to evaluate the geofence against, resilient to being
-/// offline: the live list when it loads, otherwise the on-device cache.
+/// The office locations to evaluate the geofence against for an attendance
+/// capture.
+///
+/// Capture must NEVER block on the live map or its network retry loop, so this
+/// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
+/// serves the on-device office cache (refreshed on every successful live load)
+/// and resolves instantly offline. Only when the cache is cold (never loaded
+/// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
+/// never a provider retry loop — and skips even that when there is no transport.
 
 final class GeofenceOfficesProvider
     extends
@@ -119,8 +149,15 @@ final class GeofenceOfficesProvider
     with
         $FutureModifier<List<AttendanceLocationModel>>,
         $FutureProvider<List<AttendanceLocationModel>> {
-  /// The office locations to evaluate the geofence against, resilient to being
-  /// offline: the live list when it loads, otherwise the on-device cache.
+  /// The office locations to evaluate the geofence against for an attendance
+  /// capture.
+  ///
+  /// Capture must NEVER block on the live map or its network retry loop, so this
+  /// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
+  /// serves the on-device office cache (refreshed on every successful live load)
+  /// and resolves instantly offline. Only when the cache is cold (never loaded
+  /// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
+  /// never a provider retry loop — and skips even that when there is no transport.
   GeofenceOfficesProvider._()
     : super(
         from: null,
@@ -147,4 +184,4 @@ final class GeofenceOfficesProvider
   }
 }
 
-String _$geofenceOfficesHash() => r'122385ae1a7c6d6098e6e015a4b2239d19b2e0b3';
+String _$geofenceOfficesHash() => r'55b7e2efabc20f9e6e81176976e01781b2f7080d';

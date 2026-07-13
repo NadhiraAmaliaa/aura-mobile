@@ -57,10 +57,10 @@ class AttendanceSyncService {
     return _attempt(entry);
   }
 
-  /// Attempts to sync every pending entry, oldest first, stopping at the first
-  /// transient failure.
-  Future<SyncSummary> flush() async {
-    final pending = await _store.pendingEntries();
+  /// Attempts to sync every pending entry owned by [userId], oldest first,
+  /// stopping at the first transient failure.
+  Future<SyncSummary> flush(int userId) async {
+    final pending = await _store.pendingEntries(userId);
     var synced = 0;
     var rejected = 0;
 
@@ -94,22 +94,19 @@ class AttendanceSyncService {
 
     final AttendanceQueueEntry updated = switch (result) {
       Success() => entry.copyWith(
-          status: QueuedEventStatus.synced,
-          syncedAt: clock(),
-          attempts: attempts,
-          lastError: null,
-        ),
+        status: QueuedEventStatus.synced,
+        syncedAt: clock(),
+        attempts: attempts,
+        lastError: null,
+      ),
       Failure(:final exception) => switch (_classify(exception)) {
-          SyncOutcome.rejected => entry.copyWith(
-              status: QueuedEventStatus.rejected,
-              attempts: attempts,
-              lastError: exception.message,
-            ),
-          _ => entry.copyWith(
-              attempts: attempts,
-              lastError: exception.message,
-            ),
-        },
+        SyncOutcome.rejected => entry.copyWith(
+          status: QueuedEventStatus.rejected,
+          attempts: attempts,
+          lastError: exception.message,
+        ),
+        _ => entry.copyWith(attempts: attempts, lastError: exception.message),
+      },
     };
 
     await _store.save(updated);
@@ -117,12 +114,12 @@ class AttendanceSyncService {
   }
 
   SyncOutcome _classify(AppException exception) => switch (exception) {
-        ValidationException() => SyncOutcome.rejected,
-        ServerException(:final statusCode)
-            when _isTerminalClientError(statusCode) =>
-          SyncOutcome.rejected,
-        _ => SyncOutcome.retryLater,
-      };
+    ValidationException() => SyncOutcome.rejected,
+    ServerException(:final statusCode)
+        when _isTerminalClientError(statusCode) =>
+      SyncOutcome.rejected,
+    _ => SyncOutcome.retryLater,
+  };
 
   /// A 4xx (other than auth/rate-limit) means the request itself is invalid —
   /// retrying the same payload will keep failing, so treat it as terminal.

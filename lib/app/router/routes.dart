@@ -5,6 +5,7 @@
 abstract final class RoutePaths {
   static const String splash = '/splash';
   static const String login = '/login';
+  static const String bootstrap = '/bootstrap';
   static const String home = '/';
 
   // Main menu destinations (the four v1 features).
@@ -19,6 +20,7 @@ abstract final class RoutePaths {
 abstract final class RouteNames {
   static const String splash = 'splash';
   static const String login = 'login';
+  static const String bootstrap = 'bootstrap';
   static const String home = 'home';
 
   // Main menu destinations (the four v1 features).

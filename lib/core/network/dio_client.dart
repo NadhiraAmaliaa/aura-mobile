@@ -12,9 +12,12 @@ Dio buildDio({required AppEnv env, required SecureStorageService storage}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: env.baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-      sendTimeout: const Duration(seconds: 20),
+      // Fail fast when the host is unreachable (e.g. connected to a different
+      // network than the backend) so callers can fall back to cached data
+      // instead of leaving the UI stuck for a long time.
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 15),
+      sendTimeout: const Duration(seconds: 15),
       responseType: ResponseType.json,
       // Ensures request bodies are JSON-encoded (Dio's transformer only
       // auto-encodes Map/List otherwise). jsonEncode invokes each DTO's

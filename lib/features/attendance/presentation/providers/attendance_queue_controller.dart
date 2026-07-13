@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/network/connectivity_providers.dart';
 import '../../../../shared/utils/captured_at.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../data/local/attendance_queue_entry.dart';
 import '../../data/local/offline_providers.dart';
 import '../../data/models/attendance_models.dart';
@@ -18,8 +19,13 @@ part 'attendance_queue_controller.g.dart';
 ///
 /// Every capture is persisted first, then an immediate sync is attempted
 /// ("always enqueue, then sync"). The queue is also flushed automatically
-/// whenever connectivity is regained. State is the full list of queued entries,
-/// newest first, so the UI can show a pending badge and outcomes.
+/// whenever connectivity is regained. State is the full list of queued entries
+/// owned by the current user, newest first, so the UI can show a pending badge
+/// and outcomes.
+///
+/// The queue is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch rebuilds this against the new owner, so account B never sees or
+/// syncs account A's queued entries.
 @Riverpod(keepAlive: true)
 class AttendanceQueueController extends _$AttendanceQueueController {
   static const _uuid = Uuid();
@@ -34,8 +40,11 @@ class AttendanceQueueController extends _$AttendanceQueueController {
       }
     });
 
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const [];
+
     final store = await ref.watch(attendanceQueueStoreProvider.future);
-    return store.allEntries();
+    return store.allEntries(userId);
   }
 
   /// Builds a queue entry for a captured action, persists it, and attempts an
@@ -48,9 +57,15 @@ class AttendanceQueueController extends _$AttendanceQueueController {
     double? longitude,
     AttendanceLocationModel? office,
   }) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      throw StateError('Cannot capture attendance without an authenticated user.');
+    }
+
     final now = DateTime.now();
     final entry = AttendanceQueueEntry(
       clientEventId: _uuid.v4(),
+      userId: userId,
       type: type,
       workMode: workMode,
       latitude: latitude?.toStringAsFixed(7),
@@ -73,11 +88,16 @@ class AttendanceQueueController extends _$AttendanceQueueController {
     return result;
   }
 
-  /// Attempts to sync everything still pending. Safe to call repeatedly.
-  /// Returns the [SyncSummary] so the UI can report the outcome.
+  /// Attempts to sync everything still pending for the current user. Safe to
+  /// call repeatedly. Returns the [SyncSummary] so the UI can report the outcome.
   Future<SyncSummary> flush() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      return const SyncSummary(synced: 0, rejected: 0, stillPending: 0);
+    }
+
     final service = await ref.read(attendanceSyncServiceProvider.future);
-    final summary = await service.flush();
+    final summary = await service.flush(userId);
     await _refresh();
     if (summary.synced > 0) {
       ref.invalidate(attendanceDashboardProvider);
@@ -86,15 +106,21 @@ class AttendanceQueueController extends _$AttendanceQueueController {
   }
 
   Future<void> _refresh() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      state = const AsyncData([]);
+      return;
+    }
     final store = await ref.read(attendanceQueueStoreProvider.future);
-    state = AsyncData(await store.allEntries());
+    state = AsyncData(await store.allEntries(userId));
   }
 }
 
 /// The number of entries still awaiting sync.
 @riverpod
 int pendingAttendanceCount(Ref ref) {
-  final entries = ref.watch(attendanceQueueControllerProvider).asData?.value ??
+  final entries =
+      ref.watch(attendanceQueueControllerProvider).asData?.value ??
       const <AttendanceQueueEntry>[];
   return entries
       .where((entry) => entry.status == QueuedEventStatus.pending)
@@ -107,7 +133,8 @@ int pendingAttendanceCount(Ref ref) {
 /// without waiting for the server-backed dashboard.
 @riverpod
 PendingAttendanceActions pendingAttendanceActions(Ref ref) {
-  final entries = ref.watch(attendanceQueueControllerProvider).asData?.value ??
+  final entries =
+      ref.watch(attendanceQueueControllerProvider).asData?.value ??
       const <AttendanceQueueEntry>[];
   final now = DateTime.now();
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router/app_router.dart';
+import 'session_sync.dart';
 import 'theme/app_theme.dart';
 
 /// Root widget. Wires the router and theme into [MaterialApp.router].
@@ -11,6 +12,10 @@ class AuraApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+
+    // Arm the session-level offline-queue sync for the whole app lifetime, so a
+    // queue drained on login/reconnect never depends on opening a screen.
+    ref.watch(sessionQueueSyncProvider);
 
     return MaterialApp.router(
       title: 'AURA',

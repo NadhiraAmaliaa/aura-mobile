@@ -12,8 +12,13 @@ part of 'attendance_queue_controller.dart';
 ///
 /// Every capture is persisted first, then an immediate sync is attempted
 /// ("always enqueue, then sync"). The queue is also flushed automatically
-/// whenever connectivity is regained. State is the full list of queued entries,
-/// newest first, so the UI can show a pending badge and outcomes.
+/// whenever connectivity is regained. State is the full list of queued entries
+/// owned by the current user, newest first, so the UI can show a pending badge
+/// and outcomes.
+///
+/// The queue is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch rebuilds this against the new owner, so account B never sees or
+/// syncs account A's queued entries.
 
 @ProviderFor(AttendanceQueueController)
 final attendanceQueueControllerProvider = AttendanceQueueControllerProvider._();
@@ -22,8 +27,13 @@ final attendanceQueueControllerProvider = AttendanceQueueControllerProvider._();
 ///
 /// Every capture is persisted first, then an immediate sync is attempted
 /// ("always enqueue, then sync"). The queue is also flushed automatically
-/// whenever connectivity is regained. State is the full list of queued entries,
-/// newest first, so the UI can show a pending badge and outcomes.
+/// whenever connectivity is regained. State is the full list of queued entries
+/// owned by the current user, newest first, so the UI can show a pending badge
+/// and outcomes.
+///
+/// The queue is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch rebuilds this against the new owner, so account B never sees or
+/// syncs account A's queued entries.
 final class AttendanceQueueControllerProvider
     extends
         $AsyncNotifierProvider<
@@ -34,8 +44,13 @@ final class AttendanceQueueControllerProvider
   ///
   /// Every capture is persisted first, then an immediate sync is attempted
   /// ("always enqueue, then sync"). The queue is also flushed automatically
-  /// whenever connectivity is regained. State is the full list of queued entries,
-  /// newest first, so the UI can show a pending badge and outcomes.
+  /// whenever connectivity is regained. State is the full list of queued entries
+  /// owned by the current user, newest first, so the UI can show a pending badge
+  /// and outcomes.
+  ///
+  /// The queue is scoped to the authenticated user ([currentUserIdProvider]): a
+  /// user switch rebuilds this against the new owner, so account B never sees or
+  /// syncs account A's queued entries.
   AttendanceQueueControllerProvider._()
     : super(
         from: null,
@@ -56,14 +71,19 @@ final class AttendanceQueueControllerProvider
 }
 
 String _$attendanceQueueControllerHash() =>
-    r'f80392a2c8b14025dcd071554cd16a41d311e27a';
+    r'9701586e0b0a6fe5eca10a0fdac37a053f8206bb';
 
 /// Owns the offline attendance queue for the UI.
 ///
 /// Every capture is persisted first, then an immediate sync is attempted
 /// ("always enqueue, then sync"). The queue is also flushed automatically
-/// whenever connectivity is regained. State is the full list of queued entries,
-/// newest first, so the UI can show a pending badge and outcomes.
+/// whenever connectivity is regained. State is the full list of queued entries
+/// owned by the current user, newest first, so the UI can show a pending badge
+/// and outcomes.
+///
+/// The queue is scoped to the authenticated user ([currentUserIdProvider]): a
+/// user switch rebuilds this against the new owner, so account B never sees or
+/// syncs account A's queued entries.
 
 abstract class _$AttendanceQueueController
     extends $AsyncNotifier<List<AttendanceQueueEntry>> {
