@@ -12,6 +12,13 @@ abstract interface class AttendanceQueueStore {
   /// [AttendanceQueueEntry.clientEventId].
   Future<void> save(AttendanceQueueEntry entry);
 
+  /// Enqueues a check-out while keeping at most one still-pending check-out per
+  /// owner and attendance date: any other pending check-out for the same
+  /// [AttendanceQueueEntry.userId] on the same captured date is discarded so the
+  /// newest capture wins. Already-synced or rejected check-outs are left
+  /// untouched (a later tap is a genuinely new event). Runs atomically.
+  Future<void> replacePendingCheckOut(AttendanceQueueEntry entry);
+
   /// Entries owned by [userId] still awaiting sync, oldest first.
   Future<List<AttendanceQueueEntry>> pendingEntries(int userId);
 
@@ -38,6 +45,34 @@ class SqfliteAttendanceQueueStore implements AttendanceQueueStore {
       _toRow(entry),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  @override
+  Future<void> replacePendingCheckOut(AttendanceQueueEntry entry) async {
+    await _db.transaction((txn) async {
+      // Drop any still-pending check-out this owner captured on the same local
+      // date, so only the newest pending check-out survives. captured_at is an
+      // ISO-8601 string with the device's local offset, so its first 10 chars
+      // are the local calendar date and compare correctly across same-device
+      // captures. Synced / rejected rows are excluded and never removed.
+      await txn.delete(
+        attendanceQueueTable,
+        where:
+            'user_id = ? AND event_type = ? AND status = ? '
+            'AND substr(captured_at, 1, 10) = ?',
+        whereArgs: [
+          entry.userId,
+          AttendanceEventType.checkOut.wire,
+          QueuedEventStatus.pending.wire,
+          entry.capturedAt.substring(0, 10),
+        ],
+      );
+      await txn.insert(
+        attendanceQueueTable,
+        _toRow(entry),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
   }
 
   @override

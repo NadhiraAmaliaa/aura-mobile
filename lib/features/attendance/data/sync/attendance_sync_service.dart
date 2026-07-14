@@ -52,8 +52,16 @@ class AttendanceSyncService {
 
   /// Persists [entry], then attempts to sync it once. Returns the entry with
   /// its resolved [AttendanceQueueEntry.status].
+  ///
+  /// A check-out compacts the queue first: at most one still-pending check-out
+  /// per owner and attendance date is kept, so repeated offline taps replace the
+  /// previous pending capture with the newest one instead of stacking rows.
   Future<AttendanceQueueEntry> enqueue(AttendanceQueueEntry entry) async {
-    await _store.save(entry);
+    if (entry.type == AttendanceEventType.checkOut) {
+      await _store.replacePendingCheckOut(entry);
+    } else {
+      await _store.save(entry);
+    }
     return _attempt(entry);
   }
 

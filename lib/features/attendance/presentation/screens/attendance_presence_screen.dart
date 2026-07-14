@@ -97,6 +97,30 @@ class _AttendancePresenceScreenState
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Surfaces a blocking business-rule failure (duplicate check-in, check-out
+  /// before check-in, geofence / mock-location rejection, automatic-clock
+  /// block) as a modal dialog the user must acknowledge. Success, queued-offline
+  /// and sync progress stay as lightweight snackbars.
+  Future<void> _showAlert(
+    String message, {
+    String title = 'Tidak dapat melakukan absensi',
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onCheckInPressed() async {
     final type = await showModalBottomSheet<String>(
       context: context,
@@ -145,10 +169,10 @@ class _AttendancePresenceScreenState
   }
 
   /// Surfaces the automatic-clock block: refreshes the status notifier so the
-  /// notice appears and the buttons disable, then explains why via a snackbar.
+  /// notice appears and the buttons disable, then explains why via a dialog.
   void _handleAutomaticTimeBlocked(AutomaticTimeDisabledException e) {
     ref.read(automaticTimeStatusProvider.notifier).refresh();
-    _showSnack(e.message);
+    _showAlert(e.message);
   }
 
   /// Guards every work mode against a spoofed/mocked GPS fix. The location
@@ -158,7 +182,7 @@ class _AttendancePresenceScreenState
   bool _ensureLocationTrusted() {
     final state = ref.read(currentLocationProvider);
     if (state is LocationError && state.kind == LocationFailureKind.mocked) {
-      _showSnack(state.message);
+      _showAlert(state.message);
       return false;
     }
     return true;
@@ -185,7 +209,7 @@ class _AttendancePresenceScreenState
     );
     if (verdict is GeofenceInside) return verdict.location;
 
-    _showSnack(switch (verdict) {
+    _showAlert(switch (verdict) {
       GeofenceOutside(:final location, :final distanceMeters) =>
         'Anda di luar radius kantor ${location.name} '
             '(${distanceMeters.round()} m).',
@@ -195,18 +219,21 @@ class _AttendancePresenceScreenState
     return null;
   }
 
-  /// Turns a captured queue entry into a user-facing snackbar.
+  /// Turns a captured queue entry into user feedback: a blocking dialog for a
+  /// server rejection (a business-rule failure), otherwise a lightweight
+  /// snackbar for success or an offline-queued capture.
   void _showCaptureOutcome(
     AttendanceQueueEntry entry, {
     required String syncedMessage,
   }) {
-    _showSnack(switch (entry.status) {
-      QueuedEventStatus.synced => syncedMessage,
-      QueuedEventStatus.pending =>
-        'Absensi tersimpan. Akan dikirim otomatis saat online.',
-      QueuedEventStatus.rejected =>
-        entry.lastError ?? 'Absensi ditolak oleh server.',
-    });
+    switch (entry.status) {
+      case QueuedEventStatus.synced:
+        _showSnack(syncedMessage);
+      case QueuedEventStatus.pending:
+        _showSnack('Absensi tersimpan. Akan dikirim otomatis saat online.');
+      case QueuedEventStatus.rejected:
+        _showAlert(entry.lastError ?? 'Absensi ditolak oleh server.');
+    }
   }
 
   Future<void> _onCheckOutPressed(String? workMode) async {
@@ -264,14 +291,10 @@ class _AttendancePresenceScreenState
       _ => null,
     };
     final attendance = today?.attendance;
-    final onLeave = today?.leave != null;
 
     // Fold in today's queued (offline) actions so the screen reflects a capture
     // immediately — before it has synced to the server-backed dashboard.
     final pendingActions = ref.watch(pendingAttendanceActionsProvider);
-    final hasCheckedIn = attendance != null || pendingActions.hasCheckIn;
-    final hasCheckedOut =
-        attendance?.checkOutTime != null || pendingActions.hasCheckOut;
     // Work mode to gate an offline WFO check-out: the server record if present,
     // otherwise the queued check-in's mode.
     final checkOutWorkMode =
@@ -281,17 +304,13 @@ class _AttendancePresenceScreenState
     final isCheckingOut = _pendingAction == _PendingAction.checkOut;
     final isBusy = isCheckingIn || isCheckingOut;
 
-    // Offline-friendly: the dashboard resolves to cached data when unreachable,
-    // so check-in stays enabled. A truly empty state (error, no cache) still
-    // blocks until the user can load once.
-    final canCheckIn =
-        !isBusy &&
-        !autoTimeBlocked &&
-        dashboard is AsyncData &&
-        !hasCheckedIn &&
-        !onLeave;
-    final canCheckOut =
-        !isBusy && !autoTimeBlocked && hasCheckedIn && !hasCheckedOut;
+    // Buttons are gated only by technical constraints — an in-flight capture and
+    // the automatic-clock hard block. Business rules (already checked in, leave,
+    // check-out ordering) are decided by the backend, which returns a friendly
+    // message shown as a dialog. Check Out may be tapped before Check In on
+    // purpose; the server explains the correct order.
+    final canCheckIn = !isBusy && !autoTimeBlocked;
+    final canCheckOut = !isBusy && !autoTimeBlocked;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi')),
@@ -884,10 +903,7 @@ class _AutoTimeNotice extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.schedule,
-                color: theme.colorScheme.onErrorContainer,
-              ),
+              Icon(Icons.schedule, color: theme.colorScheme.onErrorContainer),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

@@ -31,6 +31,7 @@ void main() {
     QueuedEventStatus status = QueuedEventStatus.pending,
     DateTime? createdAt,
     bool? autoTime,
+    String capturedAt = '2026-07-12T14:03:07+07:00',
   }) {
     return AttendanceQueueEntry(
       clientEventId: id,
@@ -39,7 +40,7 @@ void main() {
       workMode: type == AttendanceEventType.checkIn ? 'wfo' : null,
       latitude: '3.5952000',
       longitude: '98.6722000',
-      capturedAt: '2026-07-12T14:03:07+07:00',
+      capturedAt: capturedAt,
       officeId: 5,
       officeName: 'Kantor Pusat',
       officeLatitude: '3.5952000',
@@ -169,6 +170,85 @@ void main() {
     expect(
       (await store.allEntries(other)).map((e) => e.clientEventId).toSet(),
       {'b-in', 'b-old-synced'},
+    );
+  });
+
+  AttendanceQueueEntry checkOut(
+    String id, {
+    int owner = userId,
+    QueuedEventStatus status = QueuedEventStatus.pending,
+    String capturedAt = '2026-07-12T14:00:00+07:00',
+  }) => entry(
+    id,
+    owner: owner,
+    type: AttendanceEventType.checkOut,
+    status: status,
+    capturedAt: capturedAt,
+  );
+
+  test(
+    'replacePendingCheckOut keeps only the newest pending check-out per day',
+    () async {
+      await store.replacePendingCheckOut(
+        checkOut('co1', capturedAt: '2026-07-12T14:00:00+07:00'),
+      );
+      await store.replacePendingCheckOut(
+        checkOut('co2', capturedAt: '2026-07-12T15:00:00+07:00'),
+      );
+
+      final all = await store.allEntries(userId);
+
+      expect(all.map((e) => e.clientEventId), ['co2']);
+      expect(await store.pendingCount(userId), 1);
+    },
+  );
+
+  test('replacePendingCheckOut never removes a synced or rejected row', () async {
+    await store.save(
+      checkOut('co-synced', status: QueuedEventStatus.synced),
+    );
+    await store.save(
+      checkOut('co-rejected', status: QueuedEventStatus.rejected),
+    );
+
+    await store.replacePendingCheckOut(
+      checkOut('co-new', capturedAt: '2026-07-12T15:00:00+07:00'),
+    );
+
+    final ids = (await store.allEntries(
+      userId,
+    )).map((e) => e.clientEventId).toSet();
+    expect(ids, {'co-synced', 'co-rejected', 'co-new'});
+    expect((await store.pendingEntries(userId)).single.clientEventId, 'co-new');
+  });
+
+  test('replacePendingCheckOut is scoped per user and per date', () async {
+    const other = 8;
+    await store.replacePendingCheckOut(checkOut('a-12'));
+    await store.replacePendingCheckOut(checkOut('b-12', owner: other));
+    // Different date for account 7 -> the 07-12 pending check-out survives.
+    await store.replacePendingCheckOut(
+      checkOut('a-13', capturedAt: '2026-07-13T09:00:00+07:00'),
+    );
+
+    expect(
+      (await store.allEntries(userId)).map((e) => e.clientEventId).toSet(),
+      {'a-12', 'a-13'},
+    );
+    expect(
+      (await store.allEntries(other)).map((e) => e.clientEventId).toSet(),
+      {'b-12'},
+    );
+  });
+
+  test('replacePendingCheckOut leaves a pending check-in untouched', () async {
+    await store.save(entry('ci'));
+
+    await store.replacePendingCheckOut(checkOut('co'));
+
+    expect(
+      (await store.allEntries(userId)).map((e) => e.clientEventId).toSet(),
+      {'ci', 'co'},
     );
   });
 }

@@ -107,7 +107,10 @@ void main() {
 
     test('hard-blocks and never enqueues when the clock is manual', () async {
       final syncService = RecordingSyncService();
-      final container = containerFor(automatic: false, syncService: syncService);
+      final container = containerFor(
+        automatic: false,
+        syncService: syncService,
+      );
       addTearDown(container.dispose);
 
       await container.read(attendanceQueueControllerProvider.future);

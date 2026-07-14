@@ -17,6 +17,18 @@ class _FakeQueueStore implements AttendanceQueueStore {
   }
 
   @override
+  Future<void> replacePendingCheckOut(AttendanceQueueEntry entry) async {
+    entries.removeWhere(
+      (_, e) =>
+          e.userId == entry.userId &&
+          e.type == AttendanceEventType.checkOut &&
+          e.status == QueuedEventStatus.pending &&
+          e.capturedAt.substring(0, 10) == entry.capturedAt.substring(0, 10),
+    );
+    entries[entry.clientEventId] = entry;
+  }
+
+  @override
   Future<List<AttendanceQueueEntry>> pendingEntries(int userId) async {
     final pending =
         entries.values
