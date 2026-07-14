@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/device/device_time_providers.dart';
+import '../../../../core/device/device_time_settings.dart';
 import '../../../../core/network/connectivity_providers.dart';
 import '../../../../shared/utils/captured_at.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
@@ -64,6 +66,17 @@ class AttendanceQueueController extends _$AttendanceQueueController {
       );
     }
 
+    // Verify the device clock is automatic at the moment of capture, before the
+    // event is enqueued. A manual clock can spoof the authoritative captured_at,
+    // so an explicit `false` hard-blocks. `null` (non-Android / unverifiable) is
+    // allowed and forwarded so the backend applies its own policy.
+    final autoTimeEnabled = await ref
+        .read(deviceTimeSettingsProvider)
+        .isAutomaticEnabled();
+    if (autoTimeEnabled == false) {
+      throw const AutomaticTimeDisabledException();
+    }
+
     final now = DateTime.now();
     final entry = AttendanceQueueEntry(
       clientEventId: _uuid.v4(),
@@ -78,6 +91,7 @@ class AttendanceQueueController extends _$AttendanceQueueController {
       officeLatitude: office?.latitude.toStringAsFixed(7),
       officeLongitude: office?.longitude.toStringAsFixed(7),
       officeRadius: office?.radius,
+      autoTimeEnabled: autoTimeEnabled,
       createdAt: now,
     );
 

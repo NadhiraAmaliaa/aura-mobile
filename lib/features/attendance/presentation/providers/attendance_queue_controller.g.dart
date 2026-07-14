@@ -71,7 +71,7 @@ final class AttendanceQueueControllerProvider
 }
 
 String _$attendanceQueueControllerHash() =>
-    r'9701586e0b0a6fe5eca10a0fdac37a053f8206bb';
+    r'0b53fbcc6de1c5d46a491942dddea37785bd62d9';
 
 /// Owns the offline attendance queue for the UI.
 ///

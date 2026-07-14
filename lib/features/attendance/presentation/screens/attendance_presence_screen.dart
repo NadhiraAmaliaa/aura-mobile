@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/device/device_time_providers.dart';
+import '../../../../core/device/device_time_settings.dart';
 import '../../../../core/location/location_result.dart';
 import '../../data/local/attendance_queue_entry.dart';
 import '../../data/models/attendance_models.dart';
@@ -10,6 +12,7 @@ import '../geofence_evaluation.dart';
 import '../providers/attendance_dashboard_notifier.dart';
 import '../providers/attendance_locations_provider.dart';
 import '../providers/attendance_queue_controller.dart';
+import '../providers/automatic_time_notifier.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
 import '../widgets/attendance_map.dart';
@@ -83,6 +86,9 @@ class _AttendancePresenceScreenState
     if (locationState is LocationError || locationState is LocationIdle) {
       ref.read(currentLocationProvider.notifier).fetch();
     }
+    // Re-check the device automatic-clock setting so the block clears itself
+    // once the user enables it from the Date & Time settings screen.
+    ref.read(automaticTimeStatusProvider.notifier).refresh();
   }
 
   void _showSnack(String message) {
@@ -130,9 +136,19 @@ class _AttendancePresenceScreenState
           );
       if (!mounted) return;
       _showCaptureOutcome(entry, syncedMessage: 'Check In berhasil.');
+    } on AutomaticTimeDisabledException catch (e) {
+      if (!mounted) return;
+      _handleAutomaticTimeBlocked(e);
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
+  }
+
+  /// Surfaces the automatic-clock block: refreshes the status notifier so the
+  /// notice appears and the buttons disable, then explains why via a snackbar.
+  void _handleAutomaticTimeBlocked(AutomaticTimeDisabledException e) {
+    ref.read(automaticTimeStatusProvider.notifier).refresh();
+    _showSnack(e.message);
   }
 
   /// Guards every work mode against a spoofed/mocked GPS fix. The location
@@ -222,6 +238,9 @@ class _AttendancePresenceScreenState
           );
       if (!mounted) return;
       _showCaptureOutcome(entry, syncedMessage: 'Check Out berhasil.');
+    } on AutomaticTimeDisabledException catch (e) {
+      if (!mounted) return;
+      _handleAutomaticTimeBlocked(e);
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
@@ -231,6 +250,9 @@ class _AttendancePresenceScreenState
   Widget build(BuildContext context) {
     final locationState = ref.watch(currentLocationProvider);
     final dashboard = ref.watch(attendanceDashboardProvider);
+    // `false` = device clock is manual; block attendance. `null`/`true` allow.
+    final autoTimeBlocked =
+        ref.watch(automaticTimeStatusProvider).value == false;
 
     final position = switch (locationState) {
       LocationReady(:final position) => position,
@@ -263,8 +285,13 @@ class _AttendancePresenceScreenState
     // so check-in stays enabled. A truly empty state (error, no cache) still
     // blocks until the user can load once.
     final canCheckIn =
-        !isBusy && dashboard is AsyncData && !hasCheckedIn && !onLeave;
-    final canCheckOut = !isBusy && hasCheckedIn && !hasCheckedOut;
+        !isBusy &&
+        !autoTimeBlocked &&
+        dashboard is AsyncData &&
+        !hasCheckedIn &&
+        !onLeave;
+    final canCheckOut =
+        !isBusy && !autoTimeBlocked && hasCheckedIn && !hasCheckedOut;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi')),
@@ -281,6 +308,14 @@ class _AttendancePresenceScreenState
               children: [
                 const _LiveDateTimeCard(),
                 const _PendingSyncNotice(),
+                if (autoTimeBlocked) ...[
+                  const SizedBox(height: 12),
+                  _AutoTimeNotice(
+                    onOpenSettings: () => ref
+                        .read(deviceTimeSettingsProvider)
+                        .openDateTimeSettings(),
+                  ),
+                ],
                 if (locationState is LocationError) ...[
                   const SizedBox(height: 12),
                   _LocationErrorNotice(
@@ -769,8 +804,7 @@ class _LocationErrorNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final serviceDisabled =
-        error.kind == LocationFailureKind.serviceDisabled;
+    final serviceDisabled = error.kind == LocationFailureKind.serviceDisabled;
     final deniedForever =
         error.kind == LocationFailureKind.permissionDeniedForever;
 
@@ -819,10 +853,61 @@ class _LocationErrorNotice extends StatelessWidget {
                   child: const Text('Buka Pengaturan'),
                 )
               else
-                TextButton(
-                  onPressed: onRetry,
-                  child: const Text('Coba lagi'),
+                TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Warns that attendance is blocked because the device clock is set manually,
+/// and offers a shortcut to the system Date & Time settings. The block clears
+/// automatically once the user returns with the automatic clock enabled.
+class _AutoTimeNotice extends StatelessWidget {
+  const _AutoTimeNotice({required this.onOpenSettings});
+
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.schedule,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Aktifkan Tanggal & Waktu otomatis (termasuk zona waktu '
+                  'otomatis) untuk melakukan absensi.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: onOpenSettings,
+                child: const Text('Buka Pengaturan'),
+              ),
             ],
           ),
         ],
