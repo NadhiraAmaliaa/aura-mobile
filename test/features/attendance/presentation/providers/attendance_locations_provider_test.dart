@@ -7,6 +7,7 @@ import 'package:aura_mobile/features/attendance/data/local/office_config_cache_s
 import 'package:aura_mobile/features/attendance/data/local/offline_providers.dart';
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
+import 'package:aura_mobile/features/attendance/presentation/geofence_evaluation.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_locations_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,13 +43,19 @@ class _FakeOfficeCache implements OfficeConfigCacheStore {
   _FakeOfficeCache(this._offices);
 
   List<AttendanceLocationModel> _offices;
+  bool _initialized = false;
 
   @override
   Future<List<AttendanceLocationModel>> all() async => _offices;
 
   @override
-  Future<void> replaceAll(List<AttendanceLocationModel> offices) async =>
-      _offices = offices;
+  Future<bool> isInitialized() async => _initialized;
+
+  @override
+  Future<void> replaceAll(List<AttendanceLocationModel> offices) async {
+    _offices = offices;
+    _initialized = true;
+  }
 }
 
 /// A [Connectivity] whose result is scripted, so the plugin channel is never
@@ -176,31 +183,110 @@ void main() {
     });
   });
 
-  group('geofenceOffices offline fallback', () {
+  group('geofenceOffices (server-authoritative office set)', () {
+    ProviderContainer geofenceContainer({
+      required ApiResult<List<AttendanceLocationModel>> result,
+      required _FakeOfficeCache cache,
+      bool connected = true,
+    }) {
+      return ProviderContainer.test(
+        overrides: [
+          attendanceRepositoryProvider.overrideWithValue(
+            _FakeAttendanceRepository(result),
+          ),
+          connectivityProvider.overrideWithValue(
+            _FakeConnectivity(connected: connected),
+          ),
+          officeConfigCacheStoreProvider.overrideWith((ref) async => cache),
+        ],
+      );
+    }
+
+    Future<List<AttendanceLocationModel>> readOffices(
+      ProviderContainer container,
+    ) async {
+      // Keep the provider mounted across its async work.
+      final sub = container.listen(geofenceOfficesProvider, (_, _) {});
+      addTearDown(sub.close);
+      return container.read(geofenceOfficesProvider.future);
+    }
+
     test(
-      'resolves WFO offices from the sqflite cache when locations fail',
+      'a successful empty response with no cache resolves to no offices',
       () async {
-        // Live locations are unreachable (offline)...
-        final container = ProviderContainer.test(
-          overrides: [
-            attendanceRepositoryProvider.overrideWithValue(
-              _FakeAttendanceRepository(Failure(const NetworkException())),
-            ),
-            // ...but the office config was cached on a previous online load.
-            officeConfigCacheStoreProvider.overrideWith(
-              (ref) async => _FakeOfficeCache([_office]),
-            ),
-          ],
+        final cache = _FakeOfficeCache([]);
+        final container = geofenceContainer(
+          result: const Success([]),
+          cache: cache,
         );
-        // Keep the provider mounted across its async cache fallback.
-        final sub = container.listen(geofenceOfficesProvider, (_, _) {});
-        addTearDown(sub.close);
 
-        final offices = await container.read(geofenceOfficesProvider.future);
+        final offices = await readOffices(container);
 
-        expect(offices, hasLength(1));
-        expect(offices.first.name, 'Kantor Pusat');
+        expect(offices, isEmpty);
       },
     );
+
+    test('a successful empty response clears a stale office cache', () async {
+      // The device still holds an office cached before the admin removed it.
+      final cache = _FakeOfficeCache([_office]);
+      final container = geofenceContainer(
+        result: const Success([]),
+        cache: cache,
+      );
+
+      final offices = await readOffices(container);
+
+      expect(offices, isEmpty);
+      // The empty server response must replace the cache — no stale office left.
+      expect(await cache.all(), isEmpty);
+    });
+
+    test('an unreachable backend falls back to the cached offices', () async {
+      // Online, but the request fails (timeout / connection refused / 5xx).
+      final cache = _FakeOfficeCache([_office]);
+      final container = geofenceContainer(
+        result: Failure(const NetworkException()),
+        cache: cache,
+      );
+
+      final offices = await readOffices(container);
+
+      expect(offices, hasLength(1));
+      expect(offices.first.name, 'Kantor Pusat');
+      // A failed fetch must NOT wipe the last known config.
+      expect(await cache.all(), hasLength(1));
+    });
+
+    test('no transport serves the cached offices without a request', () async {
+      final cache = _FakeOfficeCache([_office]);
+      final container = geofenceContainer(
+        result: Failure(const NetworkException()),
+        cache: cache,
+        connected: false,
+      );
+
+      final offices = await readOffices(container);
+
+      expect(offices, hasLength(1));
+      expect(offices.first.name, 'Kantor Pusat');
+    });
+
+    test('WFO is blocked when no active office exists (fail-closed)', () async {
+      final cache = _FakeOfficeCache([]);
+      final container = geofenceContainer(
+        result: const Success([]),
+        cache: cache,
+      );
+
+      final offices = await readOffices(container);
+      final verdict = evaluateGeofence(
+        offices,
+        _office.latitude,
+        _office.longitude,
+      );
+
+      // No offices → fail-closed: a WFO capture cannot resolve an office.
+      expect(verdict, isA<GeofenceNoLocations>());
+    });
   });
 }

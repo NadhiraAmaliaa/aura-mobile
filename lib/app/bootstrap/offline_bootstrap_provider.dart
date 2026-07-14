@@ -65,11 +65,19 @@ class OfflineBootstrap extends _$OfflineBootstrap {
     }
   }
 
-  /// Fetches and stores the office geofence configuration unless it is already
-  /// cached. The office cache is intentionally shared across users.
+  /// Fetches and stores the office geofence configuration unless it has already
+  /// been synced. The office cache is intentionally shared across users.
+  ///
+  /// Readiness is "the configuration has been fetched successfully at least
+  /// once", NOT "there is at least one office": a successful empty response is
+  /// valid data (the admin has configured no active location) and must complete
+  /// the bootstrap so the user can enter the app, where the Attendance flow then
+  /// surfaces the "no locations" warning and blocks WFO. A genuinely
+  /// never-synced cache with an unreachable backend still throws, so the
+  /// login/bootstrap stage can offer a retry.
   Future<void> _ensureOffices() async {
     final store = await ref.read(officeConfigCacheStoreProvider.future);
-    if ((await store.all()).isNotEmpty) return;
+    if (await store.isInitialized()) return;
 
     final result = await ref.read(attendanceRepositoryProvider).locations();
     switch (result) {

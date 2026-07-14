@@ -203,24 +203,28 @@ void main() {
     },
   );
 
-  test('replacePendingCheckOut never removes a synced or rejected row', () async {
-    await store.save(
-      checkOut('co-synced', status: QueuedEventStatus.synced),
-    );
-    await store.save(
-      checkOut('co-rejected', status: QueuedEventStatus.rejected),
-    );
+  test(
+    'replacePendingCheckOut never removes a synced or rejected row',
+    () async {
+      await store.save(checkOut('co-synced', status: QueuedEventStatus.synced));
+      await store.save(
+        checkOut('co-rejected', status: QueuedEventStatus.rejected),
+      );
 
-    await store.replacePendingCheckOut(
-      checkOut('co-new', capturedAt: '2026-07-12T15:00:00+07:00'),
-    );
+      await store.replacePendingCheckOut(
+        checkOut('co-new', capturedAt: '2026-07-12T15:00:00+07:00'),
+      );
 
-    final ids = (await store.allEntries(
-      userId,
-    )).map((e) => e.clientEventId).toSet();
-    expect(ids, {'co-synced', 'co-rejected', 'co-new'});
-    expect((await store.pendingEntries(userId)).single.clientEventId, 'co-new');
-  });
+      final ids = (await store.allEntries(
+        userId,
+      )).map((e) => e.clientEventId).toSet();
+      expect(ids, {'co-synced', 'co-rejected', 'co-new'});
+      expect(
+        (await store.pendingEntries(userId)).single.clientEventId,
+        'co-new',
+      );
+    },
+  );
 
   test('replacePendingCheckOut is scoped per user and per date', () async {
     const other = 8;

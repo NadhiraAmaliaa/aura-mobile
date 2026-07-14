@@ -13,13 +13,18 @@ import 'package:sqflite/sqflite.dart';
 /// an in-memory database via `sqflite_common_ffi`; production uses the default
 /// platform factory and the app's databases directory.
 const _databaseName = 'aura_mobile.db';
-const _databaseVersion = 3;
+const _databaseVersion = 4;
 
 /// Queued attendance events awaiting (or done with) sync.
 const attendanceQueueTable = 'attendance_queue';
 
 /// Cached active office locations used to freeze the offline geofence snapshot.
 const officeConfigCacheTable = 'office_config_cache';
+
+/// Single-row metadata for the office cache. Its presence records that the
+/// office configuration has been fetched successfully at least once, so an
+/// authoritative *empty* office list is distinguishable from "never fetched".
+const officeConfigMetaTable = 'office_config_meta';
 
 /// Cached last-known attendance dashboard payload, so the presence/dashboard
 /// screens render offline instead of waiting on the network.
@@ -87,6 +92,8 @@ Future<void> _onCreate(Database db, int version) async {
     )
   ''');
 
+  await _createOfficeConfigMetaTable(db);
+
   await _createDashboardCacheTable(db);
 }
 
@@ -111,6 +118,35 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     await db.execute('DROP TABLE IF EXISTS $dashboardCacheTable');
     await _createDashboardCacheTable(db);
   }
+  if (oldVersion < 4) {
+    await _createOfficeConfigMetaTable(db);
+    // An existing install with cached offices was populated by a prior
+    // successful fetch, so treat it as already initialized — otherwise an
+    // offline upgrade launch would re-fetch, fail, and block the bootstrap.
+    final officeRows =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM $officeConfigCacheTable'),
+        ) ??
+        0;
+    if (officeRows > 0) {
+      await db.insert(officeConfigMetaTable, {
+        'id': 1,
+        'synced_at': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+}
+
+/// Single-row (`id = 1`) marker that the office configuration has been synced
+/// at least once. `synced_at` records the last successful sync so an
+/// empty-but-valid office list survives restart and offline use.
+Future<void> _createOfficeConfigMetaTable(Database db) async {
+  await db.execute('''
+    CREATE TABLE $officeConfigMetaTable (
+      id         INTEGER PRIMARY KEY,
+      synced_at  TEXT NOT NULL
+    )
+  ''');
 }
 
 /// Per-user (`user_id` primary key) cache of the latest attendance dashboard,

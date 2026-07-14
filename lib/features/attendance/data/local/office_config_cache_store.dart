@@ -9,8 +9,15 @@ import '../models/attendance_models.dart';
 /// offline check-in can still resolve the office it is standing in and freeze
 /// the geofence snapshot (id/name/lat/lng/radius) the backend validates against.
 abstract interface class OfficeConfigCacheStore {
-  /// Replaces the entire cached set with [offices].
+  /// Replaces the entire cached set with [offices] and marks the office
+  /// configuration as synced. An empty [offices] list is valid data: it clears
+  /// the office rows yet keeps the "initialized" marker.
   Future<void> replaceAll(List<AttendanceLocationModel> offices);
+
+  /// Whether the office configuration has been fetched successfully at least
+  /// once. Distinguishes an authoritative *empty* config (initialized, no
+  /// offices) from a cold cache that has never been fetched.
+  Future<bool> isInitialized();
 
   /// Returns the cached offices, or an empty list when nothing is cached yet.
   Future<List<AttendanceLocationModel>> all();
@@ -36,7 +43,23 @@ class SqfliteOfficeConfigCacheStore implements OfficeConfigCacheStore {
           'cached_at': cachedAt,
         });
       }
+      // Stamp the sync marker in the same transaction so an empty-but-valid
+      // response still counts as an initialized configuration.
+      await txn.insert(officeConfigMetaTable, {
+        'id': 1,
+        'synced_at': cachedAt,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
+  }
+
+  @override
+  Future<bool> isInitialized() async {
+    final rows = await _db.query(
+      officeConfigMetaTable,
+      where: 'id = 1',
+      limit: 1,
+    );
+    return rows.isNotEmpty;
   }
 
   @override

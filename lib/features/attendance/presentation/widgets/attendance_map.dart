@@ -27,7 +27,7 @@ abstract final class AttendanceMarkerAssets {
 /// frames the camera to fit them all. Office data comes from
 /// [attendanceLocationsProvider], so the widget scales to any number of
 /// configured offices. It is purely a visualization — the server remains
-/// authoritative for the geofence and the [WfoGeofenceCard] states the verdict.
+/// authoritative for the geofence verdict.
 class CheckInMap extends ConsumerStatefulWidget {
   const CheckInMap({required this.userPosition, super.key});
 

@@ -119,12 +119,17 @@ abstract class _$AttendanceLocations
 /// The office locations to evaluate the geofence against for an attendance
 /// capture.
 ///
-/// Capture must NEVER block on the live map or its network retry loop, so this
-/// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
-/// serves the on-device office cache (refreshed on every successful live load)
-/// and resolves instantly offline. Only when the cache is cold (never loaded
-/// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
-/// never a provider retry loop — and skips even that when there is no transport.
+/// The backend is authoritative for the active-office set: when the device has
+/// transport, this performs a single bounded fetch (Dio timeouts, never a
+/// provider retry loop) and treats the result as the truth. A successful but
+/// empty response means the admin has removed every active office — it CLEARS
+/// the stale cache and resolves to an empty list so the caller surfaces the
+/// "no locations configured" state and blocks a WFO capture, rather than
+/// silently validating against phantom offices from an old cache.
+///
+/// Only when the backend is unreachable (no transport, timeout, 5xx, or an
+/// auth failure) does it fall back to the most recently cached office config,
+/// so an offline capture can still freeze the geofence snapshot it last knew.
 
 @ProviderFor(geofenceOffices)
 final geofenceOfficesProvider = GeofenceOfficesProvider._();
@@ -132,12 +137,17 @@ final geofenceOfficesProvider = GeofenceOfficesProvider._();
 /// The office locations to evaluate the geofence against for an attendance
 /// capture.
 ///
-/// Capture must NEVER block on the live map or its network retry loop, so this
-/// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
-/// serves the on-device office cache (refreshed on every successful live load)
-/// and resolves instantly offline. Only when the cache is cold (never loaded
-/// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
-/// never a provider retry loop — and skips even that when there is no transport.
+/// The backend is authoritative for the active-office set: when the device has
+/// transport, this performs a single bounded fetch (Dio timeouts, never a
+/// provider retry loop) and treats the result as the truth. A successful but
+/// empty response means the admin has removed every active office — it CLEARS
+/// the stale cache and resolves to an empty list so the caller surfaces the
+/// "no locations configured" state and blocks a WFO capture, rather than
+/// silently validating against phantom offices from an old cache.
+///
+/// Only when the backend is unreachable (no transport, timeout, 5xx, or an
+/// auth failure) does it fall back to the most recently cached office config,
+/// so an offline capture can still freeze the geofence snapshot it last knew.
 
 final class GeofenceOfficesProvider
     extends
@@ -152,12 +162,17 @@ final class GeofenceOfficesProvider
   /// The office locations to evaluate the geofence against for an attendance
   /// capture.
   ///
-  /// Capture must NEVER block on the live map or its network retry loop, so this
-  /// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
-  /// serves the on-device office cache (refreshed on every successful live load)
-  /// and resolves instantly offline. Only when the cache is cold (never loaded
-  /// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
-  /// never a provider retry loop — and skips even that when there is no transport.
+  /// The backend is authoritative for the active-office set: when the device has
+  /// transport, this performs a single bounded fetch (Dio timeouts, never a
+  /// provider retry loop) and treats the result as the truth. A successful but
+  /// empty response means the admin has removed every active office — it CLEARS
+  /// the stale cache and resolves to an empty list so the caller surfaces the
+  /// "no locations configured" state and blocks a WFO capture, rather than
+  /// silently validating against phantom offices from an old cache.
+  ///
+  /// Only when the backend is unreachable (no transport, timeout, 5xx, or an
+  /// auth failure) does it fall back to the most recently cached office config,
+  /// so an offline capture can still freeze the geofence snapshot it last knew.
   GeofenceOfficesProvider._()
     : super(
         from: null,
@@ -184,4 +199,4 @@ final class GeofenceOfficesProvider
   }
 }
 
-String _$geofenceOfficesHash() => r'55b7e2efabc20f9e6e81176976e01781b2f7080d';
+String _$geofenceOfficesHash() => r'c584b438431d9c2af77ce5e54b49139c7e1e1ab6';

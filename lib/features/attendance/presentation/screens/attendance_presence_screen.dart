@@ -213,7 +213,9 @@ class _AttendancePresenceScreenState
       GeofenceOutside(:final location, :final distanceMeters) =>
         'Anda di luar radius kantor ${location.name} '
             '(${distanceMeters.round()} m).',
-      GeofenceNoLocations() => 'Belum ada lokasi kantor yang dikonfigurasi.',
+      GeofenceNoLocations() =>
+        'Lokasi presensi belum tersedia\n'
+            'Silakan hubungi administrator untuk mengonfigurasi lokasi presensi',
       _ => 'Lokasi tidak valid untuk WFO.',
     });
     return null;

@@ -93,7 +93,7 @@ final class OfflineBootstrapProvider
   OfflineBootstrap create() => OfflineBootstrap();
 }
 
-String _$offlineBootstrapHash() => r'3b1e3d20f84d6a3b7d7df925c57f83aa54b32ec8';
+String _$offlineBootstrapHash() => r'4af529b902d1c2d008cdc39d051356310f0c1533';
 
 /// Prepares the minimum offline dataset a freshly-authenticated user needs to
 /// open the Attendance flow without connectivity:

@@ -29,13 +29,18 @@ class _FakeDashboardCache implements DashboardCacheStore {
 /// In-memory office cache (global — shared across users).
 class _FakeOfficeCache implements OfficeConfigCacheStore {
   List<AttendanceLocationModel> offices = const [];
+  bool initialized = false;
 
   @override
   Future<List<AttendanceLocationModel>> all() async => offices;
 
   @override
+  Future<bool> isInitialized() async => initialized;
+
+  @override
   Future<void> replaceAll(List<AttendanceLocationModel> offices) async {
     this.offices = offices;
+    initialized = true;
   }
 }
 
@@ -139,7 +144,9 @@ void main() {
         locationsResult: Failure(const NetworkException()),
       );
       final dashboardCache = _FakeDashboardCache()..byUser[7] = _dashboard;
-      final officeCache = _FakeOfficeCache()..offices = _offices;
+      final officeCache = _FakeOfficeCache()
+        ..offices = _offices
+        ..initialized = true;
       final container = _container(
         repository: repository,
         dashboardCache: dashboardCache,
@@ -237,5 +244,78 @@ void main() {
       expect(container.read(offlineBootstrapProvider).hasError, isFalse);
       expect(dashboardCache.byUser[7], _dashboard);
     });
+
+    test(
+      'a successful empty office response completes the bootstrap',
+      () async {
+        // Fresh install: nothing cached, admin has configured no active office.
+        final repository = _FakeAttendanceRepository(
+          dashboardResult: const Success(_dashboard),
+          locationsResult: const Success([]),
+        );
+        final officeCache = _FakeOfficeCache();
+        final container = _container(
+          repository: repository,
+          dashboardCache: _FakeDashboardCache(),
+          officeCache: officeCache,
+        );
+
+        // The empty-but-valid config must not block entry to the app.
+        await container.read(offlineBootstrapProvider.future);
+
+        expect(container.read(offlineBootstrapProvider).hasError, isFalse);
+        expect(repository.locationsCalls, 1);
+        expect(officeCache.offices, isEmpty);
+        // Recorded as initialized so a later offline launch stays ready.
+        expect(await officeCache.isInitialized(), isTrue);
+      },
+    );
+
+    test(
+      'a never-initialized cache with an unreachable backend fails for retry',
+      () async {
+        final repository = _FakeAttendanceRepository(
+          dashboardResult: const Success(_dashboard),
+          locationsResult: Failure(const NetworkException()),
+        );
+        final container = _container(
+          repository: repository,
+          dashboardCache: _FakeDashboardCache(),
+          officeCache: _FakeOfficeCache(),
+        );
+        final sub = container.listen(offlineBootstrapProvider, (_, _) {});
+        addTearDown(sub.close);
+
+        await expectLater(
+          container.read(offlineBootstrapProvider.future),
+          throwsA(isA<NetworkException>()),
+        );
+      },
+    );
+
+    test(
+      'an initialized empty cache stays ready when the backend is unreachable',
+      () async {
+        // A prior successful empty response left the office cache initialized...
+        final repository = _FakeAttendanceRepository(
+          dashboardResult: const Success(_dashboard),
+          locationsResult: Failure(const NetworkException()),
+        );
+        final officeCache = _FakeOfficeCache()..initialized = true;
+        final container = _container(
+          repository: repository,
+          dashboardCache: _FakeDashboardCache(),
+          officeCache: officeCache,
+        );
+
+        // ...so an offline launch resolves ready without re-fetching offices.
+        await container.read(offlineBootstrapProvider.future);
+
+        expect(container.read(offlineBootstrapProvider).hasError, isFalse);
+        expect(repository.locationsCalls, 0);
+        expect(officeCache.offices, isEmpty);
+        expect(await officeCache.isInitialized(), isTrue);
+      },
+    );
   });
 }

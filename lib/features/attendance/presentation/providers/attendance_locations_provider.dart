@@ -84,25 +84,32 @@ class AttendanceLocations extends _$AttendanceLocations {
 /// The office locations to evaluate the geofence against for an attendance
 /// capture.
 ///
-/// Capture must NEVER block on the live map or its network retry loop, so this
-/// is cache-first and fully decoupled from [attendanceLocationsProvider]: it
-/// serves the on-device office cache (refreshed on every successful live load)
-/// and resolves instantly offline. Only when the cache is cold (never loaded
-/// online) does it attempt a single direct fetch — bounded by the Dio timeouts,
-/// never a provider retry loop — and skips even that when there is no transport.
+/// The backend is authoritative for the active-office set: when the device has
+/// transport, this performs a single bounded fetch (Dio timeouts, never a
+/// provider retry loop) and treats the result as the truth. A successful but
+/// empty response means the admin has removed every active office — it CLEARS
+/// the stale cache and resolves to an empty list so the caller surfaces the
+/// "no locations configured" state and blocks a WFO capture, rather than
+/// silently validating against phantom offices from an old cache.
+///
+/// Only when the backend is unreachable (no transport, timeout, 5xx, or an
+/// auth failure) does it fall back to the most recently cached office config,
+/// so an offline capture can still freeze the geofence snapshot it last knew.
 @riverpod
 Future<List<AttendanceLocationModel>> geofenceOffices(Ref ref) async {
   final store = await ref.read(officeConfigCacheStoreProvider.future);
-  final cached = await store.all();
-  if (cached.isNotEmpty) return cached;
 
+  // No transport at all → the server is unreachable; the last cached config is
+  // the best (and only) source. Skip the doomed request entirely.
   final connectivity = await ref.read(connectivityProvider).checkConnectivity();
-  if (!hasConnectivity(connectivity)) return const [];
+  if (!hasConnectivity(connectivity)) return store.all();
 
+  // Online → the server decides. A successful (even empty) response replaces
+  // the cache; only a genuine failure falls back to the cached offices.
   final result = await ref.read(attendanceRepositoryProvider).locations();
   return switch (result) {
-    Success(:final data) when data.isNotEmpty => await _cacheOffices(ref, data),
-    _ => const <AttendanceLocationModel>[],
+    Success(:final data) => await _cacheOffices(ref, data),
+    Failure() => await store.all(),
   };
 }
 
