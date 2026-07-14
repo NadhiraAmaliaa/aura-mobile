@@ -44,7 +44,8 @@ class AttendancePresenceScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendancePresenceScreenState
-    extends ConsumerState<AttendancePresenceScreen> {
+    extends ConsumerState<AttendancePresenceScreen>
+    with WidgetsBindingObserver {
   static const double _mapSectionHeight = 260;
 
   /// Which action is currently acquiring a fresh fix / submitting, so the
@@ -54,6 +55,7 @@ class _AttendancePresenceScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Refresh the current location every time the page opens, before any
     // attendance action, so submissions use a fresh fix. Also drain any events
     // left pending from a previous session.
@@ -61,6 +63,26 @@ class _AttendancePresenceScreenState
       ref.read(currentLocationProvider.notifier).fetch();
       ref.read(attendanceQueueControllerProvider.notifier).flush();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app returns to the foreground (e.g. after the user enabled GPS
+    // from the settings screen, or handled the system dialog), automatically
+    // re-attempt a fresh fix so attendance state continues without a manual
+    // retry. Only re-fetch when we don't already have a usable fix so a normal
+    // resume never re-prompts once location is on.
+    if (state != AppLifecycleState.resumed) return;
+    final locationState = ref.read(currentLocationProvider);
+    if (locationState is LocationError || locationState is LocationIdle) {
+      ref.read(currentLocationProvider.notifier).fetch();
+    }
   }
 
   void _showSnack(String message) {
@@ -262,9 +284,15 @@ class _AttendancePresenceScreenState
                 if (locationState is LocationError) ...[
                   const SizedBox(height: 12),
                   _LocationErrorNotice(
-                    message: locationState.message,
+                    error: locationState,
                     onRetry: () =>
                         ref.read(currentLocationProvider.notifier).fetch(),
+                    onOpenLocationSettings: () => ref
+                        .read(currentLocationProvider.notifier)
+                        .openLocationSettings(),
+                    onOpenAppSettings: () => ref
+                        .read(currentLocationProvider.notifier)
+                        .openAppSettings(),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -717,33 +745,86 @@ class _CoordinatesCard extends StatelessWidget {
 }
 
 class _LocationErrorNotice extends StatelessWidget {
-  const _LocationErrorNotice({required this.message, required this.onRetry});
+  const _LocationErrorNotice({
+    required this.error,
+    required this.onRetry,
+    required this.onOpenLocationSettings,
+    required this.onOpenAppSettings,
+  });
 
-  final String message;
+  final LocationError error;
+
+  /// Re-run the location flow. For a disabled service this re-triggers the
+  /// in-app system dialog (the primary path); for a transient error it simply
+  /// retries the fix.
   final VoidCallback onRetry;
+
+  /// Open the OS location-services screen — the fallback when the in-app
+  /// resolution dialog is unavailable on the device.
+  final VoidCallback onOpenLocationSettings;
+
+  /// Open the app's settings page (for a permanently denied permission).
+  final VoidCallback onOpenAppSettings;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final serviceDisabled =
+        error.kind == LocationFailureKind.serviceDisabled;
+    final deniedForever =
+        error.kind == LocationFailureKind.permissionDeniedForever;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.location_off, color: theme.colorScheme.onErrorContainer),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodySmall?.copyWith(
+          Row(
+            children: [
+              Icon(
+                Icons.location_off,
                 color: theme.colorScheme.onErrorContainer,
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  error.message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
           ),
-          TextButton(onPressed: onRetry, child: const Text('Coba lagi')),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (serviceDisabled) ...[
+                TextButton(
+                  onPressed: onOpenLocationSettings,
+                  child: const Text('Buka Pengaturan'),
+                ),
+                TextButton(
+                  onPressed: onRetry,
+                  child: const Text('Aktifkan GPS'),
+                ),
+              ] else if (deniedForever)
+                TextButton(
+                  onPressed: onOpenAppSettings,
+                  child: const Text('Buka Pengaturan'),
+                )
+              else
+                TextButton(
+                  onPressed: onRetry,
+                  child: const Text('Coba lagi'),
+                ),
+            ],
+          ),
         ],
       ),
     );

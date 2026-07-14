@@ -104,8 +104,12 @@ void main() {
           authRepositoryProvider.overrideWithValue(
             const _AuthedRepository(_user),
           ),
-          attendanceSyncServiceProvider.overrideWith((ref) async => syncService),
-          attendanceQueueStoreProvider.overrideWith((ref) async => _DummyStore()),
+          attendanceSyncServiceProvider.overrideWith(
+            (ref) async => syncService,
+          ),
+          attendanceQueueStoreProvider.overrideWith(
+            (ref) async => _DummyStore(),
+          ),
           connectivityChangesProvider.overrideWith(
             (ref) => const Stream.empty(),
           ),
@@ -126,9 +130,15 @@ void main() {
       final syncService = _CountingSyncService();
       final container = ProviderContainer.test(
         overrides: [
-          authRepositoryProvider.overrideWithValue(const _AnonymousRepository()),
-          attendanceSyncServiceProvider.overrideWith((ref) async => syncService),
-          attendanceQueueStoreProvider.overrideWith((ref) async => _DummyStore()),
+          authRepositoryProvider.overrideWithValue(
+            const _AnonymousRepository(),
+          ),
+          attendanceSyncServiceProvider.overrideWith(
+            (ref) async => syncService,
+          ),
+          attendanceQueueStoreProvider.overrideWith(
+            (ref) async => _DummyStore(),
+          ),
           connectivityChangesProvider.overrideWith(
             (ref) => const Stream.empty(),
           ),

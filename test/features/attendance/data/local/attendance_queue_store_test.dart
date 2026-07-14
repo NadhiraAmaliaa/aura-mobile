@@ -130,8 +130,9 @@ void main() {
 
     await store.purgeSyncedBefore(userId, DateTime(2026, 7, 10));
 
-    final ids =
-        (await store.allEntries(userId)).map((e) => e.clientEventId).toSet();
+    final ids = (await store.allEntries(
+      userId,
+    )).map((e) => e.clientEventId).toSet();
     expect(ids, {'new-synced', 'old-pending'});
   });
 

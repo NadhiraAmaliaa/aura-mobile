@@ -59,7 +59,9 @@ class AttendanceQueueController extends _$AttendanceQueueController {
   }) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) {
-      throw StateError('Cannot capture attendance without an authenticated user.');
+      throw StateError(
+        'Cannot capture attendance without an authenticated user.',
+      );
     }
 
     final now = DateTime.now();

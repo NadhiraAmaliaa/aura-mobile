@@ -132,22 +132,25 @@ void main() {
       },
     );
 
-    test('serves the cache without a request when there is no transport', () async {
-      // No network at all: the doomed request must be skipped entirely.
-      final container = _containerFor(
-        _FakeAttendanceRepository(Failure(const NetworkException())),
-        connected: false,
-        cachedOffices: const [_office],
-      );
-      final sub = container.listen(attendanceLocationsProvider, (_, _) {});
-      addTearDown(sub.close);
+    test(
+      'serves the cache without a request when there is no transport',
+      () async {
+        // No network at all: the doomed request must be skipped entirely.
+        final container = _containerFor(
+          _FakeAttendanceRepository(Failure(const NetworkException())),
+          connected: false,
+          cachedOffices: const [_office],
+        );
+        final sub = container.listen(attendanceLocationsProvider, (_, _) {});
+        addTearDown(sub.close);
 
-      final locations = await container.read(
-        attendanceLocationsProvider.future,
-      );
+        final locations = await container.read(
+          attendanceLocationsProvider.future,
+        );
 
-      expect(locations, hasLength(1));
-    });
+        expect(locations, hasLength(1));
+      },
+    );
 
     test('surfaces an explicit 401 instead of the cache', () async {
       final container = ProviderContainer.test(

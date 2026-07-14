@@ -22,8 +22,7 @@ class _FakeQueueStore implements AttendanceQueueStore {
         entries.values
             .where(
               (e) =>
-                  e.userId == userId &&
-                  e.status == QueuedEventStatus.pending,
+                  e.userId == userId && e.status == QueuedEventStatus.pending,
             )
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -36,9 +35,7 @@ class _FakeQueueStore implements AttendanceQueueStore {
 
   @override
   Future<int> pendingCount(int userId) async => entries.values
-      .where(
-        (e) => e.userId == userId && e.status == QueuedEventStatus.pending,
-      )
+      .where((e) => e.userId == userId && e.status == QueuedEventStatus.pending)
       .length;
 
   @override
@@ -92,7 +89,11 @@ const _ok = AttendanceModel(id: 1, status: 'present', statusLabel: 'Hadir');
 
 const _userId = 7;
 
-AttendanceQueueEntry _entry(String id, {int owner = _userId, DateTime? createdAt}) {
+AttendanceQueueEntry _entry(
+  String id, {
+  int owner = _userId,
+  DateTime? createdAt,
+}) {
   return AttendanceQueueEntry(
     clientEventId: id,
     userId: owner,

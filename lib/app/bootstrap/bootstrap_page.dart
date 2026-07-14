@@ -70,11 +70,7 @@ class _Failure extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.cloud_off_rounded,
-          size: 64,
-          color: theme.colorScheme.error,
-        ),
+        Icon(Icons.cloud_off_rounded, size: 64, color: theme.colorScheme.error),
         const SizedBox(height: 24),
         Text(
           'Gagal menyiapkan data offline',
@@ -92,8 +88,7 @@ class _Failure extends ConsumerWidget {
         ),
         const SizedBox(height: 24),
         FilledButton(
-          onPressed: () =>
-              ref.read(offlineBootstrapProvider.notifier).retry(),
+          onPressed: () => ref.read(offlineBootstrapProvider.notifier).retry(),
           child: const Text('Coba Lagi'),
         ),
       ],

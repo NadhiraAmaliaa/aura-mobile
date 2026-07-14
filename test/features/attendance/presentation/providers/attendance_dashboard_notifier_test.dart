@@ -217,32 +217,29 @@ void main() {
       },
     );
 
-    test(
-      'never renders another user\'s cached snapshot offline (shows empty '
-      'state instead)',
-      () async {
-        // Only user 7 has a cached snapshot...
-        final repository = _FakeAttendanceRepository(
-          Failure(const NetworkException()),
-        );
-        final cache = _FakeDashboardCache(_dashboard);
-        // ...but user 8 is the one signed in and offline.
-        final container = _container(
-          connected: false,
-          repository: repository,
-          cache: cache,
-          userId: 8,
-        );
-        final sub = container.listen(attendanceDashboardProvider, (_, _) {});
-        addTearDown(sub.close);
+    test('never renders another user\'s cached snapshot offline (shows empty '
+        'state instead)', () async {
+      // Only user 7 has a cached snapshot...
+      final repository = _FakeAttendanceRepository(
+        Failure(const NetworkException()),
+      );
+      final cache = _FakeDashboardCache(_dashboard);
+      // ...but user 8 is the one signed in and offline.
+      final container = _container(
+        connected: false,
+        repository: repository,
+        cache: cache,
+        userId: 8,
+      );
+      final sub = container.listen(attendanceDashboardProvider, (_, _) {});
+      addTearDown(sub.close);
 
-        // Account 8 must see a surfaced "offline data unavailable" error, never
-        // account 7's cached attendance.
-        await expectLater(
-          container.read(attendanceDashboardProvider.future),
-          throwsA(isA<NetworkException>()),
-        );
-      },
-    );
+      // Account 8 must see a surfaced "offline data unavailable" error, never
+      // account 7's cached attendance.
+      await expectLater(
+        container.read(attendanceDashboardProvider.future),
+        throwsA(isA<NetworkException>()),
+      );
+    });
   });
 }

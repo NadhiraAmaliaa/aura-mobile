@@ -126,21 +126,25 @@ class GeolocatorLocationService implements LocationService {
     }
   }
 
-  /// Verify location services are on and permission is granted.
+  /// Verify permission is granted before a fix is attempted.
   ///
   /// Returns `null` when the caller may proceed, or a [LocationFailure]
   /// describing why it cannot.
+  ///
+  /// Note: we deliberately do NOT short-circuit on
+  /// [Geolocator.isLocationServiceEnabled] here. When services (GPS) are off,
+  /// geolocator_android's FusedLocationClient shows the Play services
+  /// resolution dialog (the AGHRIS-style "Turn on location?" prompt) as a side
+  /// effect of [Geolocator.getCurrentPosition]/the position stream, and then
+  /// automatically continues once the user enables it. Guarding here would
+  /// prevent that dialog from ever appearing. If the user declines, or Play
+  /// services are unavailable, geolocator throws
+  /// [LocationServiceDisabledException], which the callers map to a
+  /// [LocationFailureKind.serviceDisabled] failure (settings-screen fallback).
   Future<LocationFailure?> _ensureLocationUsable() async {
-    // 1. Location services (GPS) must be switched on at the OS level.
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return const LocationFailure(
-        LocationFailureKind.serviceDisabled,
-        'Layanan lokasi (GPS) tidak aktif. Aktifkan lalu coba lagi.',
-      );
-    }
-
-    // 2. Ensure the app has permission, requesting it once if needed.
+    // Ensure the app has permission, requesting it once if needed. Permission
+    // (runtime grant) is orthogonal to services-enabled (the device GPS switch);
+    // geolocator needs permission before it can trigger the services dialog.
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
