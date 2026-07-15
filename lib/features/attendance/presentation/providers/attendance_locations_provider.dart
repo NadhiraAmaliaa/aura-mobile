@@ -4,6 +4,7 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
 import '../../../../core/network/connectivity_providers.dart';
 import '../../data/attendance_providers.dart';
+import '../../data/local/office_config_cache_store.dart';
 import '../../data/local/offline_providers.dart';
 import '../../data/models/attendance_models.dart';
 
@@ -97,18 +98,28 @@ class AttendanceLocations extends _$AttendanceLocations {
 /// so an offline capture can still freeze the geofence snapshot it last knew.
 @riverpod
 Future<List<AttendanceLocationModel>> geofenceOffices(Ref ref) async {
-  final store = await ref.read(officeConfigCacheStoreProvider.future);
+  // Capture every dependency synchronously, before the first await. This
+  // provider is auto-dispose and is read transiently (ref.read(...future)), so
+  // it can be disposed mid-build once the read completes. Touching `ref` after
+  // an await would then throw "Cannot use Ref after it has been disposed".
+  // Reading the dependencies up front means the async work below only uses the
+  // captured objects, never `ref`.
+  final storeFuture = ref.read(officeConfigCacheStoreProvider.future);
+  final connectivity = ref.read(connectivityProvider);
+  final repository = ref.read(attendanceRepositoryProvider);
+
+  final store = await storeFuture;
 
   // No transport at all → the server is unreachable; the last cached config is
   // the best (and only) source. Skip the doomed request entirely.
-  final connectivity = await ref.read(connectivityProvider).checkConnectivity();
-  if (!hasConnectivity(connectivity)) return store.all();
+  final status = await connectivity.checkConnectivity();
+  if (!hasConnectivity(status)) return store.all();
 
   // Online → the server decides. A successful (even empty) response replaces
   // the cache; only a genuine failure falls back to the cached offices.
-  final result = await ref.read(attendanceRepositoryProvider).locations();
+  final result = await repository.locations();
   return switch (result) {
-    Success(:final data) => await _cacheOffices(ref, data),
+    Success(:final data) => await _cacheOffices(store, data),
     Failure() => await store.all(),
   };
 }
@@ -116,11 +127,10 @@ Future<List<AttendanceLocationModel>> geofenceOffices(Ref ref) async {
 /// Persists the freshly fetched [offices] for the next (possibly offline)
 /// capture. Best-effort — a cache write failure must not fail the capture.
 Future<List<AttendanceLocationModel>> _cacheOffices(
-  Ref ref,
+  OfficeConfigCacheStore store,
   List<AttendanceLocationModel> offices,
 ) async {
   try {
-    final store = await ref.read(officeConfigCacheStoreProvider.future);
     await store.replaceAll(offices);
   } on Object {
     // Ignore — the fetched list is authoritative; the cache is an optimisation.

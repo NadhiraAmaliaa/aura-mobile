@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/device/device_time_providers.dart';
 import '../../../../core/device/device_time_settings.dart';
@@ -54,6 +55,10 @@ class _AttendancePresenceScreenState
   /// Which action is currently acquiring a fresh fix / submitting, so the
   /// pressed button shows progress and both buttons stay disabled meanwhile.
   _PendingAction? _pendingAction;
+
+  /// Guards [_promptAutoTimeBlocked] so the hard-block dialog is shown one at a
+  /// time — first detection, resume re-check and capture attempts never stack.
+  bool _autoTimeDialogOpen = false;
 
   @override
   void initState() {
@@ -157,35 +162,95 @@ class _AttendancePresenceScreenState
             latitude: position?.latitude,
             longitude: position?.longitude,
             office: office,
+            today: _todaySnapshot(),
           );
       if (!mounted) return;
       _showCaptureOutcome(entry, syncedMessage: 'Check In berhasil.');
-    } on AutomaticTimeDisabledException catch (e) {
+    } on AutomaticTimeDisabledException {
       if (!mounted) return;
-      _handleAutomaticTimeBlocked(e);
+      _handleAutomaticTimeBlocked();
+    } on AttendanceRuleException catch (error) {
+      // A deterministic business rule (duplicate, past cutoff, outside radius)
+      // blocked the capture before it was queued: show it as the block dialog.
+      if (!mounted) return;
+      _showAlert(error.message);
+    } catch (error) {
+      // Never let a capture fail silently: any other error (fresh-fix failure,
+      // office lookup / cache read, queue write, unexpected server response)
+      // must still reach the user as a dialog instead of just resetting the
+      // button with no feedback.
+      if (!mounted) return;
+      _showAlert('Absensi gagal diproses. Silakan coba lagi.');
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
   }
 
-  /// Surfaces the automatic-clock block: refreshes the status notifier so the
-  /// notice appears and the buttons disable, then explains why via a dialog.
-  void _handleAutomaticTimeBlocked(AutomaticTimeDisabledException e) {
+  /// Surfaces the automatic-clock hard block from a capture attempt: refreshes
+  /// the status notifier (disables the buttons) then shows the block dialog.
+  void _handleAutomaticTimeBlocked() {
     ref.read(automaticTimeStatusProvider.notifier).refresh();
-    _showAlert(e.message);
+    unawaited(_promptAutoTimeBlocked());
+  }
+
+  /// Shows the AGHRIS-style hard block while the device clock is manual. The
+  /// dialog cannot be dismissed by tapping outside or the system back button,
+  /// so the user must choose: open the system Date & Time settings, or leave
+  /// the attendance page (OK). Only one dialog is ever shown at a time, so
+  /// repeated detections (first open, resume re-check, capture attempt) never
+  /// stack or loop.
+  Future<void> _promptAutoTimeBlocked() async {
+    if (_autoTimeDialogOpen || !mounted) return;
+    _autoTimeDialogOpen = true;
+    final choice = await showAutoTimeBlockedDialog(context);
+    _autoTimeDialogOpen = false;
+    if (!mounted) return;
+    switch (choice) {
+      case AutoTimeBlockedChoice.openSettings:
+        // Reuse the existing shortcut; the resume re-check clears the block or
+        // re-prompts if the user comes back with it still disabled.
+        await ref.read(deviceTimeSettingsProvider).openDateTimeSettings();
+      case AutoTimeBlockedChoice.dismissed:
+        // Never let the user linger on the capture page while the clock is
+        // still manual — send them back to the attendance dashboard.
+        if (context.canPop()) context.pop();
+    }
   }
 
   /// Guards every work mode against a spoofed/mocked GPS fix. The location
   /// service rejects a mocked fix as a [LocationFailureKind.mocked] failure;
   /// this surfaces that reason and blocks submission. Returns `true` when the
   /// fix is trusted (or the failure was unrelated to mocking).
-  bool _ensureLocationTrusted() {
-    final state = ref.read(currentLocationProvider);
+  bool _ensureLocationTrusted() {    final state = ref.read(currentLocationProvider);
     if (state is LocationError && state.kind == LocationFailureKind.mocked) {
       _showAlert(state.message);
       return false;
     }
     return true;
+  }
+
+  /// Today's server-backed snapshot (attendance, work hours, working-day flag),
+  /// passed to [AttendanceQueueController.capture] so it can locally enforce the
+  /// duplicate / cutoff / ordering rules against the same data the backend uses.
+  /// `null` when the dashboard has not resolved (offline with no cache).
+  AttendanceTodayModel? _todaySnapshot() {
+    return switch (ref.read(attendanceDashboardProvider)) {
+      AsyncData(:final value) => value.today,
+      _ => null,
+    };
+  }
+
+  /// Whether today's check-in has been recorded — from the server-backed
+  /// dashboard or a still-pending offline capture. Gates a check-out so it is
+  /// never captured out of order (mirrors the backend ordering rule, but also
+  /// holds offline where the server can't reject it).
+  bool _hasCheckedInToday() {
+    final serverCheckedIn = switch (ref.read(attendanceDashboardProvider)) {
+      AsyncData(:final value) => value.today.attendance?.checkInTime != null,
+      _ => false,
+    };
+    return serverCheckedIn ||
+        ref.read(pendingAttendanceActionsProvider).hasCheckIn;
   }
 
   /// Resolves the office a WFO action is standing in, mirroring the check-in
@@ -239,6 +304,14 @@ class _AttendancePresenceScreenState
   }
 
   Future<void> _onCheckOutPressed(String? workMode) async {
+    // A check-out is only valid after today's check-in. The backend enforces
+    // this too, but offline there is no server to reject it — without this
+    // guard an out-of-order check-out would be silently queued and only fail
+    // later at sync. Blocks the capture entirely, online or offline.
+    if (!_hasCheckedInToday()) {
+      _showAlert('Anda harus Check In terlebih dahulu sebelum Check Out.');
+      return;
+    }
     setState(() => _pendingAction = _PendingAction.checkOut);
     try {
       // Always submit against a fresh fix rather than the one captured on open.
@@ -264,12 +337,23 @@ class _AttendancePresenceScreenState
             latitude: position?.latitude,
             longitude: position?.longitude,
             office: office,
+            today: _todaySnapshot(),
           );
       if (!mounted) return;
       _showCaptureOutcome(entry, syncedMessage: 'Check Out berhasil.');
-    } on AutomaticTimeDisabledException catch (e) {
+    } on AutomaticTimeDisabledException {
       if (!mounted) return;
-      _handleAutomaticTimeBlocked(e);
+      _handleAutomaticTimeBlocked();
+    } on AttendanceRuleException catch (error) {
+      // A deterministic business rule (missing check-in, out-of-order,
+      // outside radius) blocked the capture before it was queued.
+      if (!mounted) return;
+      _showAlert(error.message);
+    } catch (error) {
+      // Never let a capture fail silently: surface any other error as a dialog
+      // instead of just resetting the button with no feedback.
+      if (!mounted) return;
+      _showAlert('Absensi gagal diproses. Silakan coba lagi.');
     } finally {
       if (mounted) setState(() => _pendingAction = null);
     }
@@ -282,6 +366,13 @@ class _AttendancePresenceScreenState
     // `false` = device clock is manual; block attendance. `null`/`true` allow.
     final autoTimeBlocked =
         ref.watch(automaticTimeStatusProvider).value == false;
+
+    // Hard block: whenever the clock resolves to manual (first load or a resume
+    // re-check), surface the AGHRIS-style block dialog. The prompt is guarded
+    // so it never stacks or loops.
+    ref.listen<AsyncValue<bool?>>(automaticTimeStatusProvider, (_, next) {
+      if (next.value == false) unawaited(_promptAutoTimeBlocked());
+    });
 
     final position = switch (locationState) {
       LocationReady(:final position) => position,
@@ -329,14 +420,6 @@ class _AttendancePresenceScreenState
               children: [
                 const _LiveDateTimeCard(),
                 const _PendingSyncNotice(),
-                if (autoTimeBlocked) ...[
-                  const SizedBox(height: 12),
-                  _AutoTimeNotice(
-                    onOpenSettings: () => ref
-                        .read(deviceTimeSettingsProvider)
-                        .openDateTimeSettings(),
-                  ),
-                ],
                 if (locationState is LocationError) ...[
                   const SizedBox(height: 12),
                   _LocationErrorNotice(
@@ -883,55 +966,51 @@ class _LocationErrorNotice extends StatelessWidget {
   }
 }
 
-/// Warns that attendance is blocked because the device clock is set manually,
-/// and offers a shortcut to the system Date & Time settings. The block clears
-/// automatically once the user returns with the automatic clock enabled.
-class _AutoTimeNotice extends StatelessWidget {
-  const _AutoTimeNotice({required this.onOpenSettings});
+/// The action the user chose in the automatic date & time hard-block dialog.
+enum AutoTimeBlockedChoice {
+  /// OK — acknowledge and leave the attendance page (the clock is still manual).
+  dismissed,
 
-  final VoidCallback onOpenSettings;
+  /// Buka Pengaturan — open the system Date & Time settings.
+  openSettings,
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.schedule, color: theme.colorScheme.onErrorContainer),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Aktifkan Tanggal & Waktu otomatis (termasuk zona waktu '
-                  'otomatis) untuk melakukan absensi.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            ],
+/// Shows the AGHRIS-style hard block for a manual device clock.
+///
+/// The dialog is non-dismissible (no barrier tap, no back button) so the user
+/// must pick an action: [AutoTimeBlockedChoice.openSettings] to open the system
+/// Date & Time screen, or [AutoTimeBlockedChoice.dismissed] (OK) which the
+/// caller uses to navigate the user off the capture page. Attendance stays
+/// blocked either way until the automatic clock (and time zone) is enabled.
+Future<AutoTimeBlockedChoice> showAutoTimeBlockedDialog(BuildContext context) {
+  return showDialog<AutoTimeBlockedChoice>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('Tanggal & waktu tidak otomatis'),
+        content: const Text(
+          'Aktifkan Tanggal & Waktu Otomatis serta Zona Waktu Otomatis '
+          'untuk melakukan presensi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(AutoTimeBlockedChoice.dismissed),
+            child: const Text('OK'),
           ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: onOpenSettings,
-                child: const Text('Buka Pengaturan'),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(AutoTimeBlockedChoice.openSettings),
+            child: const Text('Buka Pengaturan'),
           ),
         ],
       ),
-    );
-  }
+    ),
+  ).then((choice) => choice ?? AutoTimeBlockedChoice.dismissed);
 }
 
 /// Today's attendance history rendered as a lightweight table.
