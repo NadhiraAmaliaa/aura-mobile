@@ -12,6 +12,12 @@ abstract interface class AttendanceQueueStore {
   /// [AttendanceQueueEntry.clientEventId].
   Future<void> save(AttendanceQueueEntry entry);
 
+  /// Persists the mutated [entry] only when its row still exists, returning
+  /// whether a row was actually updated. Unlike [save] it never re-inserts a
+  /// row that a concurrent [replacePendingCheckOut] compaction has already
+  /// removed, so a sync outcome for a superseded capture cannot resurrect it.
+  Future<bool> updateIfPresent(AttendanceQueueEntry entry);
+
   /// Enqueues a check-out while keeping at most one still-pending check-out per
   /// owner and attendance date: any other pending check-out for the same
   /// [AttendanceQueueEntry.userId] on the same captured date is discarded so the
@@ -45,6 +51,17 @@ class SqfliteAttendanceQueueStore implements AttendanceQueueStore {
       _toRow(entry),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  @override
+  Future<bool> updateIfPresent(AttendanceQueueEntry entry) async {
+    final count = await _db.update(
+      attendanceQueueTable,
+      _toRow(entry),
+      where: 'client_event_id = ?',
+      whereArgs: [entry.clientEventId],
+    );
+    return count > 0;
   }
 
   @override

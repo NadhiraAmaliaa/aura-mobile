@@ -21,31 +21,31 @@ class AttendanceDashboardScreen extends ConsumerWidget {
 
     return AttendanceConfigRefresher(
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Absensi'),
-        actions: [
-          IconButton(
-            tooltip: 'Riwayat',
-            icon: const Icon(Icons.history),
-            onPressed: () => context.pushNamed(RouteNames.attendanceHistory),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(attendanceDashboardProvider.notifier).refresh(),
-        child: switch (dashboard) {
-          AsyncData(:final value) => _DashboardContent(data: value),
-          AsyncError(:final error) => _ErrorView(
-            message: error is AppException
-                ? error.message
-                : 'Gagal memuat data absensi.',
-            onRetry: () =>
-                ref.read(attendanceDashboardProvider.notifier).refresh(),
-          ),
-          _ => const _LoadingView(),
-        },
-      ),
+        appBar: AppBar(
+          title: const Text('Absensi'),
+          actions: [
+            IconButton(
+              tooltip: 'Riwayat',
+              icon: const Icon(Icons.history),
+              onPressed: () => context.pushNamed(RouteNames.attendanceHistory),
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: () =>
+              ref.read(attendanceDashboardProvider.notifier).refresh(),
+          child: switch (dashboard) {
+            AsyncData(:final value) => _DashboardContent(data: value),
+            AsyncError(:final error) => _ErrorView(
+              message: error is AppException
+                  ? error.message
+                  : 'Gagal memuat data absensi.',
+              onRetry: () =>
+                  ref.read(attendanceDashboardProvider.notifier).refresh(),
+            ),
+            _ => const _LoadingView(),
+          },
+        ),
       ),
     );
   }

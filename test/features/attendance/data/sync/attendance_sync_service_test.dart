@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:aura_mobile/core/database/app_database.dart';
 import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_entry.dart';
@@ -6,6 +9,7 @@ import 'package:aura_mobile/features/attendance/data/models/attendance_models.da
 import 'package:aura_mobile/features/attendance/data/sync/attendance_sync_service.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// In-memory [AttendanceQueueStore] keyed by client event id.
 class _FakeQueueStore implements AttendanceQueueStore {
@@ -14,6 +18,13 @@ class _FakeQueueStore implements AttendanceQueueStore {
   @override
   Future<void> save(AttendanceQueueEntry entry) async {
     entries[entry.clientEventId] = entry;
+  }
+
+  @override
+  Future<bool> updateIfPresent(AttendanceQueueEntry entry) async {
+    if (!entries.containsKey(entry.clientEventId)) return false;
+    entries[entry.clientEventId] = entry;
+    return true;
   }
 
   @override
@@ -97,6 +108,38 @@ class _ScriptedRepository implements AttendanceRepository {
       throw UnimplementedError();
 }
 
+/// A repository whose [syncEvent] always fails as if offline, but parks the
+/// [gatedEventId]'s sync on [gate] so a test can control the exact interleave
+/// between two concurrent enqueues.
+class _GatedOfflineRepository implements AttendanceRepository {
+  _GatedOfflineRepository({required this.gatedEventId, required this.gate});
+
+  final String gatedEventId;
+  final Future<void> gate;
+
+  @override
+  Future<ApiResult<AttendanceModel>> syncEvent(
+    AttendanceQueueEntry entry,
+  ) async {
+    if (entry.clientEventId == gatedEventId) await gate;
+    return const Failure(NetworkException());
+  }
+
+  @override
+  Future<ApiResult<AttendanceDashboardModel>> dashboard({String? month}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<AttendanceHistoryModel>> history({
+    int? page,
+    int? perPage,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ApiResult<List<AttendanceLocationModel>>> locations() =>
+      throw UnimplementedError();
+}
+
 const _ok = AttendanceModel(id: 1, status: 'present', statusLabel: 'Hadir');
 
 const _userId = 7;
@@ -115,6 +158,22 @@ AttendanceQueueEntry _entry(
     longitude: '98.6722000',
     capturedAt: '2026-07-12T14:03:07+07:00',
     createdAt: createdAt ?? DateTime(2026, 7, 12, 14, 3, 7),
+  );
+}
+
+AttendanceQueueEntry _checkOut(
+  String id, {
+  required String capturedAt,
+  int owner = _userId,
+}) {
+  return AttendanceQueueEntry(
+    clientEventId: id,
+    userId: owner,
+    type: AttendanceEventType.checkOut,
+    latitude: '3.5952000',
+    longitude: '98.6722000',
+    capturedAt: capturedAt,
+    createdAt: DateTime.parse(capturedAt),
   );
 }
 
@@ -299,5 +358,74 @@ void main() {
       expect(summary.synced, 1);
       expect(store.entries['b-in']!.status, QueuedEventStatus.pending);
     });
+  });
+
+  // Regression: two near-simultaneous same-day offline check-out captures must
+  // never leave more than one pending row. Uses the real sqflite store so the
+  // atomicity of replacePendingCheckOut is exercised end to end.
+  group('enqueue check-out compaction under concurrency', () {
+    late Database db;
+    late SqfliteAttendanceQueueStore realStore;
+
+    setUpAll(sqfliteFfiInit);
+
+    setUp(() async {
+      db = await openAppDatabase(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+      );
+      realStore = SqfliteAttendanceQueueStore(db);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test(
+      'two simultaneous same-day offline check-outs leave exactly one '
+      'pending, holding the latest captured_at',
+      () async {
+        // 'co-A' parks inside syncEvent until the gate opens; 'co-B' fails
+        // (offline) immediately. This forces the exact interleave that used to
+        // resurrect a compacted-away check-out:
+        //   compaction(A) inserts A -> compaction(B) deletes A, inserts B
+        //   -> B fails offline and stays pending
+        //   -> A's gated offline sync finally fails and tries to persist.
+        final gate = Completer<void>();
+        final repository = _GatedOfflineRepository(
+          gatedEventId: 'co-A',
+          gate: gate.future,
+        );
+        final service = AttendanceSyncService(
+          realStore,
+          repository,
+          clock: () => DateTime(2026, 7, 12, 14, 5),
+        );
+
+        // co-B is captured a few seconds after co-A, so it holds the latest
+        // captured_at and must be the survivor.
+        final fA = service.enqueue(
+          _checkOut('co-A', capturedAt: '2026-07-12T15:00:00+07:00'),
+        );
+        final fB = service.enqueue(
+          _checkOut('co-B', capturedAt: '2026-07-12T15:00:05+07:00'),
+        );
+
+        // B settles fully first: the queue now holds only the newest capture.
+        await fB;
+
+        // Releasing A lets its offline sync fail; the old insert-or-replace
+        // persistence would resurrect co-A here, yielding two pending rows.
+        gate.complete();
+        await fA;
+
+        final pending = await realStore.pendingEntries(_userId);
+        expect(pending, hasLength(1));
+        expect(pending.single.clientEventId, 'co-B');
+        expect(pending.single.type, AttendanceEventType.checkOut);
+        expect(pending.single.capturedAt, '2026-07-12T15:00:05+07:00');
+        expect(await realStore.pendingCount(_userId), 1);
+      },
+    );
   });
 }

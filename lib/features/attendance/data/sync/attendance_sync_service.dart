@@ -117,7 +117,12 @@ class AttendanceSyncService {
       },
     };
 
-    await _store.save(updated);
+    // Persist the outcome with an update, never an insert: if a concurrent
+    // check-out compaction ([AttendanceQueueStore.replacePendingCheckOut]) has
+    // already superseded and removed this entry, this is a no-op instead of
+    // resurrecting the row. Two near-simultaneous same-day offline check-outs
+    // therefore can never leave more than one pending capture.
+    await _store.updateIfPresent(updated);
     return updated;
   }
 
