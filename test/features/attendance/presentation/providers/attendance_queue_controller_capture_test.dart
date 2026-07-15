@@ -316,10 +316,7 @@ void main() {
       final controller = await controllerFrom(container);
 
       await expectLater(
-        controller.capture(
-          type: AttendanceEventType.checkOut,
-          today: _today(),
-        ),
+        controller.capture(type: AttendanceEventType.checkOut, today: _today()),
         throwsA(
           isA<AttendanceRuleException>().having(
             (e) => e.message,
@@ -372,30 +369,33 @@ void main() {
       expect(syncService.lastEnqueued?.type, AttendanceEventType.checkOut);
     });
 
-    test('a pending offline check-in allows a later offline check-out', () async {
-      final now = DateTime.now();
-      final store = _SeededStore([
-        AttendanceQueueEntry(
-          clientEventId: 'seed-checkin',
-          userId: 7,
-          type: AttendanceEventType.checkIn,
-          workMode: 'wfh',
-          capturedAt: formatCapturedAt(
-            now.subtract(const Duration(hours: 1)),
+    test(
+      'a pending offline check-in allows a later offline check-out',
+      () async {
+        final now = DateTime.now();
+        final store = _SeededStore([
+          AttendanceQueueEntry(
+            clientEventId: 'seed-checkin',
+            userId: 7,
+            type: AttendanceEventType.checkIn,
+            workMode: 'wfh',
+            capturedAt: formatCapturedAt(
+              now.subtract(const Duration(hours: 1)),
+            ),
+            createdAt: now,
           ),
-          createdAt: now,
-        ),
-      ]);
-      final syncService = RecordingSyncService();
-      final container = containerWith(syncService: syncService, store: store);
-      addTearDown(container.dispose);
-      final controller = await controllerFrom(container);
+        ]);
+        final syncService = RecordingSyncService();
+        final container = containerWith(syncService: syncService, store: store);
+        addTearDown(container.dispose);
+        final controller = await controllerFrom(container);
 
-      // No server dashboard (offline): the still-pending check-in must satisfy
-      // both the "requires a check-in" and "after the check-in" rules.
-      await controller.capture(type: AttendanceEventType.checkOut);
+        // No server dashboard (offline): the still-pending check-in must satisfy
+        // both the "requires a check-in" and "after the check-in" rules.
+        await controller.capture(type: AttendanceEventType.checkOut);
 
-      expect(syncService.lastEnqueued?.type, AttendanceEventType.checkOut);
-    });
+        expect(syncService.lastEnqueued?.type, AttendanceEventType.checkOut);
+      },
+    );
   });
 }

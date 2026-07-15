@@ -235,7 +235,10 @@ class AttendanceQueueController extends _$AttendanceQueueController {
     final m = int.tryParse(parts[1]);
     if (h == null || m == null) return null;
     final label = end.length >= 5 ? end.substring(0, 5) : end;
-    return (deadline: DateTime(now.year, now.month, now.day, h, m), label: label);
+    return (
+      deadline: DateTime(now.year, now.month, now.day, h, m),
+      label: label,
+    );
   }
 
   /// The moment today's check-in was recorded — from the server-backed

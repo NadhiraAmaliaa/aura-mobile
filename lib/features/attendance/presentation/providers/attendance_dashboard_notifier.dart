@@ -36,6 +36,19 @@ class AttendanceDashboardNotifier extends _$AttendanceDashboardNotifier {
     state = await AsyncValue.guard(_load);
   }
 
+  /// Re-fetch the dashboard *in place*, without a loading flash: the current
+  /// snapshot stays on screen and is swapped only when the refresh actually
+  /// produces data. A failed refresh (offline / timeout / transient) leaves the
+  /// last good snapshot untouched, so a background resume/reconnect refresh
+  /// never wipes usable data or flickers a spinner. An explicit `401` is handled
+  /// globally by the auth interceptor, so it is intentionally not surfaced here.
+  Future<void> silentRefresh() async {
+    final refreshed = await AsyncValue.guard(_load);
+    if (refreshed is AsyncData<AttendanceDashboardModel>) {
+      state = refreshed;
+    }
+  }
+
   Future<AttendanceDashboardModel> _load() async {
     final userId = ref.watch(currentUserIdProvider);
     final cache = await ref.read(dashboardCacheStoreProvider.future);

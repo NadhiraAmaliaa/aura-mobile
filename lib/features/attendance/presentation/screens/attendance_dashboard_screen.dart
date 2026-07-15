@@ -6,6 +6,7 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../app/router/routes.dart';
 import '../../data/models/attendance_models.dart';
 import '../providers/attendance_dashboard_notifier.dart';
+import '../widgets/attendance_config_refresher.dart';
 
 /// Attendance landing / dashboard.
 ///
@@ -18,7 +19,8 @@ class AttendanceDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(attendanceDashboardProvider);
 
-    return Scaffold(
+    return AttendanceConfigRefresher(
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Absensi'),
         actions: [
@@ -43,6 +45,7 @@ class AttendanceDashboardScreen extends ConsumerWidget {
           ),
           _ => const _LoadingView(),
         },
+      ),
       ),
     );
   }

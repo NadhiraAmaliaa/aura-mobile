@@ -221,7 +221,8 @@ class _AttendancePresenceScreenState
   /// service rejects a mocked fix as a [LocationFailureKind.mocked] failure;
   /// this surfaces that reason and blocks submission. Returns `true` when the
   /// fix is trusted (or the failure was unrelated to mocking).
-  bool _ensureLocationTrusted() {    final state = ref.read(currentLocationProvider);
+  bool _ensureLocationTrusted() {
+    final state = ref.read(currentLocationProvider);
     if (state is LocationError && state.kind == LocationFailureKind.mocked) {
       _showAlert(state.message);
       return false;
