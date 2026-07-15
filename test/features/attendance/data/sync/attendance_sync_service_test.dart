@@ -381,51 +381,48 @@ void main() {
       await db.close();
     });
 
-    test(
-      'two simultaneous same-day offline check-outs leave exactly one '
-      'pending, holding the latest captured_at',
-      () async {
-        // 'co-A' parks inside syncEvent until the gate opens; 'co-B' fails
-        // (offline) immediately. This forces the exact interleave that used to
-        // resurrect a compacted-away check-out:
-        //   compaction(A) inserts A -> compaction(B) deletes A, inserts B
-        //   -> B fails offline and stays pending
-        //   -> A's gated offline sync finally fails and tries to persist.
-        final gate = Completer<void>();
-        final repository = _GatedOfflineRepository(
-          gatedEventId: 'co-A',
-          gate: gate.future,
-        );
-        final service = AttendanceSyncService(
-          realStore,
-          repository,
-          clock: () => DateTime(2026, 7, 12, 14, 5),
-        );
+    test('two simultaneous same-day offline check-outs leave exactly one '
+        'pending, holding the latest captured_at', () async {
+      // 'co-A' parks inside syncEvent until the gate opens; 'co-B' fails
+      // (offline) immediately. This forces the exact interleave that used to
+      // resurrect a compacted-away check-out:
+      //   compaction(A) inserts A -> compaction(B) deletes A, inserts B
+      //   -> B fails offline and stays pending
+      //   -> A's gated offline sync finally fails and tries to persist.
+      final gate = Completer<void>();
+      final repository = _GatedOfflineRepository(
+        gatedEventId: 'co-A',
+        gate: gate.future,
+      );
+      final service = AttendanceSyncService(
+        realStore,
+        repository,
+        clock: () => DateTime(2026, 7, 12, 14, 5),
+      );
 
-        // co-B is captured a few seconds after co-A, so it holds the latest
-        // captured_at and must be the survivor.
-        final fA = service.enqueue(
-          _checkOut('co-A', capturedAt: '2026-07-12T15:00:00+07:00'),
-        );
-        final fB = service.enqueue(
-          _checkOut('co-B', capturedAt: '2026-07-12T15:00:05+07:00'),
-        );
+      // co-B is captured a few seconds after co-A, so it holds the latest
+      // captured_at and must be the survivor.
+      final fA = service.enqueue(
+        _checkOut('co-A', capturedAt: '2026-07-12T15:00:00+07:00'),
+      );
+      final fB = service.enqueue(
+        _checkOut('co-B', capturedAt: '2026-07-12T15:00:05+07:00'),
+      );
 
-        // B settles fully first: the queue now holds only the newest capture.
-        await fB;
+      // B settles fully first: the queue now holds only the newest capture.
+      await fB;
 
-        // Releasing A lets its offline sync fail; the old insert-or-replace
-        // persistence would resurrect co-A here, yielding two pending rows.
-        gate.complete();
-        await fA;
+      // Releasing A lets its offline sync fail; the old insert-or-replace
+      // persistence would resurrect co-A here, yielding two pending rows.
+      gate.complete();
+      await fA;
 
-        final pending = await realStore.pendingEntries(_userId);
-        expect(pending, hasLength(1));
-        expect(pending.single.clientEventId, 'co-B');
-        expect(pending.single.type, AttendanceEventType.checkOut);
-        expect(pending.single.capturedAt, '2026-07-12T15:00:05+07:00');
-        expect(await realStore.pendingCount(_userId), 1);
-      },
-    );
+      final pending = await realStore.pendingEntries(_userId);
+      expect(pending, hasLength(1));
+      expect(pending.single.clientEventId, 'co-B');
+      expect(pending.single.type, AttendanceEventType.checkOut);
+      expect(pending.single.capturedAt, '2026-07-12T15:00:05+07:00');
+      expect(await realStore.pendingCount(_userId), 1);
+    });
   });
 }
