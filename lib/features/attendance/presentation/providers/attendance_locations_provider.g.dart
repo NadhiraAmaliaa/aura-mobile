@@ -199,4 +199,4 @@ final class GeofenceOfficesProvider
   }
 }
 
-String _$geofenceOfficesHash() => r'c584b438431d9c2af77ce5e54b49139c7e1e1ab6';
+String _$geofenceOfficesHash() => r'c4864d67b32d2ae465dc350c7f523a7a5790b2f3';

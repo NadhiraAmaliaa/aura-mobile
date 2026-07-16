@@ -15,6 +15,14 @@ abstract final class RoutePaths {
   static const String leave = '/leave';
   static const String spd = '/spd';
   static const String profile = '/profile';
+
+  // Leave feature children (relative to `/leave`).
+  static const String leavePending = 'pending';
+  static const String leaveHistory = 'history';
+  static const String leaveDetail = 'detail/:id';
+  // Reserved for later slices (submission → S4, letter utility → S5).
+  static const String leaveSubmit = 'submit';
+  static const String leaveSurat = 'surat-pulang-cepat';
 }
 
 abstract final class RouteNames {
@@ -30,4 +38,12 @@ abstract final class RouteNames {
   static const String leave = 'leave';
   static const String spd = 'spd';
   static const String profile = 'profile';
+
+  // Leave feature children.
+  static const String leavePending = 'leave-pending';
+  static const String leaveHistory = 'leave-history';
+  static const String leaveDetail = 'leave-detail';
+  // Reserved for later slices (submission → S4, letter utility → S5).
+  static const String leaveSubmit = 'leave-submit';
+  static const String leaveSurat = 'leave-surat';
 }

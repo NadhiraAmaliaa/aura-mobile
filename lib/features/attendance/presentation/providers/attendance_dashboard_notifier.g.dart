@@ -80,7 +80,7 @@ final class AttendanceDashboardNotifierProvider
 }
 
 String _$attendanceDashboardNotifierHash() =>
-    r'525c0369ef6caa92636edcb6cc94cb9596ca2b3c';
+    r'bd81d20680ec30b2012563218a9f1864445d7e67';
 
 /// Loads the attendance dashboard (today's snapshot + monthly recap).
 ///

@@ -71,7 +71,7 @@ final class AttendanceQueueControllerProvider
 }
 
 String _$attendanceQueueControllerHash() =>
-    r'0b53fbcc6de1c5d46a491942dddea37785bd62d9';
+    r'ee4ede934841eff707f33aed3bac5943713abcf0';
 
 /// Owns the offline attendance queue for the UI.
 ///
@@ -219,4 +219,4 @@ final class PendingAttendanceActionsProvider
 }
 
 String _$pendingAttendanceActionsHash() =>
-    r'125c1e4a40f65b2da78f453b4d6f04259455dc04';
+    r'49ceef0137dd685470b8c0b344ed628ebf32e45e';

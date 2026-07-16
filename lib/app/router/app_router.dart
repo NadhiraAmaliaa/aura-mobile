@@ -8,6 +8,10 @@ import '../../features/attendance/presentation/screens/attendance_presence_scree
 import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/leave/presentation/providers/leave_list_state.dart';
+import '../../features/leave/presentation/screens/leave_detail_screen.dart';
+import '../../features/leave/presentation/screens/leave_landing_screen.dart';
+import '../../features/leave/presentation/screens/leave_list_screen.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import '../bootstrap/bootstrap_page.dart';
 import '../bootstrap/offline_bootstrap_provider.dart';
@@ -103,10 +107,28 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: RoutePaths.leave,
         name: RouteNames.leave,
-        builder: (context, state) => const PlaceholderScreen(
-          title: 'Izin',
-          icon: Icons.event_busy_outlined,
-        ),
+        builder: (context, state) => const LeaveLandingScreen(),
+        routes: [
+          GoRoute(
+            path: RoutePaths.leavePending,
+            name: RouteNames.leavePending,
+            builder: (context, state) =>
+                const LeaveListScreen(filter: LeaveListFilter.pending),
+          ),
+          GoRoute(
+            path: RoutePaths.leaveHistory,
+            name: RouteNames.leaveHistory,
+            builder: (context, state) =>
+                const LeaveListScreen(filter: LeaveListFilter.history),
+          ),
+          GoRoute(
+            path: RoutePaths.leaveDetail,
+            name: RouteNames.leaveDetail,
+            builder: (context, state) => LeaveDetailScreen(
+              id: int.parse(state.pathParameters['id']!),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: RoutePaths.spd,
