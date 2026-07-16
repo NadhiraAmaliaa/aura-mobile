@@ -2,6 +2,7 @@ import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/leave/data/leave_providers.dart';
 import 'package:aura_mobile/features/leave/data/models/leave_models.dart';
+import 'package:aura_mobile/features/leave/data/models/leave_submission.dart';
 import 'package:aura_mobile/features/leave/data/repositories/leave_repository.dart';
 import 'package:aura_mobile/features/leave/presentation/providers/leave_detail_notifier.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +37,18 @@ class _FakeLeaveRepository implements LeaveRepository {
     int? page,
     int? perPage,
   }) => throw UnimplementedError();
+
+  @override
+  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> openEvidence(LeaveRequestModel request) =>
+      throw UnimplementedError();
 }
 
 ProviderContainer _container(_FakeLeaveRepository repository) {
@@ -59,7 +72,9 @@ void main() {
     });
 
     test('surfaces an error when the request fails to load', () async {
-      final repository = _FakeLeaveRepository(Failure(const NetworkException()));
+      final repository = _FakeLeaveRepository(
+        Failure(const NetworkException()),
+      );
       final container = _container(repository);
 
       await expectLater(

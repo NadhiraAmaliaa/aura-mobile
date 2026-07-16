@@ -4,11 +4,7 @@ import 'package:flutter/material.dart';
 /// rejected), tinted from the theme's colour scheme. Unknown statuses fall back
 /// to a neutral tone.
 class LeaveStatusChip extends StatelessWidget {
-  const LeaveStatusChip({
-    required this.label,
-    required this.status,
-    super.key,
-  });
+  const LeaveStatusChip({required this.label, required this.status, super.key});
 
   final String label;
   final String status;

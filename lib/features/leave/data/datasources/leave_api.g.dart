@@ -82,6 +82,68 @@ class _LeaveApi implements LeaveApi {
     return _value;
   }
 
+  @override
+  Future<LeaveDetailEnvelope> create({
+    required String type,
+    required String reason,
+    required String startDate,
+    required String endDate,
+    String? contactPhone,
+    String? address,
+    File? evidence,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.fields.add(MapEntry('type', type));
+    _data.fields.add(MapEntry('reason', reason));
+    _data.fields.add(MapEntry('start_date', startDate));
+    _data.fields.add(MapEntry('end_date', endDate));
+    if (contactPhone != null) {
+      _data.fields.add(MapEntry('contact_phone', contactPhone));
+    }
+    if (address != null) {
+      _data.fields.add(MapEntry('address', address));
+    }
+    if (evidence != null) {
+      _data.files.add(
+        MapEntry(
+          'evidence',
+          MultipartFile.fromFileSync(
+            evidence.path,
+            filename: evidence.path.split(Platform.pathSeparator).last,
+          ),
+        ),
+      );
+    }
+    final _options = _setStreamType<LeaveDetailEnvelope>(
+      Options(
+            method: 'POST',
+            headers: _headers,
+            extra: _extra,
+            contentType: 'multipart/form-data',
+          )
+          .compose(
+            _dio.options,
+            '/leave-requests',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late LeaveDetailEnvelope _value;
+    try {
+      _value = LeaveDetailEnvelope.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
   RequestOptions _setStreamType<T>(RequestOptions requestOptions) {
     if (T != dynamic &&
         !(requestOptions.responseType == ResponseType.bytes ||

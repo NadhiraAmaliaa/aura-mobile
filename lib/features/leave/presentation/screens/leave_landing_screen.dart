@@ -6,10 +6,10 @@ import '../../../../app/router/routes.dart';
 /// Entry point for the leave feature. Presents the intern's available leave
 /// actions as tappable tiles.
 ///
-/// Slice 3 ships the two read destinations (pending list and history). The
-/// "Ajukan Izin / Sakit" submission entry (Slice 4) and "Surat Pulang Cepat"
-/// letter utility (Slice 5) are intentionally omitted until their screens
-/// exist — surfacing them now would be non-functional tiles.
+/// Slice 4 adds the "Ajukan Izin / Sakit" submission entry alongside the two
+/// read destinations (pending list and history). The "Surat Pulang Cepat"
+/// letter utility (Slice 5) is intentionally omitted until its screen exists —
+/// surfacing it now would be a non-functional tile.
 class LeaveLandingScreen extends StatelessWidget {
   const LeaveLandingScreen({super.key});
 
@@ -20,6 +20,13 @@ class LeaveLandingScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _LeaveMenuTile(
+            icon: Icons.edit_note,
+            title: 'Ajukan Izin / Sakit',
+            subtitle: 'Buat pengajuan izin atau sakit baru',
+            onTap: () => context.pushNamed(RouteNames.leaveSubmit),
+          ),
+          const SizedBox(height: 12),
           _LeaveMenuTile(
             icon: Icons.hourglass_top_outlined,
             title: 'Menunggu Persetujuan',

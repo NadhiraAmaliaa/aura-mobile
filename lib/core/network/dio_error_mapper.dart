@@ -51,9 +51,15 @@ AppException mapDioException(DioException e) {
 }
 
 /// Extracts a top-level `message` from a Laravel-style JSON error body.
+///
+/// Returns `null` for a missing *or blank* message so callers fall back to a
+/// sensible default. This matters because Laravel emits `{"message": ""}` for
+/// an `abort(4xx)` with no message; without this guard that empty string would
+/// surface as a blank, explanation-less error notification.
 String? _extractMessage(Object? data) {
   if (data is Map && data['message'] is String) {
-    return data['message'] as String;
+    final message = (data['message'] as String).trim();
+    return message.isEmpty ? null : message;
   }
   return null;
 }

@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/files/file_download_service.dart';
 import '../../../core/providers/core_providers.dart';
 import 'datasources/leave_api.dart';
 import 'repositories/leave_repository.dart';
@@ -13,5 +14,7 @@ LeaveApi leaveApi(Ref ref) => LeaveApi(ref.watch(dioProvider));
 
 /// The leave repository seam consumed by the presentation layer.
 @riverpod
-LeaveRepository leaveRepository(Ref ref) =>
-    LeaveRepositoryImpl(ref.watch(leaveApiProvider));
+LeaveRepository leaveRepository(Ref ref) => LeaveRepositoryImpl(
+  ref.watch(leaveApiProvider),
+  ref.watch(fileDownloadServiceProvider),
+);

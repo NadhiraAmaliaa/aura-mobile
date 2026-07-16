@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
+import '../../../../core/network/api_result.dart';
 import '../../../../shared/utils/indo_date.dart';
 import '../../data/models/leave_models.dart';
 import '../providers/leave_detail_notifier.dart';
+import '../providers/leave_download_notifier.dart';
 import '../widgets/leave_status_chip.dart';
 
 /// Read-only detail of a single leave request.
 ///
-/// Slice 3 displays every field returned by the API. Interactive actions —
-/// downloading the evidence attachment and printing the approved PDF — arrive
-/// in Slice 4, so no action buttons are rendered here yet.
+/// Displays every field returned by the API plus the file actions added in
+/// Slice 4: viewing the evidence attachment and downloading the approved PDF.
 class LeaveDetailScreen extends ConsumerWidget {
   const LeaveDetailScreen({required this.id, super.key});
 
@@ -24,16 +25,14 @@ class LeaveDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Pengajuan')),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(leaveDetailProvider(id).notifier).refresh(),
+        onRefresh: () => ref.read(leaveDetailProvider(id).notifier).refresh(),
         child: switch (detail) {
           AsyncData(:final value) => _DetailBody(request: value),
           AsyncError(:final error) => _ErrorView(
             message: error is AppException
                 ? error.message
                 : 'Gagal memuat detail pengajuan.',
-            onRetry: () =>
-                ref.read(leaveDetailProvider(id).notifier).refresh(),
+            onRetry: () => ref.read(leaveDetailProvider(id).notifier).refresh(),
           ),
           _ => const _LoadingView(),
         },
@@ -65,10 +64,7 @@ class _DetailBody extends StatelessWidget {
                 ),
               ),
             ),
-            LeaveStatusChip(
-              label: request.statusLabel,
-              status: request.status,
-            ),
+            LeaveStatusChip(label: request.statusLabel, status: request.status),
           ],
         ),
         const SizedBox(height: 4),
@@ -111,10 +107,7 @@ class _DetailBody extends StatelessWidget {
                 request.contactPhone!.isNotEmpty)
               _DetailRow(label: 'Kontak', value: request.contactPhone!),
             if (request.evidenceUrl != null)
-              const _DetailRow(
-                label: 'Lampiran',
-                value: 'Tersedia',
-              ),
+              const _DetailRow(label: 'Lampiran', value: 'Tersedia'),
           ],
         ),
 
@@ -151,7 +144,67 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
         ],
+
+        if (request.evidenceUrl != null || request.canDownloadPdf) ...[
+          const SizedBox(height: 24),
+          _DetailActions(request: request),
+        ],
       ],
+    );
+  }
+}
+
+/// File actions for a leave request: open the evidence attachment and download
+/// the approved-request PDF. Both are gated on a shared loading state so only
+/// one fetch runs at a time; failures surface via a snackbar.
+class _DetailActions extends ConsumerWidget {
+  const _DetailActions({required this.request});
+
+  final LeaveRequestModel request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBusy = ref.watch(leaveDownloadProvider).isLoading;
+    final notifier = ref.read(leaveDownloadProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (request.evidenceUrl != null)
+          OutlinedButton.icon(
+            onPressed: isBusy
+                ? null
+                : () => _handle(context, notifier.openEvidence(request)),
+            icon: const Icon(Icons.visibility_outlined),
+            label: const Text('Lihat Lampiran'),
+          ),
+        if (request.evidenceUrl != null && request.canDownloadPdf)
+          const SizedBox(height: 12),
+        if (request.canDownloadPdf)
+          FilledButton.icon(
+            onPressed: isBusy
+                ? null
+                : () => _handle(context, notifier.downloadPdf(request)),
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Unduh PDF'),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _handle(
+    BuildContext context,
+    Future<ApiResult<void>> action,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await action;
+    result.fold(
+      onSuccess: (_) {},
+      onFailure: (error) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      },
     );
   }
 }
@@ -178,11 +231,7 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _DetailRow({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;

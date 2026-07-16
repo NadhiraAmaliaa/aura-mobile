@@ -2,6 +2,7 @@ import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/leave/data/leave_providers.dart';
 import 'package:aura_mobile/features/leave/data/models/leave_models.dart';
+import 'package:aura_mobile/features/leave/data/models/leave_submission.dart';
 import 'package:aura_mobile/features/leave/data/repositories/leave_repository.dart';
 import 'package:aura_mobile/features/leave/presentation/providers/leave_list_notifier.dart';
 import 'package:aura_mobile/features/leave/presentation/providers/leave_list_state.dart';
@@ -54,6 +55,18 @@ class _FakeLeaveRepository implements LeaveRepository {
   @override
   Future<ApiResult<LeaveRequestModel>> detail(int id) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> openEvidence(LeaveRequestModel request) =>
+      throw UnimplementedError();
 }
 
 ProviderContainer _container(_FakeLeaveRepository repository) {
@@ -94,9 +107,9 @@ void main() {
       await container.read(leaveListProvider(LeaveListFilter.history).future);
       await notifier.loadMore();
 
-      final state = container.read(
-        leaveListProvider(LeaveListFilter.history),
-      ).value!;
+      final state = container
+          .read(leaveListProvider(LeaveListFilter.history))
+          .value!;
       expect(state.items.map((e) => e.id), [1, 2, 3, 4]);
       expect(state.hasMore, isFalse);
       expect(repository.listCalls.map((c) => c.page), [1, 2]);
@@ -143,9 +156,9 @@ void main() {
       await container.read(leaveListProvider(LeaveListFilter.history).future);
       await notifier.loadMore();
 
-      final state = container.read(
-        leaveListProvider(LeaveListFilter.history),
-      ).value!;
+      final state = container
+          .read(leaveListProvider(LeaveListFilter.history))
+          .value!;
       expect(state.items.map((e) => e.id), [1, 2]);
       expect(state.isLoadingMore, isFalse);
     });

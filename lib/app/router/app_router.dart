@@ -12,6 +12,7 @@ import '../../features/leave/presentation/providers/leave_list_state.dart';
 import '../../features/leave/presentation/screens/leave_detail_screen.dart';
 import '../../features/leave/presentation/screens/leave_landing_screen.dart';
 import '../../features/leave/presentation/screens/leave_list_screen.dart';
+import '../../features/leave/presentation/screens/leave_submit_screen.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import '../bootstrap/bootstrap_page.dart';
 import '../bootstrap/offline_bootstrap_provider.dart';
@@ -110,6 +111,11 @@ GoRouter router(Ref ref) {
         builder: (context, state) => const LeaveLandingScreen(),
         routes: [
           GoRoute(
+            path: RoutePaths.leaveSubmit,
+            name: RouteNames.leaveSubmit,
+            builder: (context, state) => const LeaveSubmitScreen(),
+          ),
+          GoRoute(
             path: RoutePaths.leavePending,
             name: RouteNames.leavePending,
             builder: (context, state) =>
@@ -124,9 +130,8 @@ GoRouter router(Ref ref) {
           GoRoute(
             path: RoutePaths.leaveDetail,
             name: RouteNames.leaveDetail,
-            builder: (context, state) => LeaveDetailScreen(
-              id: int.parse(state.pathParameters['id']!),
-            ),
+            builder: (context, state) =>
+                LeaveDetailScreen(id: int.parse(state.pathParameters['id']!)),
           ),
         ],
       ),

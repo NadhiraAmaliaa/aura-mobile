@@ -33,8 +33,7 @@ class LeaveListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(leaveListProvider(filter).notifier).refresh(),
+        onRefresh: () => ref.read(leaveListProvider(filter).notifier).refresh(),
         child: switch (list) {
           AsyncData(:final value) => _LeaveList(filter: filter, state: value),
           AsyncError(:final error) => _ErrorView(
@@ -232,7 +231,8 @@ class _EmptyView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final message = switch (filter) {
-      LeaveListFilter.pending => 'Belum ada pengajuan yang menunggu persetujuan.',
+      LeaveListFilter.pending =>
+        'Belum ada pengajuan yang menunggu persetujuan.',
       LeaveListFilter.history => 'Belum ada riwayat pengajuan.',
     };
     return ListView(

@@ -77,6 +77,16 @@ class RequestCancelledException extends AppException {
   }) : super(message, cause: cause);
 }
 
+/// A file was downloaded but could not be opened on the device (e.g. no app is
+/// installed that can handle its type). Distinct from transport failures so the
+/// UI can show a "no viewer" hint rather than a network error.
+class FileOpenException extends AppException {
+  const FileOpenException({
+    String message = 'The file could not be opened.',
+    Object? cause,
+  }) : super(message, cause: cause);
+}
+
 /// Anything not covered above.
 class UnknownException extends AppException {
   const UnknownException({

@@ -1,5 +1,6 @@
 import '../../../../core/network/api_result.dart';
 import '../models/leave_models.dart';
+import '../models/leave_submission.dart';
 
 /// Leave-request boundary consumed by the presentation layer.
 ///
@@ -18,4 +19,13 @@ abstract interface class LeaveRepository {
 
   /// Loads a single leave request owned by the intern.
   Future<ApiResult<LeaveRequestModel>> detail(int id);
+
+  /// Submits a new leave request (izin / sakit) and returns the created record.
+  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission);
+
+  /// Downloads the approved-request PDF and opens it with the device viewer.
+  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request);
+
+  /// Downloads the uploaded evidence attachment and opens it.
+  Future<ApiResult<void>> openEvidence(LeaveRequestModel request);
 }
