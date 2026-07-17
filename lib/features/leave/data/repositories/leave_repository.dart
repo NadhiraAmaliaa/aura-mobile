@@ -23,8 +23,9 @@ abstract interface class LeaveRepository {
   /// Submits a new leave request (izin / sakit) and returns the created record.
   Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission);
 
-  /// Downloads the approved-request PDF and opens it with the device viewer.
-  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request);
+  /// Fetches the approved-request PDF and opens the native print / "Save as
+  /// PDF" preview so the user prints or saves it through the system UI.
+  Future<ApiResult<void>> printApprovedPdf(LeaveRequestModel request);
 
   /// Downloads the uploaded evidence attachment and opens it.
   Future<ApiResult<void>> openEvidence(LeaveRequestModel request);

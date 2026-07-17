@@ -33,7 +33,9 @@ class _FakeLeaveRepository implements LeaveRepository {
   final List<LeaveSubmission> submissions = [];
 
   @override
-  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission) async {
+  Future<ApiResult<LeaveRequestModel>> submit(
+    LeaveSubmission submission,
+  ) async {
     submissions.add(submission);
     return _result;
   }
@@ -50,7 +52,7 @@ class _FakeLeaveRepository implements LeaveRepository {
       throw UnimplementedError();
 
   @override
-  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) =>
+  Future<ApiResult<void>> printApprovedPdf(LeaveRequestModel request) =>
       throw UnimplementedError();
 
   @override
@@ -67,19 +69,25 @@ ProviderContainer _container(_FakeLeaveRepository repository) {
 
 void main() {
   group('LeaveSubmitNotifier', () {
-    test('returns success and settles to data on a successful submit', () async {
-      final repository = _FakeLeaveRepository(const Success(_created));
-      final container = _container(repository);
-      await container.read(leaveSubmitProvider.future);
+    test(
+      'returns success and settles to data on a successful submit',
+      () async {
+        final repository = _FakeLeaveRepository(const Success(_created));
+        final container = _container(repository);
+        await container.read(leaveSubmitProvider.future);
 
-      final result = await container
-          .read(leaveSubmitProvider.notifier)
-          .submit(_submission);
+        final result = await container
+            .read(leaveSubmitProvider.notifier)
+            .submit(_submission);
 
-      expect(result, isA<Success<LeaveRequestModel>>());
-      expect(repository.submissions.single.reason, 'Keperluan keluarga');
-      expect(container.read(leaveSubmitProvider), const AsyncData<void>(null));
-    });
+        expect(result, isA<Success<LeaveRequestModel>>());
+        expect(repository.submissions.single.reason, 'Keperluan keluarga');
+        expect(
+          container.read(leaveSubmitProvider),
+          const AsyncData<void>(null),
+        );
+      },
+    );
 
     test('returns failure and settles to error when submit fails', () async {
       final repository = _FakeLeaveRepository(

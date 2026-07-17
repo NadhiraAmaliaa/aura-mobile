@@ -154,9 +154,10 @@ class _DetailBody extends StatelessWidget {
   }
 }
 
-/// File actions for a leave request: open the evidence attachment and download
-/// the approved-request PDF. Both are gated on a shared loading state so only
-/// one fetch runs at a time; failures surface via a snackbar.
+/// File actions for a leave request: open the evidence attachment and print
+/// the approved-request PDF (native print / "Save as PDF" preview). Both are
+/// gated on a shared loading state so only one fetch runs at a time; failures
+/// surface via a snackbar.
 class _DetailActions extends ConsumerWidget {
   const _DetailActions({required this.request});
 
@@ -184,9 +185,13 @@ class _DetailActions extends ConsumerWidget {
           FilledButton.icon(
             onPressed: isBusy
                 ? null
-                : () => _handle(context, notifier.downloadPdf(request)),
-            icon: const Icon(Icons.download_outlined),
-            label: const Text('Unduh PDF'),
+                : () => _handle(
+                    context,
+                    notifier.printPdf(request),
+                    preparingMessage: 'Menyiapkan PDF…',
+                  ),
+            icon: const Icon(Icons.print_outlined),
+            label: const Text('Cetak PDF'),
           ),
       ],
     );
@@ -194,10 +199,26 @@ class _DetailActions extends ConsumerWidget {
 
   Future<void> _handle(
     BuildContext context,
-    Future<ApiResult<void>> action,
-  ) async {
+    Future<ApiResult<void>> action, {
+    String? preparingMessage,
+  }) async {
     final messenger = ScaffoldMessenger.of(context);
+    // The approved-PDF render can take tens of seconds on a cold server; show a
+    // hint so the disabled button doesn't look frozen during the wait.
+    if (preparingMessage != null) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(preparingMessage),
+            duration: const Duration(minutes: 2),
+          ),
+        );
+    }
     final result = await action;
+    if (preparingMessage != null) {
+      messenger.hideCurrentSnackBar();
+    }
     result.fold(
       onSuccess: (_) {},
       onFailure: (error) {

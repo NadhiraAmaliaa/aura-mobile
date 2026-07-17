@@ -26,7 +26,9 @@ class LeaveSubmitNotifier extends _$LeaveSubmitNotifier {
   @override
   Future<void> build() async {}
 
-  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission) async {
+  Future<ApiResult<LeaveRequestModel>> submit(
+    LeaveSubmission submission,
+  ) async {
     state = const AsyncLoading();
     final result = await ref.read(leaveRepositoryProvider).submit(submission);
 

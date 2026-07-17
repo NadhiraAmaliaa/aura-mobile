@@ -33,7 +33,7 @@ class _FakeLeaveRepository implements LeaveRepository {
   int evidenceCalls = 0;
 
   @override
-  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) async {
+  Future<ApiResult<void>> printApprovedPdf(LeaveRequestModel request) async {
     pdfCalls++;
     return pdfResult;
   }
@@ -69,18 +69,21 @@ ProviderContainer _container(_FakeLeaveRepository repository) {
 
 void main() {
   group('LeaveDownloadNotifier', () {
-    test('downloadPdf returns success and settles to data', () async {
+    test('printPdf returns success and settles to data', () async {
       final repository = _FakeLeaveRepository();
       final container = _container(repository);
       await container.read(leaveDownloadProvider.future);
 
       final result = await container
           .read(leaveDownloadProvider.notifier)
-          .downloadPdf(_request);
+          .printPdf(_request);
 
       expect(result, isA<Success<void>>());
       expect(repository.pdfCalls, 1);
-      expect(container.read(leaveDownloadProvider), const AsyncData<void>(null));
+      expect(
+        container.read(leaveDownloadProvider),
+        const AsyncData<void>(null),
+      );
     });
 
     test('openEvidence returns failure and settles to error', () async {
@@ -96,13 +99,10 @@ void main() {
 
       expect(result, isA<Failure<void>>());
       expect(repository.evidenceCalls, 1);
-      expect(
-        container.read(leaveDownloadProvider),
-        isA<AsyncError<void>>(),
-      );
+      expect(container.read(leaveDownloadProvider), isA<AsyncError<void>>());
     });
 
-    test('downloadPdf returns failure and settles to error', () async {
+    test('printPdf returns failure and settles to error', () async {
       final repository = _FakeLeaveRepository(
         pdfResult: Failure(const FileOpenException()),
       );
@@ -111,14 +111,11 @@ void main() {
 
       final result = await container
           .read(leaveDownloadProvider.notifier)
-          .downloadPdf(_request);
+          .printPdf(_request);
 
       expect(result, isA<Failure<void>>());
       expect(repository.pdfCalls, 1);
-      expect(
-        container.read(leaveDownloadProvider),
-        isA<AsyncError<void>>(),
-      );
+      expect(container.read(leaveDownloadProvider), isA<AsyncError<void>>());
     });
   });
 }

@@ -49,7 +49,9 @@ class LeaveRepositoryImpl implements LeaveRepository {
   }
 
   @override
-  Future<ApiResult<LeaveRequestModel>> submit(LeaveSubmission submission) async {
+  Future<ApiResult<LeaveRequestModel>> submit(
+    LeaveSubmission submission,
+  ) async {
     try {
       final response = await _api.create(
         type: submission.type,
@@ -69,11 +71,11 @@ class LeaveRepositoryImpl implements LeaveRepository {
   }
 
   @override
-  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) async {
+  Future<ApiResult<void>> printApprovedPdf(LeaveRequestModel request) async {
     try {
-      await _downloads.downloadAndOpen(
+      await _downloads.printPdf(
         url: '/leave-requests/${request.id}/pdf',
-        fileName: 'pengajuan-${request.requestNumber}.pdf',
+        documentName: 'pengajuan-${request.requestNumber}.pdf',
       );
       return const Success<void>(null);
     } on AppException catch (e) {
@@ -120,4 +122,3 @@ class LeaveRepositoryImpl implements LeaveRepository {
     return 'lampiran-${request.requestNumber}$extension';
   }
 }
-

@@ -7,7 +7,7 @@ import '../../data/repositories/leave_repository.dart';
 
 part 'leave_download_notifier.g.dart';
 
-/// Drives the detail-screen file actions (open attachment / download PDF).
+/// Drives the detail-screen file actions (open attachment / print PDF).
 ///
 /// A single `AsyncValue<void>` state gates both actions so the buttons can
 /// disable while a fetch is in flight; each method returns the [ApiResult] so
@@ -18,8 +18,8 @@ class LeaveDownloadNotifier extends _$LeaveDownloadNotifier {
   @override
   Future<void> build() async {}
 
-  Future<ApiResult<void>> downloadPdf(LeaveRequestModel request) =>
-      _run((repository) => repository.downloadApprovedPdf(request));
+  Future<ApiResult<void>> printPdf(LeaveRequestModel request) =>
+      _run((repository) => repository.printApprovedPdf(request));
 
   Future<ApiResult<void>> openEvidence(LeaveRequestModel request) =>
       _run((repository) => repository.openEvidence(request));

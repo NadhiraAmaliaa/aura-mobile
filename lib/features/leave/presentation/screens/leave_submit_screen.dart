@@ -271,12 +271,7 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
     const typeGroup = XTypeGroup(
       label: 'Bukti',
       extensions: _allowedExtensions,
-      mimeTypes: [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-      ],
+      mimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
       uniformTypeIdentifiers: [
         'com.adobe.pdf',
         'public.jpeg',
@@ -312,7 +307,8 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
           : null;
     });
 
-    final manualValid = _startDateError == null &&
+    final manualValid =
+        _startDateError == null &&
         _endDateError == null &&
         _evidenceError == null;
     if (!formValid || !manualValid) return;
@@ -329,8 +325,9 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      final result =
-          await ref.read(leaveSubmitProvider.notifier).submit(submission);
+      final result = await ref
+          .read(leaveSubmitProvider.notifier)
+          .submit(submission);
       if (!mounted) return;
 
       result.fold(
@@ -470,8 +467,7 @@ class _EvidenceField extends StatelessWidget {
           children: [
             Text('Lampiran Bukti', style: theme.textTheme.labelLarge),
             const SizedBox(width: 4),
-            if (isRequired)
-              Text('*', style: TextStyle(color: scheme.error)),
+            if (isRequired) Text('*', style: TextStyle(color: scheme.error)),
           ],
         ),
         const SizedBox(height: 4),
@@ -528,7 +524,9 @@ class _FieldError extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8, left: 12),
       child: Text(
         message,
-        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.error,
+        ),
       ),
     );
   }

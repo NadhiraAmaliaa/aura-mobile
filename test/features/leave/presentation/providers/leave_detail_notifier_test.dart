@@ -43,7 +43,7 @@ class _FakeLeaveRepository implements LeaveRepository {
       throw UnimplementedError();
 
   @override
-  Future<ApiResult<void>> downloadApprovedPdf(LeaveRequestModel request) =>
+  Future<ApiResult<void>> printApprovedPdf(LeaveRequestModel request) =>
       throw UnimplementedError();
 
   @override

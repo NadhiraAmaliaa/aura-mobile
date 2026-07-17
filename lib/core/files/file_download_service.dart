@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../error/app_exception.dart';
@@ -40,6 +43,35 @@ class FileDownloadService {
     if (result.type != ResultType.done) {
       throw FileOpenException(message: _messageFor(result));
     }
+  }
+
+  /// Fetches [url] as raw bytes through the authenticated client and hands the
+  /// PDF to the platform print framework, which shows the native print /
+  /// "Save as PDF" preview. The app never persists the file — the user chooses
+  /// the destination (print or save) through the system UI.
+  ///
+  /// Throws a [DioException] on a transport failure.
+  Future<void> printPdf({
+    required String url,
+    required String documentName,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      url,
+      options: Options(
+        responseType: ResponseType.bytes,
+        // The server renders the PDF on demand (DomPDF + QR + logos), which can
+        // take far longer than a normal JSON call — the cold render alone is
+        // ~30s. Override the client's 15s default so a slow render doesn't trip
+        // a spurious "request timed out".
+        receiveTimeout: const Duration(seconds: 90),
+      ),
+    );
+    final bytes = Uint8List.fromList(response.data ?? const <int>[]);
+
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: documentName,
+    );
   }
 
   String _messageFor(OpenResult result) => switch (result.type) {
