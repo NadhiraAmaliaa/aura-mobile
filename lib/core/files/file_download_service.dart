@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -59,19 +60,73 @@ class FileDownloadService {
       url,
       options: Options(
         responseType: ResponseType.bytes,
-        // The server renders the PDF on demand (DomPDF + QR + logos), which can
-        // take far longer than a normal JSON call — the cold render alone is
-        // ~30s. Override the client's 15s default so a slow render doesn't trip
-        // a spurious "request timed out".
+        // The server renders the PDF on demand (DomPDF + QR + logos). It is fast
+        // once warm, but the first render after a cold start rebuilds the font
+        // cache and can take a few seconds — a generous ceiling over the
+        // client's 15s default keeps a slow render from tripping a spurious
+        // "request timed out".
         receiveTimeout: const Duration(seconds: 90),
       ),
     );
     final bytes = Uint8List.fromList(response.data ?? const <int>[]);
 
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: documentName,
-    );
+    await Printing.layoutPdf(onLayout: (_) async => bytes, name: documentName);
+  }
+
+  /// Posts [data] as JSON to [url] and hands the streamed PDF back to the
+  /// platform print framework (native print / "Save as PDF" preview).
+  ///
+  /// Used by stateless, on-demand documents that are rendered from form input
+  /// rather than a persisted record (e.g. Surat Pulang Cepat): the request body
+  /// carries the letter fields and the response body is the PDF itself. Nothing
+  /// is persisted locally — the user chooses the destination via the system UI.
+  ///
+  /// Throws a [DioException] on a transport failure.
+  Future<void> printPdfFromPost({
+    required String url,
+    required Map<String, dynamic> data,
+    required String documentName,
+  }) async {
+    try {
+      final response = await _dio.post<List<int>>(
+        url,
+        data: data,
+        options: Options(
+          responseType: ResponseType.bytes,
+          // Same rationale as [printPdf]: the server renders on demand, and a
+          // cold-start render can take a few seconds, so a generous receive
+          // ceiling over the client's 15s default avoids a spurious timeout.
+          receiveTimeout: const Duration(seconds: 90),
+        ),
+      );
+      final bytes = Uint8List.fromList(response.data ?? const <int>[]);
+
+      await Printing.layoutPdf(
+        onLayout: (_) async => bytes,
+        name: documentName,
+      );
+    } on DioException catch (e) {
+      // The success body is the PDF (bytes), but an error body (e.g. a 422 with
+      // field errors) is JSON. Because we requested bytes, that JSON arrives as
+      // raw bytes; decode it back so the shared error mapper can read the
+      // Laravel `message`/`errors` shape.
+      throw _decodeErrorBody(e);
+    }
+  }
+
+  /// Rewrites a bytes-typed error body back into decoded JSON so
+  /// [mapDioException] can extract Laravel's `message` and `errors`. Leaves the
+  /// exception untouched if there is no body or it is not valid JSON.
+  DioException _decodeErrorBody(DioException e) {
+    final data = e.response?.data;
+    if (data is List<int> && data.isNotEmpty) {
+      try {
+        e.response!.data = jsonDecode(utf8.decode(data));
+      } on FormatException {
+        // Not JSON (unexpected) — leave the raw body in place.
+      }
+    }
+    return e;
   }
 
   String _messageFor(OpenResult result) => switch (result.type) {

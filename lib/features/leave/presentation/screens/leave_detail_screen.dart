@@ -12,7 +12,7 @@ import '../widgets/leave_status_chip.dart';
 /// Read-only detail of a single leave request.
 ///
 /// Displays every field returned by the API plus the file actions added in
-/// Slice 4: viewing the evidence attachment and downloading the approved PDF.
+/// Slice 4: viewing the evidence attachment and printing the approved PDF.
 class LeaveDetailScreen extends ConsumerWidget {
   const LeaveDetailScreen({required this.id, super.key});
 
@@ -203,8 +203,8 @@ class _DetailActions extends ConsumerWidget {
     String? preparingMessage,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
-    // The approved-PDF render can take tens of seconds on a cold server; show a
-    // hint so the disabled button doesn't look frozen during the wait.
+    // The first PDF render after a cold server start can take a few seconds;
+    // show a hint so the disabled button doesn't look frozen during the wait.
     if (preparingMessage != null) {
       messenger
         ..hideCurrentSnackBar()

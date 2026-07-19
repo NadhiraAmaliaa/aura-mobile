@@ -8,7 +8,7 @@ part of 'leave_download_notifier.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Drives the detail-screen file actions (open attachment / download PDF).
+/// Drives the detail-screen file actions (open attachment / print PDF).
 ///
 /// A single `AsyncValue<void>` state gates both actions so the buttons can
 /// disable while a fetch is in flight; each method returns the [ApiResult] so
@@ -18,7 +18,7 @@ part of 'leave_download_notifier.dart';
 @ProviderFor(LeaveDownloadNotifier)
 final leaveDownloadProvider = LeaveDownloadNotifierProvider._();
 
-/// Drives the detail-screen file actions (open attachment / download PDF).
+/// Drives the detail-screen file actions (open attachment / print PDF).
 ///
 /// A single `AsyncValue<void>` state gates both actions so the buttons can
 /// disable while a fetch is in flight; each method returns the [ApiResult] so
@@ -26,7 +26,7 @@ final leaveDownloadProvider = LeaveDownloadNotifierProvider._();
 /// device viewer, so no success feedback is needed.
 final class LeaveDownloadNotifierProvider
     extends $AsyncNotifierProvider<LeaveDownloadNotifier, void> {
-  /// Drives the detail-screen file actions (open attachment / download PDF).
+  /// Drives the detail-screen file actions (open attachment / print PDF).
   ///
   /// A single `AsyncValue<void>` state gates both actions so the buttons can
   /// disable while a fetch is in flight; each method returns the [ApiResult] so
@@ -52,9 +52,9 @@ final class LeaveDownloadNotifierProvider
 }
 
 String _$leaveDownloadNotifierHash() =>
-    r'6fc92998ee587768c4b9a47a6d1129c495aa8c19';
+    r'aebd23d74d1d8d18189b8cb76b0d3eef8dd101aa';
 
-/// Drives the detail-screen file actions (open attachment / download PDF).
+/// Drives the detail-screen file actions (open attachment / print PDF).
 ///
 /// A single `AsyncValue<void>` state gates both actions so the buttons can
 /// disable while a fetch is in flight; each method returns the [ApiResult] so
