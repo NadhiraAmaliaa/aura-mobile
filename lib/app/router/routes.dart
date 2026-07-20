@@ -23,6 +23,11 @@ abstract final class RoutePaths {
   // Reserved for later slices (submission → S4, letter utility → S5).
   static const String leaveSubmit = 'submit';
   static const String leaveSurat = 'surat-pulang-cepat';
+
+  // Profile feature children (relative to `/profile`).
+  static const String profileInternship = 'informasi-magang';
+  static const String profileContact = 'kontak';
+  static const String profilePassword = 'ganti-password';
 }
 
 abstract final class RouteNames {
@@ -46,4 +51,9 @@ abstract final class RouteNames {
   // Reserved for later slices (submission → S4, letter utility → S5).
   static const String leaveSubmit = 'leave-submit';
   static const String leaveSurat = 'leave-surat';
+
+  // Profile feature children.
+  static const String profileInternship = 'profile-internship';
+  static const String profileContact = 'profile-contact';
+  static const String profilePassword = 'profile-password';
 }

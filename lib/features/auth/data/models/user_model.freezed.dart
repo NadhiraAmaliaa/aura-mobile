@@ -317,7 +317,7 @@ $InternModelCopyWith<$Res>? get intern {
 /// @nodoc
 mixin _$InternModel {
 
- int get id; String get nim; String? get phone; String get status;@JsonKey(name: 'start_date') String? get startDate;@JsonKey(name: 'end_date') String? get endDate;@JsonKey(name: 'division_id') int? get divisionId;
+ int get id; String get nim; String? get phone; String get status; String? get university; String? get major; String? get program; String? get division;@JsonKey(name: 'start_date') String? get startDate;@JsonKey(name: 'end_date') String? get endDate;@JsonKey(name: 'division_id') int? get divisionId;
 /// Create a copy of InternModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -330,16 +330,16 @@ $InternModelCopyWith<InternModel> get copyWith => _$InternModelCopyWithImpl<Inte
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InternModel&&(identical(other.id, id) || other.id == id)&&(identical(other.nim, nim) || other.nim == nim)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.status, status) || other.status == status)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.divisionId, divisionId) || other.divisionId == divisionId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InternModel&&(identical(other.id, id) || other.id == id)&&(identical(other.nim, nim) || other.nim == nim)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.status, status) || other.status == status)&&(identical(other.university, university) || other.university == university)&&(identical(other.major, major) || other.major == major)&&(identical(other.program, program) || other.program == program)&&(identical(other.division, division) || other.division == division)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.divisionId, divisionId) || other.divisionId == divisionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,nim,phone,status,startDate,endDate,divisionId);
+int get hashCode => Object.hash(runtimeType,id,nim,phone,status,university,major,program,division,startDate,endDate,divisionId);
 
 @override
 String toString() {
-  return 'InternModel(id: $id, nim: $nim, phone: $phone, status: $status, startDate: $startDate, endDate: $endDate, divisionId: $divisionId)';
+  return 'InternModel(id: $id, nim: $nim, phone: $phone, status: $status, university: $university, major: $major, program: $program, division: $division, startDate: $startDate, endDate: $endDate, divisionId: $divisionId)';
 }
 
 
@@ -350,7 +350,7 @@ abstract mixin class $InternModelCopyWith<$Res>  {
   factory $InternModelCopyWith(InternModel value, $Res Function(InternModel) _then) = _$InternModelCopyWithImpl;
 @useResult
 $Res call({
- int id, String nim, String? phone, String status,@JsonKey(name: 'start_date') String? startDate,@JsonKey(name: 'end_date') String? endDate,@JsonKey(name: 'division_id') int? divisionId
+ int id, String nim, String? phone, String status, String? university, String? major, String? program, String? division,@JsonKey(name: 'start_date') String? startDate,@JsonKey(name: 'end_date') String? endDate,@JsonKey(name: 'division_id') int? divisionId
 });
 
 
@@ -367,13 +367,17 @@ class _$InternModelCopyWithImpl<$Res>
 
 /// Create a copy of InternModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nim = null,Object? phone = freezed,Object? status = null,Object? startDate = freezed,Object? endDate = freezed,Object? divisionId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nim = null,Object? phone = freezed,Object? status = null,Object? university = freezed,Object? major = freezed,Object? program = freezed,Object? division = freezed,Object? startDate = freezed,Object? endDate = freezed,Object? divisionId = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,nim: null == nim ? _self.nim : nim // ignore: cast_nullable_to_non_nullable
 as String,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
+as String,university: freezed == university ? _self.university : university // ignore: cast_nullable_to_non_nullable
+as String?,major: freezed == major ? _self.major : major // ignore: cast_nullable_to_non_nullable
+as String?,program: freezed == program ? _self.program : program // ignore: cast_nullable_to_non_nullable
+as String?,division: freezed == division ? _self.division : division // ignore: cast_nullable_to_non_nullable
+as String?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as String?,endDate: freezed == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as String?,divisionId: freezed == divisionId ? _self.divisionId : divisionId // ignore: cast_nullable_to_non_nullable
 as int?,
@@ -461,10 +465,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String nim,  String? phone,  String status, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String nim,  String? phone,  String status,  String? university,  String? major,  String? program,  String? division, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _InternModel() when $default != null:
-return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_that.endDate,_that.divisionId);case _:
+return $default(_that.id,_that.nim,_that.phone,_that.status,_that.university,_that.major,_that.program,_that.division,_that.startDate,_that.endDate,_that.divisionId);case _:
   return orElse();
 
 }
@@ -482,10 +486,10 @@ return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String nim,  String? phone,  String status, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String nim,  String? phone,  String status,  String? university,  String? major,  String? program,  String? division, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)  $default,) {final _that = this;
 switch (_that) {
 case _InternModel():
-return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_that.endDate,_that.divisionId);case _:
+return $default(_that.id,_that.nim,_that.phone,_that.status,_that.university,_that.major,_that.program,_that.division,_that.startDate,_that.endDate,_that.divisionId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -502,10 +506,10 @@ return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String nim,  String? phone,  String status, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String nim,  String? phone,  String status,  String? university,  String? major,  String? program,  String? division, @JsonKey(name: 'start_date')  String? startDate, @JsonKey(name: 'end_date')  String? endDate, @JsonKey(name: 'division_id')  int? divisionId)?  $default,) {final _that = this;
 switch (_that) {
 case _InternModel() when $default != null:
-return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_that.endDate,_that.divisionId);case _:
+return $default(_that.id,_that.nim,_that.phone,_that.status,_that.university,_that.major,_that.program,_that.division,_that.startDate,_that.endDate,_that.divisionId);case _:
   return null;
 
 }
@@ -517,13 +521,17 @@ return $default(_that.id,_that.nim,_that.phone,_that.status,_that.startDate,_tha
 @JsonSerializable()
 
 class _InternModel implements InternModel {
-  const _InternModel({required this.id, required this.nim, this.phone, required this.status, @JsonKey(name: 'start_date') this.startDate, @JsonKey(name: 'end_date') this.endDate, @JsonKey(name: 'division_id') this.divisionId});
+  const _InternModel({required this.id, required this.nim, this.phone, required this.status, this.university, this.major, this.program, this.division, @JsonKey(name: 'start_date') this.startDate, @JsonKey(name: 'end_date') this.endDate, @JsonKey(name: 'division_id') this.divisionId});
   factory _InternModel.fromJson(Map<String, dynamic> json) => _$InternModelFromJson(json);
 
 @override final  int id;
 @override final  String nim;
 @override final  String? phone;
 @override final  String status;
+@override final  String? university;
+@override final  String? major;
+@override final  String? program;
+@override final  String? division;
 @override@JsonKey(name: 'start_date') final  String? startDate;
 @override@JsonKey(name: 'end_date') final  String? endDate;
 @override@JsonKey(name: 'division_id') final  int? divisionId;
@@ -541,16 +549,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InternModel&&(identical(other.id, id) || other.id == id)&&(identical(other.nim, nim) || other.nim == nim)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.status, status) || other.status == status)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.divisionId, divisionId) || other.divisionId == divisionId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InternModel&&(identical(other.id, id) || other.id == id)&&(identical(other.nim, nim) || other.nim == nim)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.status, status) || other.status == status)&&(identical(other.university, university) || other.university == university)&&(identical(other.major, major) || other.major == major)&&(identical(other.program, program) || other.program == program)&&(identical(other.division, division) || other.division == division)&&(identical(other.startDate, startDate) || other.startDate == startDate)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.divisionId, divisionId) || other.divisionId == divisionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,nim,phone,status,startDate,endDate,divisionId);
+int get hashCode => Object.hash(runtimeType,id,nim,phone,status,university,major,program,division,startDate,endDate,divisionId);
 
 @override
 String toString() {
-  return 'InternModel(id: $id, nim: $nim, phone: $phone, status: $status, startDate: $startDate, endDate: $endDate, divisionId: $divisionId)';
+  return 'InternModel(id: $id, nim: $nim, phone: $phone, status: $status, university: $university, major: $major, program: $program, division: $division, startDate: $startDate, endDate: $endDate, divisionId: $divisionId)';
 }
 
 
@@ -561,7 +569,7 @@ abstract mixin class _$InternModelCopyWith<$Res> implements $InternModelCopyWith
   factory _$InternModelCopyWith(_InternModel value, $Res Function(_InternModel) _then) = __$InternModelCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String nim, String? phone, String status,@JsonKey(name: 'start_date') String? startDate,@JsonKey(name: 'end_date') String? endDate,@JsonKey(name: 'division_id') int? divisionId
+ int id, String nim, String? phone, String status, String? university, String? major, String? program, String? division,@JsonKey(name: 'start_date') String? startDate,@JsonKey(name: 'end_date') String? endDate,@JsonKey(name: 'division_id') int? divisionId
 });
 
 
@@ -578,13 +586,17 @@ class __$InternModelCopyWithImpl<$Res>
 
 /// Create a copy of InternModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nim = null,Object? phone = freezed,Object? status = null,Object? startDate = freezed,Object? endDate = freezed,Object? divisionId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nim = null,Object? phone = freezed,Object? status = null,Object? university = freezed,Object? major = freezed,Object? program = freezed,Object? division = freezed,Object? startDate = freezed,Object? endDate = freezed,Object? divisionId = freezed,}) {
   return _then(_InternModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,nim: null == nim ? _self.nim : nim // ignore: cast_nullable_to_non_nullable
 as String,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
+as String,university: freezed == university ? _self.university : university // ignore: cast_nullable_to_non_nullable
+as String?,major: freezed == major ? _self.major : major // ignore: cast_nullable_to_non_nullable
+as String?,program: freezed == program ? _self.program : program // ignore: cast_nullable_to_non_nullable
+as String?,division: freezed == division ? _self.division : division // ignore: cast_nullable_to_non_nullable
+as String?,startDate: freezed == startDate ? _self.startDate : startDate // ignore: cast_nullable_to_non_nullable
 as String?,endDate: freezed == endDate ? _self.endDate : endDate // ignore: cast_nullable_to_non_nullable
 as String?,divisionId: freezed == divisionId ? _self.divisionId : divisionId // ignore: cast_nullable_to_non_nullable
 as int?,

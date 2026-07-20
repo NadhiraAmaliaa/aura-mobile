@@ -69,7 +69,7 @@ final class AuthNotifierProvider
   AuthNotifier create() => AuthNotifier();
 }
 
-String _$authNotifierHash() => r'8ead2ca059efa8fea938cce94b6ae29a61361de1';
+String _$authNotifierHash() => r'e3bd3ee800ad771af4b2cf47f853c89fbd0f001d';
 
 /// Global session ViewModel.
 ///

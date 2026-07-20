@@ -29,6 +29,14 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<UserModel?> cachedUser() async => null;
+
+  @override
+  Future<ApiResult<UserModel>> updateContact(ContactUpdateRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
+      throw UnimplementedError();
 }
 
 /// Returns an empty list synchronously so the dropdown resolves to its data

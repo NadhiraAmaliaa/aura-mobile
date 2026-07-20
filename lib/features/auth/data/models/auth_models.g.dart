@@ -35,3 +35,30 @@ Map<String, dynamic> _$LoginResponseToJson(_LoginResponse instance) =>
       'token_type': instance.tokenType,
       'user': instance.user,
     };
+
+_ContactUpdateRequest _$ContactUpdateRequestFromJson(
+  Map<String, dynamic> json,
+) => _ContactUpdateRequest(
+  email: json['email'] as String?,
+  phone: json['phone'] as String?,
+);
+
+Map<String, dynamic> _$ContactUpdateRequestToJson(
+  _ContactUpdateRequest instance,
+) => <String, dynamic>{'email': instance.email, 'phone': instance.phone};
+
+_PasswordUpdateRequest _$PasswordUpdateRequestFromJson(
+  Map<String, dynamic> json,
+) => _PasswordUpdateRequest(
+  currentPassword: json['current_password'] as String,
+  password: json['password'] as String,
+  passwordConfirmation: json['password_confirmation'] as String,
+);
+
+Map<String, dynamic> _$PasswordUpdateRequestToJson(
+  _PasswordUpdateRequest instance,
+) => <String, dynamic>{
+  'current_password': instance.currentPassword,
+  'password': instance.password,
+  'password_confirmation': instance.passwordConfirmation,
+};

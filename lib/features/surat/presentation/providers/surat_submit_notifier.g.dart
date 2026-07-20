@@ -15,6 +15,11 @@ part of 'surat_submit_notifier.dart';
 /// can react to success (the native print sheet is shown by the download
 /// service) or surface field-level validation errors.
 ///
+/// Generation is online-only (there is no offline queue): when the device has
+/// no connectivity, [generate] fails fast via the shared
+/// [offlineSubmissionGuard], returning the same Indonesian message as Leave
+/// Request so the offline experience is identical.
+///
 /// Kept alive because the screen only calls [generate] via
 /// `ref.read(...notifier)` and never watches this provider. As an auto-dispose
 /// provider it would be torn down during the awaited request, so writing
@@ -30,6 +35,11 @@ final suratSubmitProvider = SuratSubmitNotifierProvider._();
 /// can react to success (the native print sheet is shown by the download
 /// service) or surface field-level validation errors.
 ///
+/// Generation is online-only (there is no offline queue): when the device has
+/// no connectivity, [generate] fails fast via the shared
+/// [offlineSubmissionGuard], returning the same Indonesian message as Leave
+/// Request so the offline experience is identical.
+///
 /// Kept alive because the screen only calls [generate] via
 /// `ref.read(...notifier)` and never watches this provider. As an auto-dispose
 /// provider it would be torn down during the awaited request, so writing
@@ -42,6 +52,11 @@ final class SuratSubmitNotifierProvider
   /// can show a spinner; [generate] returns the full [ApiResult] so the screen
   /// can react to success (the native print sheet is shown by the download
   /// service) or surface field-level validation errors.
+  ///
+  /// Generation is online-only (there is no offline queue): when the device has
+  /// no connectivity, [generate] fails fast via the shared
+  /// [offlineSubmissionGuard], returning the same Indonesian message as Leave
+  /// Request so the offline experience is identical.
   ///
   /// Kept alive because the screen only calls [generate] via
   /// `ref.read(...notifier)` and never watches this provider. As an auto-dispose
@@ -67,7 +82,7 @@ final class SuratSubmitNotifierProvider
 }
 
 String _$suratSubmitNotifierHash() =>
-    r'8546c85bdeb8af917f84f87cf1affb94eaf3cffc';
+    r'b307366d710332794c0df06989574508f0dbc2fb';
 
 /// Drives the Surat Pulang Cepat form.
 ///
@@ -75,6 +90,11 @@ String _$suratSubmitNotifierHash() =>
 /// can show a spinner; [generate] returns the full [ApiResult] so the screen
 /// can react to success (the native print sheet is shown by the download
 /// service) or surface field-level validation errors.
+///
+/// Generation is online-only (there is no offline queue): when the device has
+/// no connectivity, [generate] fails fast via the shared
+/// [offlineSubmissionGuard], returning the same Indonesian message as Leave
+/// Request so the offline experience is identical.
 ///
 /// Kept alive because the screen only calls [generate] via
 /// `ref.read(...notifier)` and never watches this provider. As an auto-dispose

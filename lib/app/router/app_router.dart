@@ -13,6 +13,10 @@ import '../../features/leave/presentation/screens/leave_detail_screen.dart';
 import '../../features/leave/presentation/screens/leave_landing_screen.dart';
 import '../../features/leave/presentation/screens/leave_list_screen.dart';
 import '../../features/leave/presentation/screens/leave_submit_screen.dart';
+import '../../features/profile/presentation/screens/change_password_screen.dart';
+import '../../features/profile/presentation/screens/contact_edit_screen.dart';
+import '../../features/profile/presentation/screens/internship_info_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/surat/presentation/screens/surat_submit_screen.dart';
 import '../../shared/widgets/placeholder_screen.dart';
 import '../bootstrap/bootstrap_page.dart';
@@ -152,10 +156,24 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: RoutePaths.profile,
         name: RouteNames.profile,
-        builder: (context, state) => const PlaceholderScreen(
-          title: 'Profil',
-          icon: Icons.person_outline,
-        ),
+        builder: (context, state) => const ProfileScreen(),
+        routes: [
+          GoRoute(
+            path: RoutePaths.profileInternship,
+            name: RouteNames.profileInternship,
+            builder: (context, state) => const InternshipInfoScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.profileContact,
+            name: RouteNames.profileContact,
+            builder: (context, state) => const ContactEditScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.profilePassword,
+            name: RouteNames.profilePassword,
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+        ],
       ),
     ],
   );

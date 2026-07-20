@@ -60,6 +60,15 @@ class AuthNotifier extends _$AuthNotifier {
     state = AsyncData(AuthState.authenticated(user));
   }
 
+  /// Replace the authenticated user in place (e.g. after a profile edit) so
+  /// screens watching the session reflect the change immediately. No-op when
+  /// the session is not currently authenticated.
+  void updateUser(UserModel user) {
+    if (state.value is Authenticated) {
+      state = AsyncData(AuthState.authenticated(user));
+    }
+  }
+
   /// Revoke the token server-side (best effort) and drop to unauthenticated.
   Future<void> logout() async {
     await ref.read(authRepositoryProvider).logout();
