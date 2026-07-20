@@ -37,6 +37,14 @@ class _AuthedRepository implements AuthRepository {
   @override
   Future<ApiResult<UserModel>> login(LoginRequest request) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateContact(ContactUpdateRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
+      throw UnimplementedError();
 }
 
 /// An unauthenticated auth repository (no token) — the session stays on login.
@@ -57,6 +65,14 @@ class _AnonymousRepository implements AuthRepository {
 
   @override
   Future<ApiResult<UserModel>> login(LoginRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateContact(ContactUpdateRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
       throw UnimplementedError();
 }
 

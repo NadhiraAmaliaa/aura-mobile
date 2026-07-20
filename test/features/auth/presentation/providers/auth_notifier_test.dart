@@ -39,6 +39,14 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<ApiResult<UserModel>> login(LoginRequest request) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateContact(ContactUpdateRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
+      throw UnimplementedError();
 }
 
 const _user = UserModel(id: 7, name: 'Intern Satu', role: 'intern');

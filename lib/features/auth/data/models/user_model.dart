@@ -27,7 +27,9 @@ abstract class UserModel with _$UserModel {
 ///
 /// `status` mirrors the backend's effective status
 /// (`upcoming | active | completed | inactive`); dates are ISO `yyyy-MM-dd`
-/// strings as emitted by the API.
+/// strings as emitted by the API. [university], [major], [program] and
+/// [division] are the resolved master-data names surfaced for the profile's
+/// "Informasi Magang" screen.
 @freezed
 abstract class InternModel with _$InternModel {
   const factory InternModel({
@@ -35,6 +37,10 @@ abstract class InternModel with _$InternModel {
     required String nim,
     String? phone,
     required String status,
+    String? university,
+    String? major,
+    String? program,
+    String? division,
     @JsonKey(name: 'start_date') String? startDate,
     @JsonKey(name: 'end_date') String? endDate,
     @JsonKey(name: 'division_id') int? divisionId,

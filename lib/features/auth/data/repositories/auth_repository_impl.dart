@@ -49,6 +49,33 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<ApiResult<UserModel>> updateContact(
+    ContactUpdateRequest request,
+  ) async {
+    try {
+      final response = await _api.updateContact(request);
+      await _cacheUser(response.data);
+      return Success(response.data);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
+
+  @override
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) async {
+    try {
+      await _api.updatePassword(request);
+      return const Success<void>(null);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
+
+  @override
   Future<ApiResult<void>> logout() async {
     try {
       await _api.logout();

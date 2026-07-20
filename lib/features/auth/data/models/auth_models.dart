@@ -34,3 +34,35 @@ abstract class LoginResponse with _$LoginResponse {
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
       _$LoginResponseFromJson(json);
 }
+
+/// Request body for `PATCH /auth/profile/contact`.
+///
+/// Both fields are optional and only the account's contact details are
+/// editable: [email] lives on the user account, [phone] on the intern profile.
+/// Nulls are still sent so the backend can clear a value, matching the web
+/// profile form.
+@freezed
+abstract class ContactUpdateRequest with _$ContactUpdateRequest {
+  const factory ContactUpdateRequest({String? email, String? phone}) =
+      _ContactUpdateRequest;
+
+  factory ContactUpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$ContactUpdateRequestFromJson(json);
+}
+
+/// Request body for `PUT /auth/password`.
+///
+/// Mirrors the backend rules: the current password is verified and the new
+/// password must be confirmed.
+@freezed
+abstract class PasswordUpdateRequest with _$PasswordUpdateRequest {
+  const factory PasswordUpdateRequest({
+    @JsonKey(name: 'current_password') required String currentPassword,
+    required String password,
+    @JsonKey(name: 'password_confirmation')
+    required String passwordConfirmation,
+  }) = _PasswordUpdateRequest;
+
+  factory PasswordUpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$PasswordUpdateRequestFromJson(json);
+}

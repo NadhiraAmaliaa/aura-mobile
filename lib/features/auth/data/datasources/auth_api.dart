@@ -19,6 +19,12 @@ abstract class AuthApi {
   @GET('/auth/me')
   Future<UserEnvelope> me();
 
+  @PATCH('/auth/profile/contact')
+  Future<UserEnvelope> updateContact(@Body() ContactUpdateRequest body);
+
+  @PUT('/auth/password')
+  Future<void> updatePassword(@Body() PasswordUpdateRequest body);
+
   @POST('/auth/logout')
   Future<void> logout();
 }

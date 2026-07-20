@@ -570,4 +570,539 @@ $UserModelCopyWith<$Res> get user {
 }
 }
 
+
+/// @nodoc
+mixin _$ContactUpdateRequest {
+
+ String? get email; String? get phone;
+/// Create a copy of ContactUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ContactUpdateRequestCopyWith<ContactUpdateRequest> get copyWith => _$ContactUpdateRequestCopyWithImpl<ContactUpdateRequest>(this as ContactUpdateRequest, _$identity);
+
+  /// Serializes this ContactUpdateRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContactUpdateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,email,phone);
+
+@override
+String toString() {
+  return 'ContactUpdateRequest(email: $email, phone: $phone)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ContactUpdateRequestCopyWith<$Res>  {
+  factory $ContactUpdateRequestCopyWith(ContactUpdateRequest value, $Res Function(ContactUpdateRequest) _then) = _$ContactUpdateRequestCopyWithImpl;
+@useResult
+$Res call({
+ String? email, String? phone
+});
+
+
+
+
+}
+/// @nodoc
+class _$ContactUpdateRequestCopyWithImpl<$Res>
+    implements $ContactUpdateRequestCopyWith<$Res> {
+  _$ContactUpdateRequestCopyWithImpl(this._self, this._then);
+
+  final ContactUpdateRequest _self;
+  final $Res Function(ContactUpdateRequest) _then;
+
+/// Create a copy of ContactUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? email = freezed,Object? phone = freezed,}) {
+  return _then(_self.copyWith(
+email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String?,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ContactUpdateRequest].
+extension ContactUpdateRequestPatterns on ContactUpdateRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ContactUpdateRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ContactUpdateRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ContactUpdateRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _ContactUpdateRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ContactUpdateRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ContactUpdateRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? email,  String? phone)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ContactUpdateRequest() when $default != null:
+return $default(_that.email,_that.phone);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? email,  String? phone)  $default,) {final _that = this;
+switch (_that) {
+case _ContactUpdateRequest():
+return $default(_that.email,_that.phone);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? email,  String? phone)?  $default,) {final _that = this;
+switch (_that) {
+case _ContactUpdateRequest() when $default != null:
+return $default(_that.email,_that.phone);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ContactUpdateRequest implements ContactUpdateRequest {
+  const _ContactUpdateRequest({this.email, this.phone});
+  factory _ContactUpdateRequest.fromJson(Map<String, dynamic> json) => _$ContactUpdateRequestFromJson(json);
+
+@override final  String? email;
+@override final  String? phone;
+
+/// Create a copy of ContactUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ContactUpdateRequestCopyWith<_ContactUpdateRequest> get copyWith => __$ContactUpdateRequestCopyWithImpl<_ContactUpdateRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ContactUpdateRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContactUpdateRequest&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,email,phone);
+
+@override
+String toString() {
+  return 'ContactUpdateRequest(email: $email, phone: $phone)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ContactUpdateRequestCopyWith<$Res> implements $ContactUpdateRequestCopyWith<$Res> {
+  factory _$ContactUpdateRequestCopyWith(_ContactUpdateRequest value, $Res Function(_ContactUpdateRequest) _then) = __$ContactUpdateRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String? email, String? phone
+});
+
+
+
+
+}
+/// @nodoc
+class __$ContactUpdateRequestCopyWithImpl<$Res>
+    implements _$ContactUpdateRequestCopyWith<$Res> {
+  __$ContactUpdateRequestCopyWithImpl(this._self, this._then);
+
+  final _ContactUpdateRequest _self;
+  final $Res Function(_ContactUpdateRequest) _then;
+
+/// Create a copy of ContactUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? email = freezed,Object? phone = freezed,}) {
+  return _then(_ContactUpdateRequest(
+email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String?,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$PasswordUpdateRequest {
+
+@JsonKey(name: 'current_password') String get currentPassword; String get password;@JsonKey(name: 'password_confirmation') String get passwordConfirmation;
+/// Create a copy of PasswordUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PasswordUpdateRequestCopyWith<PasswordUpdateRequest> get copyWith => _$PasswordUpdateRequestCopyWithImpl<PasswordUpdateRequest>(this as PasswordUpdateRequest, _$identity);
+
+  /// Serializes this PasswordUpdateRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PasswordUpdateRequest&&(identical(other.currentPassword, currentPassword) || other.currentPassword == currentPassword)&&(identical(other.password, password) || other.password == password)&&(identical(other.passwordConfirmation, passwordConfirmation) || other.passwordConfirmation == passwordConfirmation));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,currentPassword,password,passwordConfirmation);
+
+@override
+String toString() {
+  return 'PasswordUpdateRequest(currentPassword: $currentPassword, password: $password, passwordConfirmation: $passwordConfirmation)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PasswordUpdateRequestCopyWith<$Res>  {
+  factory $PasswordUpdateRequestCopyWith(PasswordUpdateRequest value, $Res Function(PasswordUpdateRequest) _then) = _$PasswordUpdateRequestCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: 'current_password') String currentPassword, String password,@JsonKey(name: 'password_confirmation') String passwordConfirmation
+});
+
+
+
+
+}
+/// @nodoc
+class _$PasswordUpdateRequestCopyWithImpl<$Res>
+    implements $PasswordUpdateRequestCopyWith<$Res> {
+  _$PasswordUpdateRequestCopyWithImpl(this._self, this._then);
+
+  final PasswordUpdateRequest _self;
+  final $Res Function(PasswordUpdateRequest) _then;
+
+/// Create a copy of PasswordUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? currentPassword = null,Object? password = null,Object? passwordConfirmation = null,}) {
+  return _then(_self.copyWith(
+currentPassword: null == currentPassword ? _self.currentPassword : currentPassword // ignore: cast_nullable_to_non_nullable
+as String,password: null == password ? _self.password : password // ignore: cast_nullable_to_non_nullable
+as String,passwordConfirmation: null == passwordConfirmation ? _self.passwordConfirmation : passwordConfirmation // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [PasswordUpdateRequest].
+extension PasswordUpdateRequestPatterns on PasswordUpdateRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PasswordUpdateRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PasswordUpdateRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PasswordUpdateRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'current_password')  String currentPassword,  String password, @JsonKey(name: 'password_confirmation')  String passwordConfirmation)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest() when $default != null:
+return $default(_that.currentPassword,_that.password,_that.passwordConfirmation);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'current_password')  String currentPassword,  String password, @JsonKey(name: 'password_confirmation')  String passwordConfirmation)  $default,) {final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest():
+return $default(_that.currentPassword,_that.password,_that.passwordConfirmation);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'current_password')  String currentPassword,  String password, @JsonKey(name: 'password_confirmation')  String passwordConfirmation)?  $default,) {final _that = this;
+switch (_that) {
+case _PasswordUpdateRequest() when $default != null:
+return $default(_that.currentPassword,_that.password,_that.passwordConfirmation);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _PasswordUpdateRequest implements PasswordUpdateRequest {
+  const _PasswordUpdateRequest({@JsonKey(name: 'current_password') required this.currentPassword, required this.password, @JsonKey(name: 'password_confirmation') required this.passwordConfirmation});
+  factory _PasswordUpdateRequest.fromJson(Map<String, dynamic> json) => _$PasswordUpdateRequestFromJson(json);
+
+@override@JsonKey(name: 'current_password') final  String currentPassword;
+@override final  String password;
+@override@JsonKey(name: 'password_confirmation') final  String passwordConfirmation;
+
+/// Create a copy of PasswordUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PasswordUpdateRequestCopyWith<_PasswordUpdateRequest> get copyWith => __$PasswordUpdateRequestCopyWithImpl<_PasswordUpdateRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PasswordUpdateRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PasswordUpdateRequest&&(identical(other.currentPassword, currentPassword) || other.currentPassword == currentPassword)&&(identical(other.password, password) || other.password == password)&&(identical(other.passwordConfirmation, passwordConfirmation) || other.passwordConfirmation == passwordConfirmation));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,currentPassword,password,passwordConfirmation);
+
+@override
+String toString() {
+  return 'PasswordUpdateRequest(currentPassword: $currentPassword, password: $password, passwordConfirmation: $passwordConfirmation)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PasswordUpdateRequestCopyWith<$Res> implements $PasswordUpdateRequestCopyWith<$Res> {
+  factory _$PasswordUpdateRequestCopyWith(_PasswordUpdateRequest value, $Res Function(_PasswordUpdateRequest) _then) = __$PasswordUpdateRequestCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: 'current_password') String currentPassword, String password,@JsonKey(name: 'password_confirmation') String passwordConfirmation
+});
+
+
+
+
+}
+/// @nodoc
+class __$PasswordUpdateRequestCopyWithImpl<$Res>
+    implements _$PasswordUpdateRequestCopyWith<$Res> {
+  __$PasswordUpdateRequestCopyWithImpl(this._self, this._then);
+
+  final _PasswordUpdateRequest _self;
+  final $Res Function(_PasswordUpdateRequest) _then;
+
+/// Create a copy of PasswordUpdateRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? currentPassword = null,Object? password = null,Object? passwordConfirmation = null,}) {
+  return _then(_PasswordUpdateRequest(
+currentPassword: null == currentPassword ? _self.currentPassword : currentPassword // ignore: cast_nullable_to_non_nullable
+as String,password: null == password ? _self.password : password // ignore: cast_nullable_to_non_nullable
+as String,passwordConfirmation: null == passwordConfirmation ? _self.passwordConfirmation : passwordConfirmation // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
 // dart format on

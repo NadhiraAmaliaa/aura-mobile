@@ -17,6 +17,13 @@ abstract interface class AuthRepository {
   /// Returns the currently authenticated user (used on cold-start restore).
   Future<ApiResult<UserModel>> me();
 
+  /// Updates the intern's contact details (email + phone) and re-caches the
+  /// returned user on success.
+  Future<ApiResult<UserModel>> updateContact(ContactUpdateRequest request);
+
+  /// Changes the account password. Returns void on success.
+  Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request);
+
   /// Revokes the server token and clears the local token (best effort).
   Future<ApiResult<void>> logout();
 
