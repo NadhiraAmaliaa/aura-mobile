@@ -15,6 +15,14 @@ part of 'leave_list_notifier.dart';
 /// screen renders loading / error / data exhaustively. Subsequent pages are
 /// appended via [loadMore], which keeps the current data visible and toggles
 /// [LeaveListState.isLoadingMore].
+///
+/// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+/// current user is shown immediately when present; when online, the latest data
+/// is fetched in the background and swapped in on success, replacing the cache.
+/// When offline with a cached snapshot, it stays on screen flagged as offline
+/// (a non-blocking notice). When offline with no cache, an offline error is
+/// surfaced. Cached data is a read-only snapshot — never authoritative for
+/// submissions (those stay online-only).
 
 @ProviderFor(LeaveListNotifier)
 final leaveListProvider = LeaveListNotifierFamily._();
@@ -26,6 +34,14 @@ final leaveListProvider = LeaveListNotifierFamily._();
 /// screen renders loading / error / data exhaustively. Subsequent pages are
 /// appended via [loadMore], which keeps the current data visible and toggles
 /// [LeaveListState.isLoadingMore].
+///
+/// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+/// current user is shown immediately when present; when online, the latest data
+/// is fetched in the background and swapped in on success, replacing the cache.
+/// When offline with a cached snapshot, it stays on screen flagged as offline
+/// (a non-blocking notice). When offline with no cache, an offline error is
+/// surfaced. Cached data is a read-only snapshot — never authoritative for
+/// submissions (those stay online-only).
 final class LeaveListNotifierProvider
     extends $AsyncNotifierProvider<LeaveListNotifier, LeaveListState> {
   /// Loads and paginates a section of the intern's leave requests.
@@ -35,6 +51,14 @@ final class LeaveListNotifierProvider
   /// screen renders loading / error / data exhaustively. Subsequent pages are
   /// appended via [loadMore], which keeps the current data visible and toggles
   /// [LeaveListState.isLoadingMore].
+  ///
+  /// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+  /// current user is shown immediately when present; when online, the latest data
+  /// is fetched in the background and swapped in on success, replacing the cache.
+  /// When offline with a cached snapshot, it stays on screen flagged as offline
+  /// (a non-blocking notice). When offline with no cache, an offline error is
+  /// surfaced. Cached data is a read-only snapshot — never authoritative for
+  /// submissions (those stay online-only).
   LeaveListNotifierProvider._({
     required LeaveListNotifierFamily super.from,
     required LeaveListFilter super.argument,
@@ -71,7 +95,7 @@ final class LeaveListNotifierProvider
   }
 }
 
-String _$leaveListNotifierHash() => r'e8c1d3662f11b43b32d54bb1b3c941f3eb47fced';
+String _$leaveListNotifierHash() => r'cdd4ad3fd3d2c4750d1f89a101ad053bb452c3f2';
 
 /// Loads and paginates a section of the intern's leave requests.
 ///
@@ -80,6 +104,14 @@ String _$leaveListNotifierHash() => r'e8c1d3662f11b43b32d54bb1b3c941f3eb47fced';
 /// screen renders loading / error / data exhaustively. Subsequent pages are
 /// appended via [loadMore], which keeps the current data visible and toggles
 /// [LeaveListState.isLoadingMore].
+///
+/// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+/// current user is shown immediately when present; when online, the latest data
+/// is fetched in the background and swapped in on success, replacing the cache.
+/// When offline with a cached snapshot, it stays on screen flagged as offline
+/// (a non-blocking notice). When offline with no cache, an offline error is
+/// surfaced. Cached data is a read-only snapshot — never authoritative for
+/// submissions (those stay online-only).
 
 final class LeaveListNotifierFamily extends $Family
     with
@@ -106,6 +138,14 @@ final class LeaveListNotifierFamily extends $Family
   /// screen renders loading / error / data exhaustively. Subsequent pages are
   /// appended via [loadMore], which keeps the current data visible and toggles
   /// [LeaveListState.isLoadingMore].
+  ///
+  /// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+  /// current user is shown immediately when present; when online, the latest data
+  /// is fetched in the background and swapped in on success, replacing the cache.
+  /// When offline with a cached snapshot, it stays on screen flagged as offline
+  /// (a non-blocking notice). When offline with no cache, an offline error is
+  /// surfaced. Cached data is a read-only snapshot — never authoritative for
+  /// submissions (those stay online-only).
 
   LeaveListNotifierProvider call(LeaveListFilter filter) =>
       LeaveListNotifierProvider._(argument: filter, from: this);
@@ -121,6 +161,14 @@ final class LeaveListNotifierFamily extends $Family
 /// screen renders loading / error / data exhaustively. Subsequent pages are
 /// appended via [loadMore], which keeps the current data visible and toggles
 /// [LeaveListState.isLoadingMore].
+///
+/// Cache-first / network-refresh: on open, a cached first-page snapshot for the
+/// current user is shown immediately when present; when online, the latest data
+/// is fetched in the background and swapped in on success, replacing the cache.
+/// When offline with a cached snapshot, it stays on screen flagged as offline
+/// (a non-blocking notice). When offline with no cache, an offline error is
+/// surfaced. Cached data is a read-only snapshot — never authoritative for
+/// submissions (those stay online-only).
 
 abstract class _$LeaveListNotifier extends $AsyncNotifier<LeaveListState> {
   late final _$args = ref.$arg as LeaveListFilter;

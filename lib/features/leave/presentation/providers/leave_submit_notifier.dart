@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
+import '../../../../core/network/connectivity_providers.dart';
 import '../../data/leave_providers.dart';
 import '../../data/models/leave_models.dart';
 import '../../data/models/leave_submission.dart';
@@ -16,6 +18,11 @@ part 'leave_submit_notifier.g.dart';
 /// react to the created record or surface field-level validation errors. On
 /// success the pending list is invalidated so the new request appears.
 ///
+/// Submission is online-only (there is no offline queue): when the device has
+/// no connectivity, [submit] fails fast with a clear Indonesian message instead
+/// of enqueuing the request, because a leave request must reach the backend to
+/// be recorded.
+///
 /// Kept alive because the screen only calls [submit] via `ref.read(...notifier)`
 /// and never watches this provider. As an auto-dispose provider it would be
 /// torn down during the awaited request, so writing `state` (or invalidating
@@ -30,6 +37,23 @@ class LeaveSubmitNotifier extends _$LeaveSubmitNotifier {
     LeaveSubmission submission,
   ) async {
     state = const AsyncLoading();
+
+    // Online-only: don't attempt (and time out) a doomed request offline.
+    final online = hasConnectivity(
+      await ref.read(connectivityProvider).checkConnectivity(),
+    );
+    if (!online) {
+      final failure = Failure<LeaveRequestModel>(
+        const NetworkException(
+          message:
+              'Pengajuan tidak dapat dikirim karena Anda sedang offline. '
+              'Sambungkan ke internet lalu coba lagi.',
+        ),
+      );
+      state = AsyncError(failure.exception, StackTrace.current);
+      return failure;
+    }
+
     final result = await ref.read(leaveRepositoryProvider).submit(submission);
 
     state = result.fold(

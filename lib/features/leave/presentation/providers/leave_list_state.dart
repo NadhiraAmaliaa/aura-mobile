@@ -28,12 +28,19 @@ enum LeaveListFilter {
 /// (loading) on the notifier; this state carries the records fetched so far
 /// plus the pagination cursor. [isLoadingMore] drives the footer spinner while
 /// the next page is appended.
+///
+/// [isFromCache] marks a snapshot served from the on-device read cache rather
+/// than a fresh network response; [isOffline] additionally marks that the
+/// device had no connectivity, so the screen can show a non-blocking "showing
+/// last saved data" notice. Both are false for a live network result.
 @freezed
 abstract class LeaveListState with _$LeaveListState {
   const factory LeaveListState({
     @Default(<LeaveRequestModel>[]) List<LeaveRequestModel> items,
     LeavePaginationModel? pagination,
     @Default(false) bool isLoadingMore,
+    @Default(false) bool isFromCache,
+    @Default(false) bool isOffline,
   }) = _LeaveListState;
 
   const LeaveListState._();

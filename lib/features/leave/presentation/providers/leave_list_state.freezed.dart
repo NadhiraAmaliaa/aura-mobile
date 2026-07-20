@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LeaveListState {
 
- List<LeaveRequestModel> get items; LeavePaginationModel? get pagination; bool get isLoadingMore;
+ List<LeaveRequestModel> get items; LeavePaginationModel? get pagination; bool get isLoadingMore; bool get isFromCache; bool get isOffline;
 /// Create a copy of LeaveListState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $LeaveListStateCopyWith<LeaveListState> get copyWith => _$LeaveListStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LeaveListState&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LeaveListState&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore)&&(identical(other.isFromCache, isFromCache) || other.isFromCache == isFromCache)&&(identical(other.isOffline, isOffline) || other.isOffline == isOffline));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),pagination,isLoadingMore);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),pagination,isLoadingMore,isFromCache,isOffline);
 
 @override
 String toString() {
-  return 'LeaveListState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore)';
+  return 'LeaveListState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore, isFromCache: $isFromCache, isOffline: $isOffline)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $LeaveListStateCopyWith<$Res>  {
   factory $LeaveListStateCopyWith(LeaveListState value, $Res Function(LeaveListState) _then) = _$LeaveListStateCopyWithImpl;
 @useResult
 $Res call({
- List<LeaveRequestModel> items, LeavePaginationModel? pagination, bool isLoadingMore
+ List<LeaveRequestModel> items, LeavePaginationModel? pagination, bool isLoadingMore, bool isFromCache, bool isOffline
 });
 
 
@@ -62,11 +62,13 @@ class _$LeaveListStateCopyWithImpl<$Res>
 
 /// Create a copy of LeaveListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,Object? isFromCache = null,Object? isOffline = null,}) {
   return _then(_self.copyWith(
 items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<LeaveRequestModel>,pagination: freezed == pagination ? _self.pagination : pagination // ignore: cast_nullable_to_non_nullable
 as LeavePaginationModel?,isLoadingMore: null == isLoadingMore ? _self.isLoadingMore : isLoadingMore // ignore: cast_nullable_to_non_nullable
+as bool,isFromCache: null == isFromCache ? _self.isFromCache : isFromCache // ignore: cast_nullable_to_non_nullable
+as bool,isOffline: null == isOffline ? _self.isOffline : isOffline // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -164,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore,  bool isFromCache,  bool isOffline)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LeaveListState() when $default != null:
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.isFromCache,_that.isOffline);case _:
   return orElse();
 
 }
@@ -185,10 +187,10 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore,  bool isFromCache,  bool isOffline)  $default,) {final _that = this;
 switch (_that) {
 case _LeaveListState():
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.isFromCache,_that.isOffline);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +207,10 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<LeaveRequestModel> items,  LeavePaginationModel? pagination,  bool isLoadingMore,  bool isFromCache,  bool isOffline)?  $default,) {final _that = this;
 switch (_that) {
 case _LeaveListState() when $default != null:
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.isFromCache,_that.isOffline);case _:
   return null;
 
 }
@@ -220,7 +222,7 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 
 
 class _LeaveListState extends LeaveListState {
-  const _LeaveListState({final  List<LeaveRequestModel> items = const <LeaveRequestModel>[], this.pagination, this.isLoadingMore = false}): _items = items,super._();
+  const _LeaveListState({final  List<LeaveRequestModel> items = const <LeaveRequestModel>[], this.pagination, this.isLoadingMore = false, this.isFromCache = false, this.isOffline = false}): _items = items,super._();
   
 
  final  List<LeaveRequestModel> _items;
@@ -232,6 +234,8 @@ class _LeaveListState extends LeaveListState {
 
 @override final  LeavePaginationModel? pagination;
 @override@JsonKey() final  bool isLoadingMore;
+@override@JsonKey() final  bool isFromCache;
+@override@JsonKey() final  bool isOffline;
 
 /// Create a copy of LeaveListState
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +247,16 @@ _$LeaveListStateCopyWith<_LeaveListState> get copyWith => __$LeaveListStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LeaveListState&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LeaveListState&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore)&&(identical(other.isFromCache, isFromCache) || other.isFromCache == isFromCache)&&(identical(other.isOffline, isOffline) || other.isOffline == isOffline));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),pagination,isLoadingMore);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),pagination,isLoadingMore,isFromCache,isOffline);
 
 @override
 String toString() {
-  return 'LeaveListState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore)';
+  return 'LeaveListState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore, isFromCache: $isFromCache, isOffline: $isOffline)';
 }
 
 
@@ -263,7 +267,7 @@ abstract mixin class _$LeaveListStateCopyWith<$Res> implements $LeaveListStateCo
   factory _$LeaveListStateCopyWith(_LeaveListState value, $Res Function(_LeaveListState) _then) = __$LeaveListStateCopyWithImpl;
 @override @useResult
 $Res call({
- List<LeaveRequestModel> items, LeavePaginationModel? pagination, bool isLoadingMore
+ List<LeaveRequestModel> items, LeavePaginationModel? pagination, bool isLoadingMore, bool isFromCache, bool isOffline
 });
 
 
@@ -280,11 +284,13 @@ class __$LeaveListStateCopyWithImpl<$Res>
 
 /// Create a copy of LeaveListState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,Object? isFromCache = null,Object? isOffline = null,}) {
   return _then(_LeaveListState(
 items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<LeaveRequestModel>,pagination: freezed == pagination ? _self.pagination : pagination // ignore: cast_nullable_to_non_nullable
 as LeavePaginationModel?,isLoadingMore: null == isLoadingMore ? _self.isLoadingMore : isLoadingMore // ignore: cast_nullable_to_non_nullable
+as bool,isFromCache: null == isFromCache ? _self.isFromCache : isFromCache // ignore: cast_nullable_to_non_nullable
+as bool,isOffline: null == isOffline ? _self.isOffline : isOffline // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

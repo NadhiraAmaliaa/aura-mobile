@@ -74,19 +74,60 @@ class _LeaveList extends ConsumerWidget {
         }
         return false;
       },
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: itemCount,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          if (index >= state.items.length) {
-            return _ListFooter(
-              isLoadingMore: state.isLoadingMore,
-              hasMore: state.hasMore,
-            );
-          }
-          return _LeaveTile(request: state.items[index]);
-        },
+      child: Column(
+        children: [
+          if (state.isOffline) const _OfflineBanner(),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: itemCount,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                if (index >= state.items.length) {
+                  return _ListFooter(
+                    isLoadingMore: state.isLoadingMore,
+                    hasMore: state.hasMore,
+                  );
+                }
+                return _LeaveTile(request: state.items[index]);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Non-blocking notice shown above a cached list while the device is offline.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      width: double.infinity,
+      color: scheme.secondaryContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 18,
+            color: scheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Anda sedang offline. Menampilkan data terakhir yang tersimpan.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

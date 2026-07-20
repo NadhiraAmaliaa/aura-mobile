@@ -15,6 +15,11 @@ part of 'leave_submit_notifier.dart';
 /// react to the created record or surface field-level validation errors. On
 /// success the pending list is invalidated so the new request appears.
 ///
+/// Submission is online-only (there is no offline queue): when the device has
+/// no connectivity, [submit] fails fast with a clear Indonesian message instead
+/// of enqueuing the request, because a leave request must reach the backend to
+/// be recorded.
+///
 /// Kept alive because the screen only calls [submit] via `ref.read(...notifier)`
 /// and never watches this provider. As an auto-dispose provider it would be
 /// torn down during the awaited request, so writing `state` (or invalidating
@@ -31,6 +36,11 @@ final leaveSubmitProvider = LeaveSubmitNotifierProvider._();
 /// react to the created record or surface field-level validation errors. On
 /// success the pending list is invalidated so the new request appears.
 ///
+/// Submission is online-only (there is no offline queue): when the device has
+/// no connectivity, [submit] fails fast with a clear Indonesian message instead
+/// of enqueuing the request, because a leave request must reach the backend to
+/// be recorded.
+///
 /// Kept alive because the screen only calls [submit] via `ref.read(...notifier)`
 /// and never watches this provider. As an auto-dispose provider it would be
 /// torn down during the awaited request, so writing `state` (or invalidating
@@ -44,6 +54,11 @@ final class LeaveSubmitNotifierProvider
   /// can show a spinner; [submit] returns the full [ApiResult] so the screen can
   /// react to the created record or surface field-level validation errors. On
   /// success the pending list is invalidated so the new request appears.
+  ///
+  /// Submission is online-only (there is no offline queue): when the device has
+  /// no connectivity, [submit] fails fast with a clear Indonesian message instead
+  /// of enqueuing the request, because a leave request must reach the backend to
+  /// be recorded.
   ///
   /// Kept alive because the screen only calls [submit] via `ref.read(...notifier)`
   /// and never watches this provider. As an auto-dispose provider it would be
@@ -70,7 +85,7 @@ final class LeaveSubmitNotifierProvider
 }
 
 String _$leaveSubmitNotifierHash() =>
-    r'df5053167b47e4c466a8153dd07820872c51a44d';
+    r'a83ae871e6619ae133b05967f6cd7fa0b1782301';
 
 /// Drives the leave submission form.
 ///
@@ -78,6 +93,11 @@ String _$leaveSubmitNotifierHash() =>
 /// can show a spinner; [submit] returns the full [ApiResult] so the screen can
 /// react to the created record or surface field-level validation errors. On
 /// success the pending list is invalidated so the new request appears.
+///
+/// Submission is online-only (there is no offline queue): when the device has
+/// no connectivity, [submit] fails fast with a clear Indonesian message instead
+/// of enqueuing the request, because a leave request must reach the backend to
+/// be recorded.
 ///
 /// Kept alive because the screen only calls [submit] via `ref.read(...notifier)`
 /// and never watches this provider. As an auto-dispose provider it would be

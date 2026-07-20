@@ -13,7 +13,7 @@ import 'package:sqflite/sqflite.dart';
 /// an in-memory database via `sqflite_common_ffi`; production uses the default
 /// platform factory and the app's databases directory.
 const _databaseName = 'aura_mobile.db';
-const _databaseVersion = 4;
+const _databaseVersion = 5;
 
 /// Queued attendance events awaiting (or done with) sync.
 const attendanceQueueTable = 'attendance_queue';
@@ -29,6 +29,11 @@ const officeConfigMetaTable = 'office_config_meta';
 /// Cached last-known attendance dashboard payload, so the presence/dashboard
 /// screens render offline instead of waiting on the network.
 const dashboardCacheTable = 'dashboard_cache';
+
+/// Cached last-known leave-request list pages (pending / history), so those
+/// screens render offline from the latest successful fetch. Read-only
+/// snapshots — never authoritative for submissions.
+const leaveListCacheTable = 'leave_list_cache';
 
 Future<Database> openAppDatabase({
   DatabaseFactory? factory,
@@ -95,6 +100,8 @@ Future<void> _onCreate(Database db, int version) async {
   await _createOfficeConfigMetaTable(db);
 
   await _createDashboardCacheTable(db);
+
+  await _createLeaveListCacheTable(db);
 }
 
 /// Applies incremental schema migrations. Each guarded block runs only when the
@@ -135,6 +142,9 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
       });
     }
   }
+  if (oldVersion < 5) {
+    await _createLeaveListCacheTable(db);
+  }
 }
 
 /// Single-row (`id = 1`) marker that the office configuration has been synced
@@ -158,6 +168,22 @@ Future<void> _createDashboardCacheTable(Database db) async {
       user_id    INTEGER PRIMARY KEY,
       payload    TEXT NOT NULL,
       cached_at  TEXT NOT NULL
+    )
+  ''');
+}
+
+/// Per-user, per-filter cache of the latest leave-request list page, stored as
+/// the JSON payload the API returned so the pending / history screens rehydrate
+/// verbatim offline for their owner only. Composite key `(user_id, filter)`
+/// keeps the two lists — and each account — isolated.
+Future<void> _createLeaveListCacheTable(Database db) async {
+  await db.execute('''
+    CREATE TABLE $leaveListCacheTable (
+      user_id    INTEGER NOT NULL,
+      filter     TEXT NOT NULL,
+      payload    TEXT NOT NULL,
+      cached_at  TEXT NOT NULL,
+      PRIMARY KEY (user_id, filter)
     )
   ''');
 }
