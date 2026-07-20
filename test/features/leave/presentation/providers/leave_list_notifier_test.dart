@@ -220,25 +220,32 @@ void main() {
       expect(state.isLoadingMore, isFalse);
     });
 
-    test('shows cached data without hitting the network when offline', () async {
-      final repository = _FakeLeaveRepository({});
-      final cache = _FakeLeaveCache()
-        ..seed(
-          7,
-          LeaveListFilter.pending.query,
-          _page(ids: [1, 2, 3], currentPage: 1, hasMore: false),
+    test(
+      'shows cached data without hitting the network when offline',
+      () async {
+        final repository = _FakeLeaveRepository({});
+        final cache = _FakeLeaveCache()
+          ..seed(
+            7,
+            LeaveListFilter.pending.query,
+            _page(ids: [1, 2, 3], currentPage: 1, hasMore: false),
+          );
+        final container = _container(
+          repository,
+          connected: false,
+          cache: cache,
         );
-      final container = _container(repository, connected: false, cache: cache);
 
-      final state = await container.read(
-        leaveListProvider(LeaveListFilter.pending).future,
-      );
+        final state = await container.read(
+          leaveListProvider(LeaveListFilter.pending).future,
+        );
 
-      expect(state.items.map((e) => e.id), [1, 2, 3]);
-      expect(state.isFromCache, isTrue);
-      expect(state.isOffline, isTrue);
-      expect(repository.listCalls, isEmpty);
-    });
+        expect(state.items.map((e) => e.id), [1, 2, 3]);
+        expect(state.isFromCache, isTrue);
+        expect(state.isOffline, isTrue);
+        expect(repository.listCalls, isEmpty);
+      },
+    );
 
     test('caches the payload after a successful fetch', () async {
       final repository = _FakeLeaveRepository({
@@ -255,9 +262,10 @@ void main() {
       expect(state.isFromCache, isFalse);
       expect(cache.saves, 1);
       expect(
-        (await cache.read(7, LeaveListFilter.pending.query))!.items.map(
-          (e) => e.id,
-        ),
+        (await cache.read(
+          7,
+          LeaveListFilter.pending.query,
+        ))!.items.map((e) => e.id),
         [1, 2],
       );
     });
@@ -283,9 +291,10 @@ void main() {
       expect(state.items.map((e) => e.id), [1, 2]);
       expect(cache.saves, 0);
       expect(
-        (await cache.read(7, LeaveListFilter.pending.query))!.items.map(
-          (e) => e.id,
-        ),
+        (await cache.read(
+          7,
+          LeaveListFilter.pending.query,
+        ))!.items.map((e) => e.id),
         [1, 2],
       );
     });

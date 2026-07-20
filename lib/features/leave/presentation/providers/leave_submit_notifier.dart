@@ -1,8 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
-import '../../../../core/network/connectivity_providers.dart';
+import '../../../../core/network/offline_submission.dart';
 import '../../data/leave_providers.dart';
 import '../../data/models/leave_models.dart';
 import '../../data/models/leave_submission.dart';
@@ -39,19 +38,10 @@ class LeaveSubmitNotifier extends _$LeaveSubmitNotifier {
     state = const AsyncLoading();
 
     // Online-only: don't attempt (and time out) a doomed request offline.
-    final online = hasConnectivity(
-      await ref.read(connectivityProvider).checkConnectivity(),
-    );
-    if (!online) {
-      final failure = Failure<LeaveRequestModel>(
-        const NetworkException(
-          message:
-              'Pengajuan tidak dapat dikirim karena Anda sedang offline. '
-              'Sambungkan ke internet lalu coba lagi.',
-        ),
-      );
-      state = AsyncError(failure.exception, StackTrace.current);
-      return failure;
+    final offline = await offlineSubmissionGuard<LeaveRequestModel>(ref);
+    if (offline != null) {
+      state = AsyncError(offline.exception, StackTrace.current);
+      return offline;
     }
 
     final result = await ref.read(leaveRepositoryProvider).submit(submission);

@@ -7,6 +7,22 @@ import '../../data/models/attendance_models.dart';
 import '../providers/attendance_history_notifier.dart';
 import '../providers/attendance_history_state.dart';
 
+/// Backend statuses that represent an approved leave day (izin / sakit).
+///
+/// Leave days have no check-in/out, so their history time cells render an em
+/// dash instead of the neutral "empty time" placeholder used for regular days.
+const attendanceLeaveStatuses = {'sick', 'permission'};
+
+/// Text for a history time cell.
+///
+/// Presentation only: returns the recorded [time] when present. When there is
+/// no time, a leave day (izin / sakit) shows an em dash ("—") because no clock
+/// is expected, while a regular day shows the neutral "--:--" placeholder.
+String attendanceTimeCellText(String? time, {required String status}) {
+  if (time != null) return time;
+  return attendanceLeaveStatuses.contains(status) ? '—' : '--:--';
+}
+
 /// Read-only attendance history: a paginated, newest-first list of records.
 ///
 /// Slice 2: reuses the same `AttendanceModel` as the dashboard. Infinite scroll
@@ -122,14 +138,20 @@ class _HistoryTile extends StatelessWidget {
                   child: _TimeCell(
                     icon: Icons.login,
                     label: 'Masuk',
-                    time: record.checkInTime ?? '--:--',
+                    time: attendanceTimeCellText(
+                      record.checkInTime,
+                      status: record.status,
+                    ),
                   ),
                 ),
                 Expanded(
                   child: _TimeCell(
                     icon: Icons.logout,
                     label: 'Pulang',
-                    time: record.checkOutTime ?? '--:--',
+                    time: attendanceTimeCellText(
+                      record.checkOutTime,
+                      status: record.status,
+                    ),
                   ),
                 ),
                 if (record.workModeLabel != null)

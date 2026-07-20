@@ -119,7 +119,9 @@ class LeaveListNotifier extends _$LeaveListNotifier {
       // Unreachable server / timeout / 5xx → fall back to a cached snapshot when
       // one exists, otherwise surface the error.
       Failure(:final exception) =>
-        cached != null ? _cacheState(cached, isOffline: false) : throw exception,
+        cached != null
+            ? _cacheState(cached, isOffline: false)
+            : throw exception,
     };
   }
 

@@ -130,21 +130,24 @@ void main() {
       expect(container.read(leaveSubmitProvider), isA<AsyncError<void>>());
     });
 
-    test('blocks submit and returns an offline message when disconnected', () async {
-      final repository = _FakeLeaveRepository(const Success(_created));
-      final container = _container(repository, connected: false);
-      await container.read(leaveSubmitProvider.future);
+    test(
+      'blocks submit and returns an offline message when disconnected',
+      () async {
+        final repository = _FakeLeaveRepository(const Success(_created));
+        final container = _container(repository, connected: false);
+        await container.read(leaveSubmitProvider.future);
 
-      final result = await container
-          .read(leaveSubmitProvider.notifier)
-          .submit(_submission);
+        final result = await container
+            .read(leaveSubmitProvider.notifier)
+            .submit(_submission);
 
-      expect(result, isA<Failure<LeaveRequestModel>>());
-      final failure = result as Failure<LeaveRequestModel>;
-      expect(failure.exception, isA<NetworkException>());
-      expect(failure.exception.message, contains('offline'));
-      expect(repository.submissions, isEmpty);
-      expect(container.read(leaveSubmitProvider), isA<AsyncError<void>>());
-    });
+        expect(result, isA<Failure<LeaveRequestModel>>());
+        final failure = result as Failure<LeaveRequestModel>;
+        expect(failure.exception, isA<NetworkException>());
+        expect(failure.exception.message, contains('offline'));
+        expect(repository.submissions, isEmpty);
+        expect(container.read(leaveSubmitProvider), isA<AsyncError<void>>());
+      },
+    );
   });
 }
