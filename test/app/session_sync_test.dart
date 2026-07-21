@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:aura_mobile/app/session_sync.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/core/network/connectivity_providers.dart';
@@ -45,6 +47,13 @@ class _AuthedRepository implements AuthRepository {
   @override
   Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateAvatar(File photo) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> deleteAvatar() => throw UnimplementedError();
 }
 
 /// An unauthenticated auth repository (no token) — the session stays on login.
@@ -74,6 +83,13 @@ class _AnonymousRepository implements AuthRepository {
   @override
   Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateAvatar(File photo) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> deleteAvatar() => throw UnimplementedError();
 }
 
 /// A sync service that only counts [flush] calls; the queue plumbing beneath is

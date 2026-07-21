@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 
@@ -68,6 +69,32 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _api.updatePassword(request);
       return const Success<void>(null);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> updateAvatar(File photo) async {
+    try {
+      final response = await _api.updateAvatar(photo);
+      await _cacheUser(response.data);
+      return Success(response.data);
+    } on DioException catch (e) {
+      return Failure(mapDioException(e));
+    } catch (e, stackTrace) {
+      return Failure(reportUnexpectedError(e, stackTrace));
+    }
+  }
+
+  @override
+  Future<ApiResult<UserModel>> deleteAvatar() async {
+    try {
+      final response = await _api.deleteAvatar();
+      await _cacheUser(response.data);
+      return Success(response.data);
     } on DioException catch (e) {
       return Failure(mapDioException(e));
     } catch (e, stackTrace) {
