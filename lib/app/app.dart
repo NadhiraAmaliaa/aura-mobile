@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/messaging/messaging_providers.dart';
 import 'router/app_router.dart';
 import 'session_sync.dart';
 import 'theme/app_theme.dart';
@@ -16,6 +17,11 @@ class AuraApp extends ConsumerWidget {
     // Arm the session-level offline-queue sync for the whole app lifetime, so a
     // queue drained on login/reconnect never depends on opening a screen.
     ref.watch(sessionQueueSyncProvider);
+
+    // Arm Firebase Cloud Messaging for the whole app lifetime (permission,
+    // token logging and foreground/opened listeners). Fire-and-forget: the
+    // async result is intentionally not surfaced in the UI.
+    ref.watch(fcmBootstrapProvider);
 
     return MaterialApp.router(
       title: 'AURA',
