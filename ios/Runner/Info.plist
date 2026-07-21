@@ -18,6 +18,10 @@
 	<string>AURA</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikasi memerlukan lokasi Anda untuk mencatat kehadiran (absensi).</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi memerlukan akses kamera untuk mengambil foto profil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi memerlukan akses galeri untuk memilih foto profil.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

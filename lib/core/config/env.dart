@@ -56,4 +56,25 @@ class AppEnv {
 
   bool get isProd => flavor == Flavor.prod;
   bool get isDev => flavor == Flavor.dev;
+
+  /// Origin (`scheme://host[:port]`) of the API, derived from [baseUrl].
+  ///
+  /// Used to resolve server-relative asset references (e.g. avatar paths the
+  /// backend returns without a host) so they point at whatever host the app is
+  /// configured to talk to — dev machine, LAN IP or production — with no
+  /// hardcoding.
+  String get apiOrigin => Uri.parse(baseUrl).origin;
+
+  /// Resolves a server asset reference to an absolute URL.
+  ///
+  /// - `null`/empty → `null`.
+  /// - Already-absolute URLs (e.g. a production CDN) are returned unchanged.
+  /// - Host-relative paths (e.g. `/storage/avatars/x.jpg`) are joined onto
+  ///   [apiOrigin].
+  String? resolveAssetUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (Uri.parse(path).hasScheme) return path;
+    final normalized = path.startsWith('/') ? path : '/$path';
+    return '$apiOrigin$normalized';
+  }
 }

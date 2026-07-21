@@ -14,6 +14,9 @@ abstract class UserModel with _$UserModel {
     required int id,
     required String name,
     String? email,
+    // Host-relative path (e.g. `/storage/avatars/x.jpg`) or null. Resolve to an
+    // absolute URL with `AppEnv.resolveAssetUrl` before loading it.
+    @JsonKey(name: 'avatar_url') String? avatarUrl,
     required String role,
     @JsonKey(name: 'is_active') @Default(true) bool isActive,
     InternModel? intern,

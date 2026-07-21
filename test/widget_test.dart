@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:aura_mobile/app/app.dart';
 import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
@@ -37,6 +39,13 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request) =>
       throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> updateAvatar(File photo) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ApiResult<UserModel>> deleteAvatar() => throw UnimplementedError();
 }
 
 /// Returns an empty list synchronously so the dropdown resolves to its data

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../../../core/network/api_result.dart';
 import '../../data/models/auth_models.dart';
 import '../../data/models/user_model.dart';
@@ -23,6 +25,13 @@ abstract interface class AuthRepository {
 
   /// Changes the account password. Returns void on success.
   Future<ApiResult<void>> updatePassword(PasswordUpdateRequest request);
+
+  /// Uploads a new profile photo and re-caches the returned user on success.
+  Future<ApiResult<UserModel>> updateAvatar(File photo);
+
+  /// Removes the profile photo (reverts to the default) and re-caches the
+  /// returned user on success.
+  Future<ApiResult<UserModel>> deleteAvatar();
 
   /// Revokes the server token and clears the local token (best effort).
   Future<ApiResult<void>> logout();

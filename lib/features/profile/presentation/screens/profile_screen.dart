@@ -1,18 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/router/routes.dart';
+import '../../../../core/error/app_exception.dart';
+import '../../../../core/network/api_result.dart';
+import '../../../../core/providers/core_providers.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
+import '../providers/avatar_notifier.dart';
 
 /// The intern's profile home.
 ///
 /// Presents the profile header (photo + name + NIM), a read-only "Informasi
 /// Kontak" section with a single edit affordance in its header, and the profile
-/// menu (Informasi Magang, Ganti Password, Logout). The photo/camera button is
-/// UI-only for now; changing the avatar is not yet supported by the backend.
+/// menu (Informasi Magang, Ganti Password, Logout). The header's camera button
+/// lets the intern change or remove their profile photo.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -44,16 +51,18 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends ConsumerWidget {
   const _ProfileHeader({required this.user});
 
   final UserModel user;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final nim = user.intern?.nim;
+    final isBusy = ref.watch(avatarProvider).isLoading;
+    final avatarUrl = ref.watch(appEnvProvider).resolveAssetUrl(user.avatarUrl);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -63,7 +72,11 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _Avatar(onEditPhoto: () => _showPhotoUnavailable(context)),
+          _Avatar(
+            avatarUrl: avatarUrl,
+            isBusy: isBusy,
+            onEditPhoto: () => _showPhotoOptions(context, ref),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -103,23 +116,134 @@ class _ProfileHeader extends StatelessWidget {
     );
   }
 
-  void _showPhotoUnavailable(BuildContext context) {
+  Future<void> _showPhotoOptions(BuildContext context, WidgetRef ref) async {
+    if (ref.read(avatarProvider).isLoading) return;
+
+    final hasPhoto = user.avatarUrl != null;
+    final choice = await showModalBottomSheet<_PhotoAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Ambil dari kamera'),
+              onTap: () => Navigator.of(context).pop(_PhotoAction.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari galeri'),
+              onTap: () => Navigator.of(context).pop(_PhotoAction.gallery),
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(
+                  'Hapus foto',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+                onTap: () => Navigator.of(context).pop(_PhotoAction.remove),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !context.mounted) return;
+
+    switch (choice) {
+      case _PhotoAction.camera:
+        await _pickAndUpload(context, ref, ImageSource.camera);
+      case _PhotoAction.gallery:
+        await _pickAndUpload(context, ref, ImageSource.gallery);
+      case _PhotoAction.remove:
+        await _removePhoto(context, ref);
+    }
+  }
+
+  Future<void> _pickAndUpload(
+    BuildContext context,
+    WidgetRef ref,
+    ImageSource source,
+  ) async {
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } on Object {
+      if (context.mounted) {
+        _showMessage(context, 'Tidak dapat mengakses kamera atau galeri.');
+      }
+      return;
+    }
+    if (picked == null) return;
+
+    final result = await ref
+        .read(avatarProvider.notifier)
+        .upload(File(picked.path));
+    if (!context.mounted) return;
+
+    result.fold(
+      onSuccess: (_) =>
+          _showMessage(context, 'Foto profil berhasil diperbarui.'),
+      onFailure: (error) => _showMessage(context, _errorMessage(error)),
+    );
+  }
+
+  Future<void> _removePhoto(BuildContext context, WidgetRef ref) async {
+    final result = await ref.read(avatarProvider.notifier).remove();
+    if (!context.mounted) return;
+
+    result.fold(
+      onSuccess: (_) => _showMessage(context, 'Foto profil dihapus.'),
+      onFailure: (error) => _showMessage(context, _errorMessage(error)),
+    );
+  }
+
+  String _errorMessage(AppException error) {
+    if (error is ValidationException) {
+      final photoErrors = error.errors['photo'];
+      if (photoErrors != null && photoErrors.isNotEmpty) {
+        return photoErrors.first;
+      }
+    }
+    return error.message;
+  }
+
+  void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Fitur ubah foto profil belum tersedia.')),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.onEditPhoto});
+/// The action chosen from the profile-photo bottom sheet.
+enum _PhotoAction { camera, gallery, remove }
 
+class _Avatar extends StatelessWidget {
+  const _Avatar({
+    required this.avatarUrl,
+    required this.isBusy,
+    required this.onEditPhoto,
+  });
+
+  final String? avatarUrl;
+  final bool isBusy;
   final VoidCallback onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final url = avatarUrl;
 
     return SizedBox(
       width: 72,
@@ -131,8 +255,25 @@ class _Avatar extends StatelessWidget {
             radius: 36,
             backgroundColor: scheme.primaryContainer,
             foregroundColor: scheme.onPrimaryContainer,
-            child: const Icon(Icons.person, size: 40),
+            backgroundImage: url == null ? null : NetworkImage(url),
+            child: url == null ? const Icon(Icons.person, size: 40) : null,
           ),
+          if (isBusy)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.scrim.withValues(alpha: 0.45),
+                ),
+                child: const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: -2,
             bottom: -2,
@@ -142,7 +283,7 @@ class _Avatar extends StatelessWidget {
               elevation: 1,
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: onEditPhoto,
+                onTap: isBusy ? null : onEditPhoto,
                 child: Padding(
                   padding: const EdgeInsets.all(6),
                   child: Icon(

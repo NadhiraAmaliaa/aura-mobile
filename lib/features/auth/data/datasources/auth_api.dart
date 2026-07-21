@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
@@ -24,6 +26,13 @@ abstract class AuthApi {
 
   @PUT('/auth/password')
   Future<void> updatePassword(@Body() PasswordUpdateRequest body);
+
+  @POST('/auth/profile/photo')
+  @MultiPart()
+  Future<UserEnvelope> updateAvatar(@Part(name: 'photo') File photo);
+
+  @DELETE('/auth/profile/photo')
+  Future<UserEnvelope> deleteAvatar();
 
   @POST('/auth/logout')
   Future<void> logout();
