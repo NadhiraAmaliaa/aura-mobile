@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/messaging/messaging_providers.dart';
+import '../features/notifications/presentation/providers/device_token_registrar.dart';
 import 'router/app_router.dart';
 import 'session_sync.dart';
 import 'theme/app_theme.dart';
@@ -22,6 +23,11 @@ class AuraApp extends ConsumerWidget {
     // token logging and foreground/opened listeners). Fire-and-forget: the
     // async result is intentionally not surfaced in the UI.
     ref.watch(fcmBootstrapProvider);
+
+    // Keep the backend's copy of this device's FCM token in sync for the whole
+    // session (register after login, follow token refreshes, clear on logout).
+    // Non-blocking: failures never affect startup or navigation.
+    ref.watch(deviceTokenRegistrarProvider);
 
     return MaterialApp.router(
       title: 'AURA',
