@@ -40,8 +40,7 @@ final class LeaveDecisionDeepLink extends NotificationDeepLink {
 
   @override
   bool operator ==(Object other) =>
-      other is LeaveDecisionDeepLink &&
-      other.leaveRequestId == leaveRequestId;
+      other is LeaveDecisionDeepLink && other.leaveRequestId == leaveRequestId;
 
   @override
   int get hashCode => leaveRequestId.hashCode;
