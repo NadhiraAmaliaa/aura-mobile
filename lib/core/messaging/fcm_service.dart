@@ -5,12 +5,13 @@ import 'package:flutter/foundation.dart';
 
 /// Owns the app's **foreground** Firebase Cloud Messaging lifecycle:
 /// notification permission, the registration token, token refresh, and the
-/// foreground / notification-tap message streams.
+/// foreground message stream.
 ///
-/// Isolated by design: it only observes and logs (in debug builds). There is no
-/// backend wiring and no leave/sick business logic yet — those hook in later at
-/// the clearly marked extension points. Background/terminated delivery is
-/// handled separately in `fcm_background_handler.dart`.
+/// Notification-tap navigation (both the background `onMessageOpenedApp` tap
+/// and the terminated-launch `getInitialMessage`) is intentionally **not** here
+/// — it is owned solely by `NotificationDeepLinkHandler`, so each tap entry
+/// point has exactly one consumer. Background/terminated delivery is handled
+/// separately in `fcm_background_handler.dart`.
 class FcmService {
   FcmService(this._messaging);
 
@@ -18,7 +19,6 @@ class FcmService {
 
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
-  StreamSubscription<RemoteMessage>? _openedAppSub;
 
   /// Wires the full foreground lifecycle. Safe to call once at app start.
   Future<void> initialize() async {
@@ -35,8 +35,6 @@ class FcmService {
     await _logToken();
     _listenForTokenRefresh();
     _listenForForegroundMessages();
-    _listenForNotificationTaps();
-    await _handleInitialMessage();
   }
 
   Future<void> _requestPermission() async {
@@ -79,34 +77,9 @@ class FcmService {
     });
   }
 
-  void _listenForNotificationTaps() {
-    // Fired when a notification is tapped while the app is in the background
-    // but still running.
-    _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      if (kDebugMode) {
-        debugPrint(
-          '[FCM][opened] message=${message.messageId} data=${message.data}',
-        );
-      }
-    });
-  }
-
-  Future<void> _handleInitialMessage() async {
-    // Non-null when the app was launched from a fully terminated state by
-    // tapping a notification.
-    final message = await _messaging.getInitialMessage();
-    if (message != null && kDebugMode) {
-      debugPrint(
-        '[FCM][terminated->launch] message=${message.messageId} '
-        'data=${message.data}',
-      );
-    }
-  }
-
   /// Cancels all stream subscriptions. Wired to the provider's disposal.
   Future<void> dispose() async {
     await _tokenRefreshSub?.cancel();
     await _foregroundSub?.cancel();
-    await _openedAppSub?.cancel();
   }
 }
