@@ -1,7 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../config/env.dart';
+import '../messaging/fcm_background_handler.dart';
 
 /// Boots the app, optionally inside a Sentry zone.
 ///
@@ -12,6 +14,16 @@ Future<void> bootstrap({
   required Widget Function() builder,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize the Firebase Android SDK. Native configuration is read from
+  // android/app/google-services.json (applied by the Google Services Gradle
+  // plugin), so no explicit FirebaseOptions are required on Android.
+  await Firebase.initializeApp();
+
+  // Register the FCM background/terminated message handler. Must run after
+  // Firebase is initialized and before runApp so the background isolate is
+  // wired from the first launch.
+  registerFcmBackgroundHandler();
 
   if (env.sentryDsn.isEmpty) {
     runApp(builder());
