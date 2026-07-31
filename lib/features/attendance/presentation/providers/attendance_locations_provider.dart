@@ -28,32 +28,40 @@ class AttendanceLocations extends _$AttendanceLocations {
   Future<List<AttendanceLocationModel>> build() => _load();
 
   Future<List<AttendanceLocationModel>> _load() async {
+    // Capture every dependency synchronously, before the first await. This
+    // provider is auto-dispose, so it can be disposed mid-build when its only
+    // watcher (CheckInMap) unmounts. Touching `ref` after an await would then
+    // throw "Cannot use Ref after it has been disposed".
+    final connectivity = ref.read(connectivityProvider);
+    final repository = ref.read(attendanceRepositoryProvider);
+    final storeFuture = ref.read(officeConfigCacheStoreProvider.future);
+
     // No transport at all → don't wait on a doomed request; serve the cache.
-    final connectivity = await ref
-        .read(connectivityProvider)
-        .checkConnectivity();
-    if (!hasConnectivity(connectivity)) {
-      final cached = await _cachedOffices();
+    final status = await connectivity.checkConnectivity();
+    if (!hasConnectivity(status)) {
+      final cached = await _cachedOfficesFrom(storeFuture);
       if (cached.isNotEmpty) return cached;
     }
 
-    final result = await ref.read(attendanceRepositoryProvider).locations();
+    final result = await repository.locations();
     return switch (result) {
-      Success(:final data) => await _cache(data),
+      Success(:final data) => await _cacheWith(storeFuture, data),
       // Token explicitly rejected → surface it (the session must re-auth).
       Failure(:final exception) when exception is UnauthorizedException =>
         throw exception,
       // Unreachable server / timeout / 5xx → fall back to the cached offices.
-      Failure(:final exception) => await _cachedOrThrow(exception),
+      Failure(:final exception) =>
+        await _cachedOrThrowWith(storeFuture, exception),
     };
   }
 
-  Future<List<AttendanceLocationModel>> _cache(
+  Future<List<AttendanceLocationModel>> _cacheWith(
+    Future<OfficeConfigCacheStore> storeFuture,
     List<AttendanceLocationModel> offices,
   ) async {
     // Best-effort: a cache write failure must not break the live locations load.
     try {
-      final store = await ref.read(officeConfigCacheStoreProvider.future);
+      final store = await storeFuture;
       await store.replaceAll(offices);
     } on Object {
       // Ignore — the live list is authoritative; the cache is an optimisation.
@@ -62,9 +70,11 @@ class AttendanceLocations extends _$AttendanceLocations {
   }
 
   /// The cached offices, or an empty list when nothing is cached / readable.
-  Future<List<AttendanceLocationModel>> _cachedOffices() async {
+  Future<List<AttendanceLocationModel>> _cachedOfficesFrom(
+    Future<OfficeConfigCacheStore> storeFuture,
+  ) async {
     try {
-      final store = await ref.read(officeConfigCacheStoreProvider.future);
+      final store = await storeFuture;
       return store.all();
     } on Object {
       return const [];
@@ -73,10 +83,11 @@ class AttendanceLocations extends _$AttendanceLocations {
 
   /// Serve the cache when present, otherwise re-throw the transient error so a
   /// never-loaded map can show a retry instead of a permanent empty map.
-  Future<List<AttendanceLocationModel>> _cachedOrThrow(
+  Future<List<AttendanceLocationModel>> _cachedOrThrowWith(
+    Future<OfficeConfigCacheStore> storeFuture,
     AppException exception,
   ) async {
-    final cached = await _cachedOffices();
+    final cached = await _cachedOfficesFrom(storeFuture);
     if (cached.isNotEmpty) return cached;
     throw exception;
   }

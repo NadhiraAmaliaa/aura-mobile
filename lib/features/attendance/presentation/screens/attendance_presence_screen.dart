@@ -60,6 +60,9 @@ class _AttendancePresenceScreenState
   /// time — first detection, resume re-check and capture attempts never stack.
   bool _autoTimeDialogOpen = false;
 
+  /// Guards [_promptMockLocationBlocked] so the dialog is shown one at a time.
+  bool _mockLocationDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +71,7 @@ class _AttendancePresenceScreenState
     // attendance action, so submissions use a fresh fix. Also drain any events
     // left pending from a previous session.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(currentLocationProvider.notifier).fetch();
       ref.read(attendanceQueueControllerProvider.notifier).flush();
     });
@@ -215,6 +219,18 @@ class _AttendancePresenceScreenState
         // still manual — send them back to the attendance dashboard.
         if (context.canPop()) context.pop();
     }
+  }
+
+  /// Shows a blocking dialog when a mock/fake/simulated location is detected.
+  ///
+  /// Unlike the auto-time dialog, the user stays on the page after dismissal
+  /// because they may need to disable a fake GPS app and retry via the inline
+  /// error notice. The buttons remain disabled until a non-mocked fix succeeds.
+  Future<void> _promptMockLocationBlocked() async {
+    if (_mockLocationDialogOpen || !mounted) return;
+    _mockLocationDialogOpen = true;
+    await showMockLocationBlockedDialog(context);
+    _mockLocationDialogOpen = false;
   }
 
   /// Guards every work mode against a spoofed/mocked GPS fix. The location
@@ -375,6 +391,20 @@ class _AttendancePresenceScreenState
       if (next.value == false) unawaited(_promptAutoTimeBlocked());
     });
 
+    // Mock-location hard block: whenever a location fetch returns a mocked fix,
+    // surface the blocking dialog and disable the attendance buttons — mirrors
+    // the automatic-time pattern.
+    final mockLocationBlocked = switch (locationState) {
+      LocationError(:final kind) => kind == LocationFailureKind.mocked,
+      _ => false,
+    };
+
+    ref.listen<CurrentLocationState>(currentLocationProvider, (_, next) {
+      if (next is LocationError && next.kind == LocationFailureKind.mocked) {
+        unawaited(_promptMockLocationBlocked());
+      }
+    });
+
     final position = switch (locationState) {
       LocationReady(:final position) => position,
       _ => null,
@@ -398,13 +428,12 @@ class _AttendancePresenceScreenState
     final isCheckingOut = _pendingAction == _PendingAction.checkOut;
     final isBusy = isCheckingIn || isCheckingOut;
 
-    // Buttons are gated only by technical constraints — an in-flight capture and
-    // the automatic-clock hard block. Business rules (already checked in, leave,
-    // check-out ordering) are decided by the backend, which returns a friendly
-    // message shown as a dialog. Check Out may be tapped before Check In on
-    // purpose; the server explains the correct order.
-    final canCheckIn = !isBusy && !autoTimeBlocked;
-    final canCheckOut = !isBusy && !autoTimeBlocked;
+    // Buttons are gated by technical constraints — an in-flight capture, the
+    // automatic-clock hard block, and mock-location detection. Business rules
+    // (already checked in, leave, check-out ordering) are decided by the
+    // backend, which returns a friendly message shown as a dialog.
+    final canCheckIn = !isBusy && !autoTimeBlocked && !mockLocationBlocked;
+    final canCheckOut = !isBusy && !autoTimeBlocked && !mockLocationBlocked;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi')),
@@ -912,6 +941,7 @@ class _LocationErrorNotice extends StatelessWidget {
     final serviceDisabled = error.kind == LocationFailureKind.serviceDisabled;
     final deniedForever =
         error.kind == LocationFailureKind.permissionDeniedForever;
+    final mocked = error.kind == LocationFailureKind.mocked;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -925,7 +955,7 @@ class _LocationErrorNotice extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.location_off,
+                mocked ? Icons.gps_off : Icons.location_off,
                 color: theme.colorScheme.onErrorContainer,
               ),
               const SizedBox(width: 10),
@@ -939,6 +969,18 @@ class _LocationErrorNotice extends StatelessWidget {
               ),
             ],
           ),
+          if (mocked)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 34),
+              child: Text(
+                'Check In dan Check Out dinonaktifkan selama lokasi '
+                'tidak dapat diverifikasi.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -1012,6 +1054,34 @@ Future<AutoTimeBlockedChoice> showAutoTimeBlockedDialog(BuildContext context) {
       ),
     ),
   ).then((choice) => choice ?? AutoTimeBlockedChoice.dismissed);
+}
+
+/// Shows a blocking dialog when a mock/fake/simulated location is detected.
+///
+/// The dialog prevents attendance from proceeding until the mock provider is
+/// disabled. Unlike the auto-time dialog it does not navigate the user away —
+/// they stay on the page so they can disable the fake GPS app and retry via
+/// the inline error notice.
+Future<void> showMockLocationBlockedDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Lokasi tidak dapat diverifikasi'),
+      content: const Text(
+        'Lokasi palsu terdeteksi. Presensi tidak dapat dilakukan '
+        'karena lokasi Anda tidak dapat diverifikasi.\n\n'
+        'Jika Anda menggunakan aplikasi Fake GPS atau Mock Location, '
+        'nonaktifkan terlebih dahulu, lalu coba lagi.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Mengerti'),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Today's attendance history rendered as a lightweight table.
