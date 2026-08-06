@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show PlatformException, rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -217,12 +217,21 @@ class _CheckInMapState extends ConsumerState<CheckInMap> {
     final userPosition = widget.userPosition;
     if (userPosition == null || !_controller.isCompleted) return;
     final controller = await _controller.future;
-    await controller.animateCamera(
-      CameraUpdate.newLatLngZoom(
-        LatLng(userPosition.latitude, userPosition.longitude),
-        _defaultZoom,
-      ),
-    );
+    // The widget could have been disposed between the await and here (rapid
+    // navigation, parent rebuild), and the native map view may already be torn
+    // down. Guard with mounted and catch the PlatformException the native side
+    // throws when the view is gone.
+    if (!mounted) return;
+    try {
+      await controller.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(userPosition.latitude, userPosition.longitude),
+          _defaultZoom,
+        ),
+      );
+    } on PlatformException {
+      // Native map view was disposed — nothing to animate.
+    }
   }
 }
 
