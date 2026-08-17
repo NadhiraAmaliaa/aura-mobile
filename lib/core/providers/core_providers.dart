@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../config/env.dart';
+import '../device/trusted_time_providers.dart';
 import '../network/dio_client.dart';
+import '../network/trusted_time_interceptor.dart';
 import '../storage/secure_storage.dart';
 
 part 'core_providers.g.dart';
@@ -21,5 +23,14 @@ SecureStorageService secureStorage(Ref ref) => SecureStorageService();
 Dio dio(Ref ref) {
   final env = ref.watch(appEnvProvider);
   final storage = ref.watch(secureStorageProvider);
-  return buildDio(env: env, storage: storage);
+  final dio = buildDio(env: env, storage: storage);
+
+  // Add the TrustedTime anchor interceptor. The service future resolves
+  // almost immediately (just opens the DB), but the interceptor handles the
+  // async boundary internally — only fire-and-forget anchor refreshes happen
+  // on response, so they never block the Dio pipeline.
+  final trustedTimeFuture = ref.watch(trustedTimeServiceProvider.future);
+  dio.interceptors.add(TrustedTimeInterceptor(trustedTimeFuture));
+
+  return dio;
 }

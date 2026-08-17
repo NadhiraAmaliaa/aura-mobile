@@ -13,7 +13,7 @@ import 'package:sqflite/sqflite.dart';
 /// an in-memory database via `sqflite_common_ffi`; production uses the default
 /// platform factory and the app's databases directory.
 const _databaseName = 'aura_mobile.db';
-const _databaseVersion = 5;
+const _databaseVersion = 6;
 
 /// Queued attendance events awaiting (or done with) sync.
 const attendanceQueueTable = 'attendance_queue';
@@ -34,6 +34,11 @@ const dashboardCacheTable = 'dashboard_cache';
 /// screens render offline from the latest successful fetch. Read-only
 /// snapshots — never authoritative for submissions.
 const leaveListCacheTable = 'leave_list_cache';
+
+/// Single-row trust anchor persisting the last verified server time, monotonic
+/// clock reading, and boot identity. Used by [TrustedTimeService] to project
+/// the current trusted time offline.
+const trustedTimeAnchorTable = 'trusted_time_anchor';
 
 Future<Database> openAppDatabase({
   DatabaseFactory? factory,
@@ -102,6 +107,8 @@ Future<void> _onCreate(Database db, int version) async {
   await _createDashboardCacheTable(db);
 
   await _createLeaveListCacheTable(db);
+
+  await _createTrustedTimeAnchorTable(db);
 }
 
 /// Applies incremental schema migrations. Each guarded block runs only when the
@@ -145,6 +152,9 @@ Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
   if (oldVersion < 5) {
     await _createLeaveListCacheTable(db);
   }
+  if (oldVersion < 6) {
+    await _createTrustedTimeAnchorTable(db);
+  }
 }
 
 /// Single-row (`id = 1`) marker that the office configuration has been synced
@@ -184,6 +194,19 @@ Future<void> _createLeaveListCacheTable(Database db) async {
       payload    TEXT NOT NULL,
       cached_at  TEXT NOT NULL,
       PRIMARY KEY (user_id, filter)
+    )
+  ''');
+}
+
+/// Single-row table (no primary key constraint — kept to one row by DELETE +
+/// INSERT in a transaction) recording the trusted-time anchor so it survives
+/// app restarts. Invalidated (deleted) on reboot detection.
+Future<void> _createTrustedTimeAnchorTable(Database db) async {
+  await db.execute('''
+    CREATE TABLE $trustedTimeAnchorTable (
+      server_time_utc  TEXT NOT NULL,
+      monotonic_ms     INTEGER NOT NULL,
+      boot_count       INTEGER
     )
   ''');
 }

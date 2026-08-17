@@ -1,5 +1,7 @@
 import 'package:aura_mobile/core/device/device_time_providers.dart';
 import 'package:aura_mobile/core/device/device_time_settings.dart';
+import 'package:aura_mobile/core/device/trusted_time_providers.dart';
+import 'package:aura_mobile/core/device/trusted_time_service.dart';
 import 'package:aura_mobile/core/network/connectivity_providers.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_entry.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_store.dart';
@@ -55,6 +57,23 @@ class _DummyRepository implements AttendanceRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
+/// A TrustedTimeService stand-in for existing tests that pass `at:` directly.
+/// Returns `DateTime.now().toUtc()` so the controller's trusted-time path is
+/// exercised without the native platform clock.
+class _PassthroughTrustedTimeService implements TrustedTimeService {
+  @override
+  Future<DateTime> now() async => DateTime.now().toUtc();
+
+  @override
+  Future<bool> get isAvailable async => true;
+
+  @override
+  Future<void> setAnchor(DateTime serverTimeUtc) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
 ProviderContainer containerFor({
   required bool? automatic,
   required RecordingSyncService syncService,
@@ -64,6 +83,9 @@ ProviderContainer containerFor({
       currentUserIdProvider.overrideWithValue(7),
       deviceTimeSettingsProvider.overrideWithValue(
         FakeDeviceTimeSettings(automatic),
+      ),
+      trustedTimeServiceProvider.overrideWith(
+        (ref) async => _PassthroughTrustedTimeService(),
       ),
       attendanceSyncServiceProvider.overrideWith((ref) async => syncService),
       attendanceQueueStoreProvider.overrideWith((ref) async => _DummyStore()),
@@ -97,6 +119,9 @@ ProviderContainer containerWith({
       currentUserIdProvider.overrideWithValue(7),
       deviceTimeSettingsProvider.overrideWithValue(
         FakeDeviceTimeSettings(true),
+      ),
+      trustedTimeServiceProvider.overrideWith(
+        (ref) async => _PassthroughTrustedTimeService(),
       ),
       attendanceSyncServiceProvider.overrideWith((ref) async => syncService),
       attendanceQueueStoreProvider.overrideWith((ref) async => store),

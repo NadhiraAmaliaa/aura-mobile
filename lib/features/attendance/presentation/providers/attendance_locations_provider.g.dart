@@ -74,7 +74,7 @@ final class AttendanceLocationsProvider
 }
 
 String _$attendanceLocationsHash() =>
-    r'5c9cc51358e9c5c1b397272ae91799d7b3dbc9fc';
+    r'e6678c5e1edf30d16270526e1b1415692d64402b';
 
 /// The active office locations for WFO geofence pre-validation, used to render
 /// the map.
