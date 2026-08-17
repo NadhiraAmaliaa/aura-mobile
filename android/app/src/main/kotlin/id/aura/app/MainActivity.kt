@@ -1,6 +1,8 @@
 package id.aura.app
 
 import android.content.Intent
+import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,6 +18,10 @@ import io.flutter.plugin.common.MethodChannel
  *    cannot be read (so the Dart side never hard-blocks on an unknown).
  *  - `openDateTimeSettings` -> opens the system Date & Time screen where the
  *    user can enable the automatic clock; returns whether it opened.
+ *  - `getElapsedRealtimeMs` -> monotonic milliseconds since boot, including
+ *    deep sleep. Unaffected by wall-clock changes. Used by TrustedTimeService.
+ *  - `getBootCount` -> the number of times the device has booted (API 24+).
+ *    Returns `null` on older devices. Used for reliable reboot detection.
  */
 class MainActivity : FlutterActivity() {
     private val channelName = "id.aura.app/device_time"
@@ -27,6 +33,8 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "isAutomaticTimeEnabled" -> result.success(isAutomaticTimeEnabled())
                     "openDateTimeSettings" -> result.success(openDateTimeSettings())
+                    "getElapsedRealtimeMs" -> result.success(getElapsedRealtimeMs())
+                    "getBootCount" -> result.success(getBootCount())
                     else -> result.notImplemented()
                 }
             }
@@ -54,6 +62,25 @@ class MainActivity : FlutterActivity() {
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * Monotonic milliseconds since boot, including deep sleep. Unaffected by
+     * wall-clock changes. Resets on reboot.
+     */
+    private fun getElapsedRealtimeMs(): Long = SystemClock.elapsedRealtime()
+
+    /**
+     * The number of times the device has booted. Available on API 24+ (Android
+     * 7.0). Returns `null` on older devices or if the setting cannot be read.
+     */
+    private fun getBootCount(): Int? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return null
+        return try {
+            Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT)
+        } catch (_: Settings.SettingNotFoundException) {
+            null
         }
     }
 }

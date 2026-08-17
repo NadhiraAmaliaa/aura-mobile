@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_time_providers.dart';
 import '../../../../core/device/device_time_settings.dart';
+import '../../../../core/device/trusted_time_providers.dart';
 import '../../../../core/network/connectivity_providers.dart';
 import '../../../../shared/utils/captured_at.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
@@ -80,7 +81,13 @@ class AttendanceQueueController extends _$AttendanceQueueController {
       throw const AutomaticTimeDisabledException();
     }
 
-    final now = at ?? DateTime.now();
+    // The authoritative attendance timestamp comes from the trusted time
+    // anchor (server time + monotonic delta), NOT from DateTime.now(). This
+    // prevents wall-clock manipulation from spoofing captured_at.
+    // TrustedTimeUnavailableException propagates to the caller when no valid
+    // anchor exists (e.g. after reboot while offline, or fresh install).
+    final trustedTime = await ref.read(trustedTimeServiceProvider.future);
+    final now = at ?? (await trustedTime.now()).toLocal();
 
     // Local mirror of the backend's deterministic business rules, enforced
     // *before* the event is written to the queue. These are UX/data-quality

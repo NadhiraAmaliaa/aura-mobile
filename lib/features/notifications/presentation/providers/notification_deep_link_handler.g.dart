@@ -95,7 +95,7 @@ final class NotificationDeepLinkHandlerProvider
 }
 
 String _$notificationDeepLinkHandlerHash() =>
-    r'2ccf285920a4b6a8ad43fd5c03dfbb7de617ecc2';
+    r'b749c9dac8e37615e017aa78c390acaa50ad7fbd';
 
 /// Single owner of notification-tap navigation ("deep linking").
 ///
