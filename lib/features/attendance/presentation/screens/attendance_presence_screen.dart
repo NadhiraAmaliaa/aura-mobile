@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/device/device_time_providers.dart';
 import '../../../../core/device/device_time_settings.dart';
+import '../../../../core/device/trusted_time_service.dart';
 import '../../../../core/location/location_result.dart';
 import '../../data/local/attendance_queue_entry.dart';
 import '../../data/models/attendance_models.dart';
@@ -16,6 +17,7 @@ import '../providers/attendance_queue_controller.dart';
 import '../providers/automatic_time_notifier.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
+import '../providers/trusted_time_status_notifier.dart';
 import '../widgets/attendance_map.dart';
 
 /// Work mode that requires on-site (office radius) validation.
@@ -63,6 +65,9 @@ class _AttendancePresenceScreenState
   /// Guards [_promptMockLocationBlocked] so the dialog is shown one at a time.
   bool _mockLocationDialogOpen = false;
 
+  /// Guards [_promptTrustedTimeBlocked] so the dialog is shown one at a time.
+  bool _trustedTimeDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +103,9 @@ class _AttendancePresenceScreenState
     // Re-check the device automatic-clock setting so the block clears itself
     // once the user enables it from the Date & Time settings screen.
     ref.read(automaticTimeStatusProvider.notifier).refresh();
+    // Re-check trusted time: reconnecting refreshes the anchor via the HTTP
+    // interceptor, so the block clears itself once the device is back online.
+    ref.read(trustedTimeStatusProvider.notifier).refresh();
   }
 
   void _showSnack(String message) {
@@ -173,6 +181,9 @@ class _AttendancePresenceScreenState
     } on AutomaticTimeDisabledException {
       if (!mounted) return;
       _handleAutomaticTimeBlocked();
+    } on TrustedTimeUnavailableException {
+      if (!mounted) return;
+      _handleTrustedTimeBlocked();
     } on AttendanceRuleException catch (error) {
       // A deterministic business rule (duplicate, past cutoff, outside radius)
       // blocked the capture before it was queued: show it as the block dialog.
@@ -195,6 +206,29 @@ class _AttendancePresenceScreenState
   void _handleAutomaticTimeBlocked() {
     ref.read(automaticTimeStatusProvider.notifier).refresh();
     unawaited(_promptAutoTimeBlocked());
+  }
+
+  /// Surfaces the trusted-time block from a capture attempt: refreshes the
+  /// status notifier (disables the buttons) then shows the block dialog.
+  void _handleTrustedTimeBlocked() {
+    ref.read(trustedTimeStatusProvider.notifier).refresh();
+    unawaited(_promptTrustedTimeBlocked());
+  }
+
+  /// Shows the trusted-time hard block while no valid time anchor exists (fresh
+  /// install, or the anchor was invalidated by a device reboot). Reuses the
+  /// AGHRIS-style non-dismissible dialog: the user must acknowledge, after which
+  /// they are sent back to the attendance dashboard. Reconnecting re-establishes
+  /// the anchor via the HTTP interceptor and clears the block. Only one dialog
+  /// is ever shown at a time so repeated detections never stack.
+  Future<void> _promptTrustedTimeBlocked() async {
+    if (_trustedTimeDialogOpen || !mounted) return;
+    _trustedTimeDialogOpen = true;
+    await showTrustedTimeBlockedDialog(context);
+    _trustedTimeDialogOpen = false;
+    if (!mounted) return;
+    // Never let the user linger on the capture page without verified time.
+    if (context.canPop()) context.pop();
   }
 
   /// Shows the AGHRIS-style hard block while the device clock is manual. The
@@ -361,6 +395,9 @@ class _AttendancePresenceScreenState
     } on AutomaticTimeDisabledException {
       if (!mounted) return;
       _handleAutomaticTimeBlocked();
+    } on TrustedTimeUnavailableException {
+      if (!mounted) return;
+      _handleTrustedTimeBlocked();
     } on AttendanceRuleException catch (error) {
       // A deterministic business rule (missing check-in, out-of-order,
       // outside radius) blocked the capture before it was queued.
@@ -383,12 +420,24 @@ class _AttendancePresenceScreenState
     // `false` = device clock is manual; block attendance. `null`/`true` allow.
     final autoTimeBlocked =
         ref.watch(automaticTimeStatusProvider).value == false;
+    // Trusted-time gate. `true` = a valid anchor exists for this boot session;
+    // `null` (loading) = a verification attempt is still in flight — disable the
+    // buttons without a dialog; `false` = verified unavailable — block + dialog.
+    final trustedTimeStatus = ref.watch(trustedTimeStatusProvider);
+    final trustedTimeReady = trustedTimeStatus.value == true;
 
     // Hard block: whenever the clock resolves to manual (first load or a resume
     // re-check), surface the AGHRIS-style block dialog. The prompt is guarded
     // so it never stacks or loops.
     ref.listen<AsyncValue<bool?>>(automaticTimeStatusProvider, (_, next) {
       if (next.value == false) unawaited(_promptAutoTimeBlocked());
+    });
+
+    // Trusted-time block: whenever no valid anchor exists (first load or a
+    // resume re-check), surface the block dialog. The prompt is guarded so it
+    // never stacks or loops.
+    ref.listen<AsyncValue<bool>>(trustedTimeStatusProvider, (_, next) {
+      if (next.value == false) unawaited(_promptTrustedTimeBlocked());
     });
 
     // Mock-location hard block: whenever a location fetch returns a mocked fix,
@@ -432,8 +481,10 @@ class _AttendancePresenceScreenState
     // automatic-clock hard block, and mock-location detection. Business rules
     // (already checked in, leave, check-out ordering) are decided by the
     // backend, which returns a friendly message shown as a dialog.
-    final canCheckIn = !isBusy && !autoTimeBlocked && !mockLocationBlocked;
-    final canCheckOut = !isBusy && !autoTimeBlocked && !mockLocationBlocked;
+    final canCheckIn =
+        !isBusy && !autoTimeBlocked && trustedTimeReady && !mockLocationBlocked;
+    final canCheckOut =
+        !isBusy && !autoTimeBlocked && trustedTimeReady && !mockLocationBlocked;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Presensi')),
@@ -919,9 +970,7 @@ class _LocationErrorNotice extends StatelessWidget {
     required this.onRetry,
     required this.onOpenLocationSettings,
     required this.onOpenAppSettings,
-  });
-
-  final LocationError error;
+  });  final LocationError error;
 
   /// Re-run the location flow. For a disabled service this re-triggers the
   /// in-app system dialog (the primary path); for a transient error it simply
@@ -1054,6 +1103,36 @@ Future<AutoTimeBlockedChoice> showAutoTimeBlockedDialog(BuildContext context) {
       ),
     ),
   ).then((choice) => choice ?? AutoTimeBlockedChoice.dismissed);
+}
+
+/// Shows the hard block while no valid trusted-time anchor exists (fresh
+/// install, or a post-reboot device that is still offline).
+///
+/// Reuses the auto-time navigation pattern: the dialog is non-dismissible (no
+/// barrier tap, no back button) with a single OK action, after which the caller
+/// navigates the user off the capture page. Reconnecting re-establishes the
+/// anchor via the HTTP interceptor and clears the block.
+Future<void> showTrustedTimeBlockedDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('Waktu perangkat belum terverifikasi'),
+        content: const Text(
+          'Hubungkan ke internet terlebih dahulu untuk memverifikasi waktu '
+          'sebelum melakukan absensi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Shows a blocking dialog when a mock/fake/simulated location is detected.

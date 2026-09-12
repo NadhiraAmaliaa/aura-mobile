@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
@@ -48,6 +51,26 @@ class TrustedTimeService {
   TrustedTimeAnchor? _anchor;
   bool _loaded = false;
 
+  /// Bumped whenever the anchor is established or invalidated, or a
+  /// verification attempt completes — lets the UI re-evaluate [isAvailable]
+  /// reactively without knowing about the network layer.
+  final ValueNotifier<int> _revision = ValueNotifier<int>(0);
+
+  /// Completes when the first anchor-establishment attempt finishes (success or
+  /// failure), so a UI in the initial loading state can commit to an outcome.
+  final Completer<void> _firstAttempt = Completer<void>();
+  bool _attemptCompleted = false;
+
+  /// Notifies listeners on every anchor change / completed attempt.
+  Listenable get anchorChanges => _revision;
+
+  /// Whether at least one anchor-establishment attempt has completed this
+  /// session. Distinguishes "still verifying" from "verified: unavailable".
+  bool get hasCompletedAttempt => _attemptCompleted;
+
+  /// Resolves once the first anchor-establishment attempt completes.
+  Future<void> get firstAttempt => _firstAttempt.future;
+
   /// The sanity-check threshold for iOS reboot detection (secondary check).
   /// After a reboot, `estimatedNow` will be wildly off from `DateTime.now()`.
   /// 60 seconds is well above the worst-case legitimate drift (~22s at 50 ppm
@@ -73,6 +96,7 @@ class TrustedTimeService {
     // Reboot detection: the anchor must belong to the current boot session.
     if (await _isRebootDetected(anchor, currentMono)) {
       _anchor = null;
+      _revision.value++;
       await _deleteAnchor();
       throw const TrustedTimeUnavailableException(
         TrustedTimeUnavailableException.rebootMessage,
@@ -92,24 +116,52 @@ class TrustedTimeService {
     }
   }
 
-  /// Establishes or refreshes the trust anchor from a verified server time.
-  ///
-  /// Called by [TrustedTimeInterceptor] on every successful HTTP response that
-  /// carries a Date header, and can also be called directly after an explicit
-  /// time-sync endpoint.
+  /// Establishes or refreshes the trust anchor from a verified server time,
+  /// awaiting persistence. Suitable for direct/explicit time-sync callers.
   Future<void> setAnchor(DateTime serverTimeUtc) async {
+    final anchor = await _establishInMemory(serverTimeUtc);
+    if (anchor != null) await _persistAnchorSafely(anchor);
+  }
+
+  /// Establishes the in-memory anchor and returns as soon as it is usable;
+  /// persistence completes in the background. Used by [TrustedTimeInterceptor]
+  /// so a Date-bearing response never blocks on the DB while still guaranteeing
+  /// the anchor is resolved before the response is forwarded.
+  Future<void> establishAnchor(DateTime serverTimeUtc) async {
+    final anchor = await _establishInMemory(serverTimeUtc);
+    if (anchor != null) unawaited(_persistAnchorSafely(anchor));
+  }
+
+  /// Records a verification attempt that produced no anchor (e.g. a request
+  /// failed or timed out), letting the UI resolve from loading to unavailable.
+  /// Called by [TrustedTimeInterceptor] on error / a response without a Date.
+  void noteVerificationAttempt() => _markAttemptCompleted();
+
+  /// Builds and installs the in-memory anchor, returning it for persistence.
+  /// Marks the attempt completed even when the monotonic clock is unavailable.
+  Future<TrustedTimeAnchor?> _establishInMemory(DateTime serverTimeUtc) async {
     final currentMono = await _clock.monotonicMs();
-    if (currentMono == null) return;
+    if (currentMono == null) {
+      _markAttemptCompleted();
+      return null;
+    }
 
     final currentBootCount = await _clock.bootCount();
 
-    _anchor = TrustedTimeAnchor(
+    final anchor = TrustedTimeAnchor(
       serverTimeUtc: serverTimeUtc,
       monotonicMs: currentMono,
       bootCount: currentBootCount,
     );
+    _anchor = anchor;
+    _markAttemptCompleted();
+    return anchor;
+  }
 
-    await _persistAnchor(_anchor!);
+  void _markAttemptCompleted() {
+    _attemptCompleted = true;
+    if (!_firstAttempt.isCompleted) _firstAttempt.complete();
+    _revision.value++;
   }
 
   /// Detects whether the device has rebooted since the anchor was created.
@@ -161,6 +213,17 @@ class TrustedTimeService {
       await txn.delete(trustedTimeAnchorTable);
       await txn.insert(trustedTimeAnchorTable, anchor.toMap());
     });
+  }
+
+  /// Persists the anchor without ever surfacing a failure to the caller: a
+  /// persistence error only affects survival across an app restart, not the
+  /// current session's availability (which reads the in-memory anchor).
+  Future<void> _persistAnchorSafely(TrustedTimeAnchor anchor) async {
+    try {
+      await _persistAnchor(anchor);
+    } catch (_) {
+      // Intentionally swallowed — see doc comment.
+    }
   }
 
   Future<void> _deleteAnchor() async {

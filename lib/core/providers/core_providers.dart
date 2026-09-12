@@ -26,9 +26,9 @@ Dio dio(Ref ref) {
   final dio = buildDio(env: env, storage: storage);
 
   // Add the TrustedTime anchor interceptor. The service future resolves
-  // almost immediately (just opens the DB), but the interceptor handles the
-  // async boundary internally — only fire-and-forget anchor refreshes happen
-  // on response, so they never block the Dio pipeline.
+  // almost immediately (just opens the DB). On a Date-bearing response it
+  // establishes the in-memory anchor before forwarding (persistence stays in
+  // the background), so the response pipeline is never blocked on the DB.
   final trustedTimeFuture = ref.watch(trustedTimeServiceProvider.future);
   dio.interceptors.add(TrustedTimeInterceptor(trustedTimeFuture));
 
