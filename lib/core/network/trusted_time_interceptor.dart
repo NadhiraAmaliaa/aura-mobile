@@ -1,5 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:intl/intl.dart';
 
 import '../device/trusted_time_service.dart';
 
@@ -15,34 +17,54 @@ class TrustedTimeInterceptor extends Interceptor {
 
   final Future<TrustedTimeService> _trustedTimeFuture;
 
-  /// RFC-1123 date format as used in HTTP `Date` headers.
-  static final _httpDateFormat = DateFormat('EEE, dd MMM yyyy HH:mm:ss', 'en');
-
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final dateHeader = response.headers.value('date');
-    if (dateHeader != null) {
-      final serverTime = _parseHttpDate(dateHeader);
-      if (serverTime != null) {
-        // Fire-and-forget: anchor refresh must never block or fail the
-        // response pipeline.
-        _trustedTimeFuture
-            .then((service) => service.setAnchor(serverTime))
-            .ignore();
-      }
+    final serverTime = dateHeader != null ? _parseHttpDate(dateHeader) : null;
+    if (serverTime != null) {
+      // Establish the in-memory anchor BEFORE forwarding the response so a
+      // Date-bearing response can never settle before trusted time is
+      // available. Persistence still completes in the background inside
+      // establishAnchor, so the DB never blocks response delivery.
+      unawaited(_establishThenForward(serverTime, response, handler));
+      return;
+    }
+    // A response without a usable Date header is still a completed verification
+    // attempt: record it so the status can resolve out of the loading state.
+    _trustedTimeFuture.then((service) => service.noteVerificationAttempt())
+        .ignore();
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    // A failed/timed-out request is a completed attempt with no anchor, letting
+    // the trusted-time status resolve from loading to unavailable.
+    _trustedTimeFuture.then((service) => service.noteVerificationAttempt())
+        .ignore();
+    handler.next(err);
+  }
+
+  Future<void> _establishThenForward(
+    DateTime serverTime,
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) async {
+    try {
+      final service = await _trustedTimeFuture;
+      await service.establishAnchor(serverTime);
+    } catch (_) {
+      // Anchor refresh must never fail the response pipeline.
     }
     handler.next(response);
   }
 
-  /// Parses an HTTP `Date` header (RFC-1123) to a UTC [DateTime].
+  /// Parses an HTTP `Date` header to a UTC [DateTime] using the SDK's
+  /// locale-independent [HttpDate] parser (RFC-1123 / RFC-850 / asctime).
   /// Returns `null` on parse failure so the anchor simply isn't refreshed.
   static DateTime? _parseHttpDate(String value) {
     try {
-      // The header ends with " GMT"; strip it for DateFormat parsing, then
-      // treat the result as UTC.
-      final cleaned = value.replaceAll(' GMT', '').trim();
-      final parsed = _httpDateFormat.parseUtc(cleaned);
-      return parsed;
+      return HttpDate.parse(value);
     } catch (_) {
       return null;
     }
