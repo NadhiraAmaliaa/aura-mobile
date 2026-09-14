@@ -20,6 +20,9 @@ class _FakeLocationService implements LocationService {
   Future<LocationResult> getBestPosition({
     Duration warmUp = const Duration(seconds: 3),
     double acceptableAccuracy = 20,
+    double moderateAccuracy = 50,
+    Duration settle = const Duration(seconds: 2),
+    Duration hardCap = const Duration(seconds: 7),
   }) async => result;
 
   @override
