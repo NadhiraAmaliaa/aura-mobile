@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
 
+import 'adaptive_acquisition.dart';
 import 'location_result.dart';
 
 /// Reads the device's real GPS/location.
@@ -16,15 +17,24 @@ abstract interface class LocationService {
   /// [LocationFailure] rather than thrown.
   Future<LocationResult> getCurrentPosition();
 
-  /// Acquire the freshest, best-available position using a short warm-up.
+  /// Acquire the freshest, best-available position using an adaptive warm-up.
   ///
-  /// Listens to the location stream for up to [warmUp]; returns immediately as
-  /// soon as a fix at or below [acceptableAccuracy] metres arrives, otherwise
-  /// returns the most accurate fix seen within the window. Same permission
-  /// handling and failure model as [getCurrentPosition].
+  /// Listens to the location stream and decides when to stop based on the
+  /// accuracy seen so far, so a genuinely good fix returns fast while a coarse
+  /// network fix is not accepted too early:
+  /// - a fix at or below [acceptableAccuracy] metres (good) returns immediately;
+  /// - past [warmUp], a fix at or below [moderateAccuracy] metres is granted a
+  ///   short [settle] window to improve, then returned;
+  /// - a coarser fix keeps the stream open until a better one arrives or the
+  ///   [hardCap] elapses, after which the best fix seen is returned.
+  ///
+  /// Same permission handling and failure model as [getCurrentPosition].
   Future<LocationResult> getBestPosition({
     Duration warmUp,
     double acceptableAccuracy,
+    double moderateAccuracy,
+    Duration settle,
+    Duration hardCap,
   });
 
   /// Open the OS app-settings page so the user can re-enable a permanently
@@ -52,13 +62,26 @@ class GeolocatorLocationService implements LocationService {
     accuracy: LocationAccuracy.high,
   );
 
-  /// Default warm-up window: brief, so Check In/Out stay responsive.
+  /// Base warm-up window: the first decision checkpoint, brief so Check In/Out
+  /// stay responsive when the signal is good.
   static const _defaultWarmUp = Duration(seconds: 3);
 
   /// A fix at or below this horizontal accuracy (metres) is good enough to use
   /// immediately without waiting out the warm-up window. This is an early-exit
   /// optimisation only — it never rejects a fix.
   static const _defaultAcceptableAccuracy = 20.0;
+
+  /// Past [_defaultWarmUp], a fix at or below this accuracy (metres) is treated
+  /// as moderate: good enough to keep, but granted a short settle to improve.
+  /// A coarser fix (typically an initial network fix) is not accepted yet.
+  static const _defaultModerateAccuracy = 50.0;
+
+  /// Extra time a moderate fix is allowed to improve before it is returned.
+  static const _defaultSettle = Duration(seconds: 2);
+
+  /// Absolute upper bound on the warm-up, so Check In/Out never waits too long
+  /// even when only coarse fixes are available.
+  static const _defaultHardCap = Duration(seconds: 7);
 
   /// Returned when the platform flags the fix as coming from a mock provider
   /// (Android API 18+, or an iOS 15+ simulated location). Blocks Fake GPS /
@@ -101,12 +124,21 @@ class GeolocatorLocationService implements LocationService {
   Future<LocationResult> getBestPosition({
     Duration warmUp = _defaultWarmUp,
     double acceptableAccuracy = _defaultAcceptableAccuracy,
+    double moderateAccuracy = _defaultModerateAccuracy,
+    Duration settle = _defaultSettle,
+    Duration hardCap = _defaultHardCap,
   }) async {
     final failure = await _ensureLocationUsable();
     if (failure != null) return failure;
 
     try {
-      final position = await _acquireBestPosition(warmUp, acceptableAccuracy);
+      final position = await _acquireBestPosition(
+        warmUp,
+        acceptableAccuracy,
+        moderateAccuracy,
+        settle,
+        hardCap,
+      );
       return _resolvePosition(position);
     } on TimeoutException {
       return const LocationFailure(
@@ -166,43 +198,28 @@ class GeolocatorLocationService implements LocationService {
     return null;
   }
 
-  /// Collect location fixes for up to [warmUp], returning the first fix at or
-  /// below [acceptableAccuracy], else the most accurate fix observed. Falls
-  /// back to a single high-accuracy read when the stream yields nothing.
+  /// Adaptive warm-up over the position stream (see [selectAdaptiveFix]). Falls
+  /// back to a single high-accuracy read when the stream yields nothing before
+  /// the hard cap.
   Future<Position> _acquireBestPosition(
     Duration warmUp,
     double acceptableAccuracy,
+    double moderateAccuracy,
+    Duration settle,
+    Duration hardCap,
   ) async {
-    final completer = Completer<Position>();
-    Position? best;
-    StreamSubscription<Position>? subscription;
-
-    subscription =
-        Geolocator.getPositionStream(locationSettings: _warmUpSettings).listen(
-          (position) {
-            if (best == null || position.accuracy < best!.accuracy) {
-              best = position;
-            }
-            if (position.accuracy <= acceptableAccuracy &&
-                !completer.isCompleted) {
-              completer.complete(position);
-            }
-          },
-          onError: (Object error) {
-            if (!completer.isCompleted) completer.completeError(error);
-          },
-        );
-
-    try {
-      return await completer.future.timeout(warmUp);
-    } on TimeoutException {
-      // No sufficiently-accurate fix within the window: use the best one seen,
-      // or fall back to a single bounded read if the stream produced nothing.
-      return best ??
-          await Geolocator.getCurrentPosition(locationSettings: _settings);
-    } finally {
-      await subscription.cancel();
-    }
+    final outcome = await selectAdaptiveFix(
+      Geolocator.getPositionStream(locationSettings: _warmUpSettings),
+      acceptableAccuracy: acceptableAccuracy,
+      moderateAccuracy: moderateAccuracy,
+      warmUp: warmUp,
+      settle: settle,
+      hardCap: hardCap,
+    );
+    final position = outcome.position;
+    if (position != null) return position;
+    // Cap reached with no stream fix: single bounded high-accuracy read.
+    return await Geolocator.getCurrentPosition(locationSettings: _settings);
   }
 
   /// Convert a resolved [Position] into a [LocationResult], rejecting fixes the
