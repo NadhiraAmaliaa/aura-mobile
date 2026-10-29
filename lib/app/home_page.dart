@@ -8,10 +8,8 @@ import 'router/routes.dart';
 
 /// Authenticated landing screen: the main menu shell.
 ///
-/// Slice 0 turns the former auth placeholder into the app's home. It shows a
-/// greeting header and the four v1 menu destinations (Profile, Attendance,
-/// Leave, SPD). Only Attendance has a real screen so far; the others route to
-/// "coming soon" placeholders until their slices land.
+/// Shows a greeting header and the three main menu destinations:
+/// Profil, Absensi, and Izin.
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -69,11 +67,6 @@ class HomePage extends ConsumerWidget {
                       label: 'Izin',
                       icon: Icons.event_busy_outlined,
                       path: RoutePaths.leave,
-                    ),
-                    _MenuCard(
-                      label: 'SPD',
-                      icon: Icons.card_travel_outlined,
-                      path: RoutePaths.spd,
                     ),
                   ],
                 ),
