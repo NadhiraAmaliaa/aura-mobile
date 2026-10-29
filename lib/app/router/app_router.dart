@@ -18,7 +18,6 @@ import '../../features/profile/presentation/screens/contact_edit_screen.dart';
 import '../../features/profile/presentation/screens/internship_info_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/surat/presentation/screens/surat_submit_screen.dart';
-import '../../shared/widgets/placeholder_screen.dart';
 import '../bootstrap/bootstrap_page.dart';
 import '../bootstrap/offline_bootstrap_provider.dart';
 import '../home_page.dart';
@@ -144,14 +143,6 @@ GoRouter router(Ref ref) {
             builder: (context, state) => const SuratSubmitScreen(),
           ),
         ],
-      ),
-      GoRoute(
-        path: RoutePaths.spd,
-        name: RouteNames.spd,
-        builder: (context, state) => const PlaceholderScreen(
-          title: 'SPD',
-          icon: Icons.card_travel_outlined,
-        ),
       ),
       GoRoute(
         path: RoutePaths.profile,

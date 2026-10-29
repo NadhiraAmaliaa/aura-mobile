@@ -8,12 +8,11 @@ abstract final class RoutePaths {
   static const String bootstrap = '/bootstrap';
   static const String home = '/';
 
-  // Main menu destinations (the four v1 features).
+  // Main menu destinations (Profil, Absensi, and Izin).
   static const String attendance = '/attendance';
   static const String attendanceHistory = 'history';
   static const String attendancePresence = 'presence';
   static const String leave = '/leave';
-  static const String spd = '/spd';
   static const String profile = '/profile';
 
   // Leave feature children (relative to `/leave`).
@@ -36,12 +35,11 @@ abstract final class RouteNames {
   static const String bootstrap = 'bootstrap';
   static const String home = 'home';
 
-  // Main menu destinations (the four v1 features).
+  // Main menu destinations (Profil, Absensi, and Izin).
   static const String attendance = 'attendance';
   static const String attendanceHistory = 'attendance-history';
   static const String attendancePresence = 'attendance-presence';
   static const String leave = 'leave';
-  static const String spd = 'spd';
   static const String profile = 'profile';
 
   // Leave feature children.
