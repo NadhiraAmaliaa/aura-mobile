@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/utils/indo_date.dart';
 import '../../../attendance/presentation/providers/attendance_dashboard_notifier.dart';
 import '../../../attendance/presentation/providers/attendance_queue_controller.dart';
+import 'home_layout.dart';
 
 class HomeOverviewCard extends StatelessWidget {
   const HomeOverviewCard({
@@ -30,7 +31,7 @@ class HomeOverviewCard extends StatelessWidget {
     ];
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -45,12 +46,12 @@ class HomeOverviewCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: DefaultTextStyle(
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(
             color: Colors.white,
-            fontSize: 14,
-            height: 1.4,
+            fontSize: 13,
+            height: 1.3,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -62,16 +63,20 @@ class HomeOverviewCard extends StatelessWidget {
                     children: [
                       Text(
                         name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          height: 1.3,
+                          height: 1.25,
                         ),
                       ),
                       for (final detail in details) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Color(0xFFDCEAF6)),
                         ),
                       ],
@@ -79,24 +84,23 @@ class HomeOverviewCard extends StatelessWidget {
                   );
                   final avatar = _Avatar(url: avatarUrl);
                   if (constraints.maxWidth < 280 ||
-                      MediaQuery.textScalerOf(context).scale(14) > 20) {
+                      HomeLayout.largeText(context)) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [avatar, const SizedBox(height: 12), identity],
                     );
                   }
                   return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       avatar,
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       Expanded(child: identity),
                     ],
                   );
                 },
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 15),
+                padding: EdgeInsets.symmetric(vertical: 12),
                 child: Divider(height: 1, color: Color(0x337FAACB)),
               ),
               const _AttendanceSummary(),
@@ -114,13 +118,15 @@ class _Avatar extends StatelessWidget {
 
   final String? url;
 
+  static const _size = 72.0;
+
   @override
   Widget build(BuildContext context) {
-    const fallback = Icon(Icons.person, size: 50, color: Color(0xFF3F7296));
+    const fallback = Icon(Icons.person, size: 46, color: Color(0xFF3F7296));
     return ExcludeSemantics(
       child: Container(
-        width: 76,
-        height: 76,
+        width: _size,
+        height: _size,
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
@@ -130,10 +136,10 @@ class _Avatar extends StatelessWidget {
             ? fallback
             : Image.network(
                 url!,
-                width: 76,
-                height: 76,
+                width: _size,
+                height: _size,
                 fit: BoxFit.cover,
-                cacheWidth: (76 * MediaQuery.devicePixelRatioOf(context))
+                cacheWidth: (_size * MediaQuery.devicePixelRatioOf(context))
                     .ceil(),
                 errorBuilder: (_, _, _) => fallback,
               ),
@@ -152,40 +158,40 @@ class _AttendanceSummary extends ConsumerWidget {
       skipLoadingOnRefresh: true,
       data: (data) {
         final today = data.today;
+        // Home stays a compact summary (date + times); status, work mode,
+        // leave and holiday details live on the attendance screens.
         final attendance = today.attendance;
-        final labels = [
-          if (attendance != null) attendance.statusLabel,
-          if (attendance?.workModeLabel case final String mode) mode,
-          if (attendance == null && today.leave != null)
-            'Sedang ${today.leave!.typeLabel}',
-          if (!today.isWorkingDay) 'Hari libur',
-        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 const CircleAvatar(
-                  radius: 17,
+                  radius: 15,
                   backgroundColor: Color(0x334FA0D2),
                   child: Icon(
                     Icons.calendar_month_outlined,
-                    size: 20,
+                    size: 18,
                     color: Color(0xFFE8F4FF),
                   ),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Absensi, ${formatIndoDate(today.date)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
+                final stacked =
+                    constraints.maxWidth < 260 || HomeLayout.largeText(context);
                 final checkIn = _AttendanceTime(
                   label: 'Check In',
                   time: attendance?.checkInTime,
@@ -197,10 +203,11 @@ class _AttendanceSummary extends ConsumerWidget {
                   time: attendance?.checkOutTime,
                   icon: Icons.logout_rounded,
                   incoming: false,
+                  mirrored: !stacked,
                 );
-                if (constraints.maxWidth < 260 ||
-                    MediaQuery.textScalerOf(context).scale(14) > 20) {
+                if (stacked) {
                   return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [checkIn, const SizedBox(height: 14), checkOut],
                   );
                 }
@@ -209,7 +216,7 @@ class _AttendanceSummary extends ConsumerWidget {
                     Expanded(child: checkIn),
                     Container(
                       width: 1,
-                      height: 42,
+                      height: 44,
                       margin: const EdgeInsets.symmetric(horizontal: 12),
                       color: const Color(0x337FAACB),
                     ),
@@ -218,27 +225,6 @@ class _AttendanceSummary extends ConsumerWidget {
                 );
               },
             ),
-            if (labels.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: [
-                  for (final label in labels)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF346C8C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(label, style: const TextStyle(fontSize: 12)),
-                    ),
-                ],
-              ),
-            ],
           ],
         );
       },
@@ -274,6 +260,7 @@ class _AttendanceTime extends StatelessWidget {
     required this.time,
     required this.icon,
     required this.incoming,
+    this.mirrored = false,
   });
 
   final String label;
@@ -281,42 +268,46 @@ class _AttendanceTime extends StatelessWidget {
   final IconData icon;
   final bool incoming;
 
+  /// Places the icon after the text, pinned to the trailing edge.
+  final bool mirrored;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final badge = CircleAvatar(
+      radius: 22,
+      backgroundColor: incoming
+          ? const Color(0xFFEAF5E7)
+          : const Color(0xFFE4F0FC),
+      child: Icon(
+        icon,
+        size: 22,
+        color: incoming ? const Color(0xFF367D49) : const Color(0xFF28618D),
+      ),
+    );
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: incoming
-              ? const Color(0xFFEAF5E7)
-              : const Color(0xFFE4F0FC),
-          child: Icon(
-            icon,
-            size: 24,
-            color: incoming ? const Color(0xFF367D49) : const Color(0xFF28618D),
+        Text(
+          time == null || time!.isEmpty ? '--:--' : time!,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            height: 1.15,
           ),
         ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                time == null || time!.isEmpty ? '--:--' : time!,
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w700,
-                  height: 1.2,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Color(0xFFDCEAF6)),
-              ),
-            ],
-          ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFFDCEAF6)),
         ),
       ],
+    );
+    return Row(
+      mainAxisAlignment: mirrored
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
+      children: mirrored
+          ? [Flexible(child: text), const SizedBox(width: 10), badge]
+          : [badge, const SizedBox(width: 10), Flexible(child: text)],
     );
   }
 }

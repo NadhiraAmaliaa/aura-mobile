@@ -10,6 +10,7 @@ import 'package:aura_mobile/features/auth/data/models/user_model.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_state.dart';
 import 'package:aura_mobile/features/home/presentation/screens/home_screen.dart';
+import 'package:aura_mobile/features/home/presentation/widgets/home_overview_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -98,11 +99,12 @@ _pumpHome(
   Future<AttendanceDashboardModel> Function()? load,
   int pending = 0,
   double width = 390,
+  double height = 1000,
   double textScale = 1,
   bool settle = true,
 }) async {
   const pixelRatio = bool.fromEnvironment('HOME_PREVIEW') ? 2.0 : 1.0;
-  tester.view.physicalSize = Size(width * pixelRatio, 1000 * pixelRatio);
+  tester.view.physicalSize = Size(width * pixelRatio, height * pixelRatio);
   tester.view.devicePixelRatio = pixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -169,6 +171,36 @@ _pumpHome(
   );
 }
 
+/// Writes `build/home-preview/<name>.png` when run with HOME_PREVIEW, for
+/// visual comparison against the design reference.
+Future<void> _capturePreview(WidgetTester tester, String name) async {
+  if (!const bool.fromEnvironment('HOME_PREVIEW')) return;
+  await tester.runAsync(() async {
+    final context = tester.element(find.byType(HomeScreen));
+    for (final image in tester.widgetList<Image>(find.byType(Image))) {
+      await precacheImage(image.image, context);
+    }
+  });
+  await tester.pumpAndSettle();
+  await tester.runAsync(() async {
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(const ValueKey('home-preview')),
+    );
+    final image = await boundary.toImage(pixelRatio: 2);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    await Directory('build/home-preview').create(recursive: true);
+    await File(
+      'build/home-preview/$name.png',
+    ).writeAsBytes(bytes!.buffer.asUint8List());
+    image.dispose();
+  });
+}
+
+/// Rect of the tappable surface around a menu entry's title.
+Rect _menuRect(WidgetTester tester, String title) => tester.getRect(
+  find.ancestor(of: find.text(title), matching: find.byType(InkWell)).first,
+);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
@@ -186,17 +218,27 @@ void main() {
     await iconLoader.load();
   });
   testWidgets(
-    'shows real identity, dated attendance and Dinas without unsupported UI',
+    'shows real identity, dated attendance and times without unsupported UI',
     (tester) async {
-      await _pumpHome(tester);
+      final harness = await _pumpHome(tester);
       expect(find.text('Nadhira Amalia'), findsNWidgets(2));
       expect(find.text('NIM: 8005312'), findsOneWidget);
       expect(find.text('Bagian Operasional'), findsOneWidget);
       expect(find.text('Absensi, 22 Juli 2026'), findsOneWidget);
       expect(find.text('07:37'), findsOneWidget);
       expect(find.text('--:--'), findsOneWidget);
-      expect(find.text('Dinas'), findsOneWidget);
-      expect(find.text('Hadir'), findsOneWidget);
+      // Home is a compact summary: status and work mode are not shown here,
+      // but the Dinas attendance itself is untouched in the dashboard state.
+      expect(find.text('Dinas'), findsNothing);
+      expect(find.text('Hadir'), findsNothing);
+      final attendance = harness.container
+          .read(attendanceDashboardProvider)
+          .value!
+          .today
+          .attendance!;
+      expect(attendance.workMode, 'dinas');
+      expect(attendance.statusLabel, 'Hadir');
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
       expect(find.textContaining('Absensi hari ini,'), findsNothing);
       expect(find.text('00:00'), findsNothing);
       expect(find.text('Tepat waktu'), findsNothing);
@@ -205,28 +247,7 @@ void main() {
       expect(find.byIcon(Icons.notifications), findsNothing);
       expect(find.text('SPD'), findsNothing);
       expect(tester.takeException(), isNull);
-
-      if (const bool.fromEnvironment('HOME_PREVIEW')) {
-        await tester.runAsync(() async {
-          final context = tester.element(find.byType(HomeScreen));
-          for (final image in tester.widgetList<Image>(find.byType(Image))) {
-            await precacheImage(image.image, context);
-          }
-        });
-        await tester.pumpAndSettle();
-        await tester.runAsync(() async {
-          final boundary = tester.renderObject<RenderRepaintBoundary>(
-            find.byKey(const ValueKey('home-preview')),
-          );
-          final image = await boundary.toImage(pixelRatio: 2);
-          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          await Directory('build/home-preview').create(recursive: true);
-          await File(
-            'build/home-preview/home.png',
-          ).writeAsBytes(bytes!.buffer.asUint8List());
-          image.dispose();
-        });
-      }
+      await _capturePreview(tester, 'home');
     },
   );
 
@@ -266,10 +287,10 @@ void main() {
     expect(find.text('07:37'), findsNothing);
   });
 
-  testWidgets('leave and non-working days are sourced from the dashboard', (
+  testWidgets('leave and non-working days keep Home to the date and times', (
     tester,
   ) async {
-    await _pumpHome(
+    final harness = await _pumpHome(
       tester,
       data: _dashboard.copyWith(
         today: _dashboard.today.copyWith(
@@ -279,9 +300,18 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Sedang Sakit'), findsOneWidget);
-    expect(find.text('Hari libur'), findsOneWidget);
+    expect(find.text('Absensi, 22 Juli 2026'), findsOneWidget);
+    expect(find.text('--:--'), findsNWidgets(2));
+    expect(find.text('Sedang Sakit'), findsNothing);
+    expect(find.text('Hari libur'), findsNothing);
     expect(find.text('Hadir'), findsNothing);
+    // Presentation only: the leave and holiday data are still loaded.
+    final today = harness.container
+        .read(attendanceDashboardProvider)
+        .value!
+        .today;
+    expect(today.leave?.typeLabel, 'Sakit');
+    expect(today.isWorkingDay, isFalse);
   });
 
   for (final destination in [
@@ -301,6 +331,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(HomeScreen), findsOneWidget);
       expect(harness.dashboard.loads, 1);
+    });
+
+    testWidgets('${destination.label} card navigates from anywhere on it', (
+      tester,
+    ) async {
+      await _pumpHome(tester);
+      await tester.ensureVisible(find.text(destination.label));
+      await tester.pumpAndSettle();
+      // Bottom-right corner, where the removed arrow button used to be.
+      final card = _menuRect(tester, destination.label);
+      await tester.tapAt(card.bottomRight - const Offset(14, 14));
+      await tester.pumpAndSettle();
+      expect(find.text('Destination ${destination.path}'), findsOneWidget);
     });
   }
 
@@ -382,31 +425,136 @@ void main() {
   });
 
   for (final viewport in [
-    (width: 320.0, scale: 1.0),
-    (width: 390.0, scale: 1.5),
-    (width: 320.0, scale: 2.0),
-    (width: 768.0, scale: 1.0),
+    (width: 320.0, height: 568.0),
+    (width: 360.0, height: 640.0),
+    (width: 393.0, height: 852.0),
+    (width: 430.0, height: 932.0),
+    (width: 768.0, height: 1024.0),
   ]) {
-    testWidgets(
-      'fits width ${viewport.width} and text scale ${viewport.scale}',
-      (tester) async {
-        await _pumpHome(
-          tester,
-          width: viewport.width,
-          textScale: viewport.scale,
-          user: _user.copyWith(
-            name: 'Nadhira Amalia Putri dengan Nama yang Panjang',
-            intern: _user.intern!.copyWith(
-              division:
-                  'Bagian Optimalisasi dan Pengembangan Operasional Regional',
+    for (final scale in [1.0, 1.3, 2.0]) {
+      testWidgets(
+        'fits ${viewport.width}x${viewport.height} at text scale $scale',
+        (tester) async {
+          await _pumpHome(
+            tester,
+            width: viewport.width,
+            height: viewport.height,
+            textScale: scale,
+            user: _user.copyWith(
+              name: 'Nadhira Amalia Putri dengan Nama yang Panjang',
+              intern: _user.intern!.copyWith(
+                division:
+                    'Bagian Optimalisasi dan Pengembangan Operasional Regional',
+              ),
             ),
-          ),
-        );
-        expect(tester.takeException(), isNull);
-        await tester.ensureVisible(find.text('Tetap semangat!'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-      },
-    );
+          );
+          expect(tester.takeException(), isNull);
+
+          final logo = find.byWidgetPredicate(
+            (widget) => widget is Image && widget.semanticLabel == 'AURA',
+          );
+          expect(tester.getSize(logo).height, lessThanOrEqualTo(48));
+
+          // Menu is either one row of equal cards or one column — never 2 + 1.
+          final menu = [
+            for (final title in ['Profil', 'Absensi', 'Izin'])
+              _menuRect(tester, title),
+          ];
+          final oneRow = menu.every(
+            (rect) =>
+                rect.top == menu.first.top && rect.height == menu.first.height,
+          );
+          final oneColumn = menu.every(
+            (rect) =>
+                rect.left == menu.first.left && rect.width == menu.first.width,
+          );
+          expect(oneRow || oneColumn, isTrue, reason: '$menu');
+
+          // The building backdrop never reaches the logout button.
+          final building = find.byWidgetPredicate(
+            (widget) =>
+                widget is Image &&
+                widget.image is ResizeImage &&
+                (widget.image as ResizeImage).imageProvider ==
+                    const AssetImage('assets/images/home/ptpn_building.png'),
+          );
+          expect(
+            tester.getRect(building).top,
+            greaterThanOrEqualTo(
+              tester.getRect(find.byTooltip('Keluar')).bottom,
+            ),
+          );
+          for (final description in [
+            'Lihat dan kelola informasi profil Anda',
+            'Lakukan absensi kehadiran harian',
+            'Ajukan izin, sakit, atau pulang cepat',
+          ]) {
+            final paragraph = tester.renderObject<RenderParagraph>(
+              find.text(description),
+            );
+            expect(paragraph.didExceedMaxLines, isFalse, reason: description);
+          }
+
+          // Capture the first screen the user sees, before scrolling.
+          await _capturePreview(
+            tester,
+            'home_${viewport.width.toInt()}x${viewport.height.toInt()}'
+            '@$scale',
+          );
+          await tester.ensureVisible(find.text('Tetap semangat!'));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
+
+  for (final width in [360.0, 393.0, 430.0]) {
+    testWidgets('normal phone width $width keeps three cards in one row', (
+      tester,
+    ) async {
+      await _pumpHome(tester, width: width);
+      final profile = _menuRect(tester, 'Profil');
+      final attendance = _menuRect(tester, 'Absensi');
+      final leave = _menuRect(tester, 'Izin');
+      expect(attendance.top, profile.top);
+      expect(leave.top, profile.top);
+      expect(attendance.height, profile.height);
+      expect(leave.height, profile.height);
+      expect(profile.right, lessThan(attendance.left));
+    });
+  }
+
+  testWidgets('narrow width stacks the menu as single-column tiles', (
+    tester,
+  ) async {
+    await _pumpHome(tester, width: 320);
+    final profile = _menuRect(tester, 'Profil');
+    final attendance = _menuRect(tester, 'Absensi');
+    expect(attendance.left, profile.left);
+    expect(attendance.top, greaterThan(profile.bottom));
+  });
+
+  testWidgets('check-out mirrors check-in with its icon trailing', (
+    tester,
+  ) async {
+    await _pumpHome(tester);
+    final card = find.byType(HomeOverviewCard);
+    final checkInIcon = find.descendant(
+      of: card,
+      matching: find.byIcon(Icons.login_rounded),
+    );
+    final checkOutIcon = find.descendant(
+      of: card,
+      matching: find.byIcon(Icons.logout_rounded),
+    );
+    expect(
+      tester.getRect(checkInIcon).right,
+      lessThan(tester.getRect(find.text('07:37')).left),
+    );
+    expect(
+      tester.getRect(checkOutIcon).left,
+      greaterThan(tester.getRect(find.text('--:--')).right),
+    );
+  });
 }

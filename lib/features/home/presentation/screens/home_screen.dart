@@ -9,6 +9,7 @@ import '../../../attendance/presentation/providers/attendance_dashboard_notifier
 import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
 import '../widgets/home_header.dart';
+import '../widgets/home_layout.dart';
 import '../widgets/home_menu_grid.dart';
 import '../widgets/home_motivation_banner.dart';
 import '../widgets/home_overview_card.dart';
@@ -39,6 +40,7 @@ class HomeScreen extends ConsumerWidget {
     }
     final avatarUrl = ref.watch(appEnvProvider).resolveAssetUrl(user.avatarUrl);
     final intern = user.intern;
+    final gutter = HomeLayout.gutter(MediaQuery.sizeOf(context).width);
 
     return Theme(
       data: _theme,
@@ -62,7 +64,7 @@ class HomeScreen extends ConsumerWidget {
                     ref.read(attendanceDashboardProvider.notifier).refresh(),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                  padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 24),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 680),
@@ -71,6 +73,7 @@ class HomeScreen extends ConsumerWidget {
                         children: [
                           HomeHeader(
                             name: user.name,
+                            gutter: gutter,
                             onLogout: () =>
                                 ref.read(authProvider.notifier).logout(),
                           ),
@@ -81,14 +84,14 @@ class HomeScreen extends ConsumerWidget {
                             division: intern?.division,
                             program: intern?.program ?? intern?.university,
                           ),
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 20),
                           HomeMenuGrid(
                             onProfile: () => context.push(RoutePaths.profile),
                             onAttendance: () =>
                                 context.push(RoutePaths.attendance),
                             onLeave: () => context.push(RoutePaths.leave),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
                           const HomeMotivationBanner(),
                         ],
                       ),
