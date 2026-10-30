@@ -91,6 +91,8 @@ flutter:
   # intern's current position; the red pin marks an office location.
   assets:
     - assets/markers/
+    - assets/branding/
+    - assets/images/home/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
