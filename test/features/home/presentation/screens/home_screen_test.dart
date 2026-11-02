@@ -10,6 +10,7 @@ import 'package:aura_mobile/features/auth/data/models/user_model.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_state.dart';
 import 'package:aura_mobile/features/home/presentation/screens/home_screen.dart';
+import 'package:aura_mobile/features/home/presentation/widgets/home_header.dart';
 import 'package:aura_mobile/features/home/presentation/widgets/home_overview_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -195,6 +196,14 @@ Future<void> _capturePreview(WidgetTester tester, String name) async {
     image.dispose();
   });
 }
+
+/// Images decoded from the asset at [path].
+Finder _asset(String path) => find.byWidgetPredicate(
+  (widget) =>
+      widget is Image &&
+      widget.image is ResizeImage &&
+      (widget.image as ResizeImage).imageProvider == AssetImage(path),
+);
 
 /// Rect of the tappable surface around a menu entry's title.
 Rect _menuRect(WidgetTester tester, String title) => tester.getRect(
@@ -470,24 +479,106 @@ void main() {
           );
           expect(oneRow || oneColumn, isTrue, reason: '$menu');
 
-          // The building backdrop never reaches the logout button.
-          final building = find.byWidgetPredicate(
-            (widget) =>
-                widget is Image &&
-                widget.image is ResizeImage &&
-                (widget.image as ResizeImage).imageProvider ==
-                    const AssetImage('assets/images/home/ptpn_building.png'),
-          );
+          // The building's visible art never reaches the logout button.
+          final building = _asset('assets/images/home/ptpn_building.png');
+          final buildingRect = tester.getRect(building.first);
+          // The scene runs to the screen edge, with no hard cut-off.
+          expect(buildingRect.right, closeTo(viewport.width, 0.5));
           expect(
-            tester.getRect(building).top,
+            // Roofline: the artwork's top 116 of 730 rows are empty canvas.
+            buildingRect.top + buildingRect.height * 116 / 730,
             greaterThanOrEqualTo(
               tester.getRect(find.byTooltip('Keluar')).bottom,
             ),
           );
+
+          // Only the lawn edge tucks under the card; the greeting, however
+          // long, ends above it.
+          final cardTop = tester.getRect(find.byType(HomeOverviewCard)).top;
+          expect(
+            cardTop - buildingRect.top,
+            greaterThanOrEqualTo(buildingRect.height * 0.8),
+          );
+          expect(
+            tester
+                .getRect(
+                  find
+                      .text('Nadhira Amalia Putri dengan Nama yang Panjang')
+                      .first,
+                )
+                .bottom,
+            lessThanOrEqualTo(cardTop - 16),
+          );
+
+          // Decoration never sizes the header: only its content column does.
+          final header = find.byType(HomeHeader);
+          expect(
+            tester.getSize(header).height,
+            tester
+                .getSize(
+                  find
+                      .descendant(of: header, matching: find.byType(Column))
+                      .first,
+                )
+                .height,
+          );
+
+          // Two clouds, on screen; the upper one sits in the logo row between
+          // the logo and the logout button.
+          final clouds = _asset('assets/images/home/cloud.png');
+          expect(clouds, findsNWidgets(2));
+          for (final cloud in tester.widgetList(clouds)) {
+            final rect = tester.getRect(find.byWidget(cloud));
+            expect(rect.left, greaterThanOrEqualTo(0), reason: '$rect');
+            expect(rect.right, lessThanOrEqualTo(viewport.width));
+          }
+          final upperCloud = tester.getRect(clouds.first);
+          final logoRect = tester.getRect(logo);
+          final logoutRect = tester.getRect(find.byTooltip('Keluar'));
+          expect(upperCloud.left, greaterThan(logoRect.right));
+          expect(upperCloud.right, lessThan(logoutRect.left));
+          // The visible cloud fills rows 219–768 of the 887-row canvas.
+          final cloudTop = upperCloud.top + upperCloud.height * 219 / 887;
+          final cloudBottom = upperCloud.top + upperCloud.height * 768 / 887;
+          final logoRow = tester.getRect(
+            find.ancestor(of: logo, matching: find.byType(Row)).first,
+          );
+          expect(
+            (cloudTop + cloudBottom) / 2,
+            inInclusiveRange(logoRow.top, logoRow.bottom),
+          );
+          // It stays above the greeting.
+          expect(
+            cloudBottom,
+            lessThan(tester.getRect(find.text('Selamat datang,')).top),
+          );
+
+          // Every decorative layer ignores taps.
+          for (final decor in [clouds, building]) {
+            for (final element in decor.evaluate()) {
+              final ignore = find.ancestor(
+                of: find.byWidget(element.widget),
+                matching: find.byType(IgnorePointer),
+              );
+              expect(tester.widget<IgnorePointer>(ignore.first).ignoring, true);
+            }
+          }
+
+          // The building is tinted, except one untinted copy for the sign.
+          expect(building, findsNWidgets(2));
+          expect(
+            find.ancestor(of: building, matching: find.byType(ColorFiltered)),
+            findsOneWidget,
+          );
+
+          // Truncation depends on real glyph widths: the default test font
+          // draws every glyph as a full em square, so check only with Roboto.
           for (final description in [
-            'Lihat dan kelola informasi profil Anda',
-            'Lakukan absensi kehadiran harian',
-            'Ajukan izin, sakit, atau pulang cepat',
+            if (Platform.environment['HOME_PREVIEW_FONT'] != null) ...[
+              'Lihat dan kelola informasi profil Anda',
+              'Lakukan absensi kehadiran harian',
+              'Ajukan izin, sakit, atau pulang cepat',
+            ],
           ]) {
             final paragraph = tester.renderObject<RenderParagraph>(
               find.text(description),
@@ -508,6 +599,21 @@ void main() {
       );
     }
   }
+
+  testWidgets(
+    'taller screens give the header more room, shorter stay compact',
+    (tester) async {
+      await _pumpHome(tester, width: 393, height: 640);
+      final short = tester.getRect(find.byType(HomeOverviewCard)).top;
+      tester.view.physicalSize =
+          const Size(393, 852) * tester.view.devicePixelRatio;
+      await tester.pumpAndSettle();
+      final tall = tester.getRect(find.byType(HomeOverviewCard)).top;
+      expect(tall, greaterThan(short));
+      // Growth is bounded: the header never stretches to fill the viewport.
+      expect(tall - short, lessThanOrEqualTo(40));
+    },
+  );
 
   for (final width in [360.0, 393.0, 430.0]) {
     testWidgets('normal phone width $width keeps three cards in one row', (
