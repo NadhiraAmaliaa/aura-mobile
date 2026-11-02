@@ -82,6 +82,7 @@ class HomeHeader extends StatelessWidget {
         final width = constraints.maxWidth;
         final ratio = MediaQuery.devicePixelRatioOf(context);
         final logoHeight = (width * 0.12).clamp(38.0, 48.0);
+        final logoWidth = logoHeight * _logoAspect;
         // Distance to the screen edge: the gutter on phones, more on tablets
         // where the content column is centred.
         final bleed = math.max(gutter, (screen.width - width) / 2);
@@ -113,7 +114,6 @@ class HomeHeader extends StatelessWidget {
         // Clouds shrink a little on short screens. Cloud 1 floats in the logo
         // row; cloud 2 rides on the building's roofline, beside its left wing.
         final cloudScale = 0.85 + 0.15 * roominess;
-        final logoWidth = logoHeight * _logoAspect;
         // Never wider than the gap between the logo and the logout button.
         final upperCloudWidth = math.max(
           0.0,
@@ -233,12 +233,10 @@ class HomeHeader extends StatelessWidget {
                     children: [
                       Image.asset(
                         'assets/branding/aura_logo.png',
-                        width: logoHeight * _logoAspect,
+                        width: logoWidth,
                         height: logoHeight,
                         fit: BoxFit.contain,
-                        cacheWidth: (logoHeight * _logoAspect * ratio)
-                            .ceil()
-                            .clamp(1, 480),
+                        cacheWidth: (logoWidth * ratio).ceil().clamp(1, 480),
                         semanticLabel: 'AURA',
                       ),
                       DecoratedBox(

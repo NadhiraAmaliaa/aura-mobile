@@ -624,10 +624,11 @@ describe the original plan, not the current implemented capabilities.
 There is no bottom navigation, notification inbox indicator, online avatar badge,
 or SPD shortcut on Home.
 
-Assets are resized PNG copies with their full canvas, alpha and aspect ratio
-preserved: logo 480 x 251, building 1440 x 488, menu art 600 x 548.
-Original supplied files remain outside the repository and are not overwritten.
-Bundled art totals approximately 1.9 MB; image decode widths are capped to the
+Assets keep their full canvas, alpha and aspect ratio. The logo (480 x 251) and
+menu art (600 x 548) are resized copies; the building (1952 x 730) and cloud
+(1774 x 887) are the supplied originals, unmodified. The header's bluish
+atmosphere is a Flutter colour filter and gradient, not baked into the PNGs.
+Bundled art totals approximately 2.9 MB; image decode widths are capped to the
 rendered physical size and source resolution. No new runtime dependency is used.
 
 Home tests cover identity, missing data, dated attendance, Dinas, leave, pending

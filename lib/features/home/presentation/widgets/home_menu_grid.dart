@@ -22,12 +22,12 @@ const _descriptionStyle = TextStyle(
   letterSpacing: 0,
 );
 
-/// Forces every description line to the same height, so a reserved line count
-/// translates into an exact, predictable block height.
 /// White card rim. `Ink` insets its child by the border, so content width
 /// calculations must subtract it too.
 const _borderWidth = 3.0;
 
+/// Forces every description line to the same height, so a reserved line count
+/// translates into an exact, predictable block height.
 const _descriptionStrut = StrutStyle(
   fontSize: 12,
   height: 1.35,
@@ -166,7 +166,7 @@ class HomeMenuGrid extends StatelessWidget {
   }
 }
 
-/// Three-across card: illustration on top, text below, chevron at the bottom.
+/// Three-across card: illustration on top, text below.
 class _MenuCard extends StatelessWidget {
   const _MenuCard({
     required this.item,
