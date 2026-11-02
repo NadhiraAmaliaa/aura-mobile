@@ -598,3 +598,40 @@ for faster integration over long-lived divergent branches.
 
 _End of document. Update this file first whenever an architectural decision
 changes._
+
+## Home presentation (2026-10-30)
+
+Home lives in `features/home/presentation/screens/home_screen.dart`, with
+header, overview, menu grid, and motivation widgets alongside it. Routing remains
+in `app/router/`; the three shortcuts retain their existing paths. Home uses
+the light reference palette locally, including when the system uses dark mode.
+
+Identity comes from the authenticated session through `authProvider` (NIM,
+division, program/university and optional avatar). Home consumes attendance through
+the existing presentation providers, with no Home repository or generated state.
+Only the attendance and pending-count sections subscribe to attendance updates.
+Dates and times are the dashboard's actual snapshot values; pending captures are
+explicitly separate. Pull to refresh and the inline retry use the existing
+dashboard notifier. Monthly totals and attendance actions remain in Absensi.
+
+Offline bootstrap, queue synchronization, Dinas and capture rules are unchanged.
+On a first online login without cached data, bootstrap and Home may each fetch
+the dashboard. This existing lifecycle is intentionally preserved. Home does not
+mount another attendance configuration refresher or fetch office locations.
+The older offline/geofencing/notifications non-goals elsewhere in this document
+describe the original plan, not the current implemented capabilities.
+
+There is no bottom navigation, notification inbox indicator, online avatar badge,
+or SPD shortcut on Home.
+
+Assets keep their full canvas, alpha and aspect ratio. The logo (480 x 251) and
+menu art (600 x 548) are resized copies; the building (1952 x 730) and cloud
+(1774 x 887) are the supplied originals, unmodified. The header's bluish
+atmosphere is a Flutter colour filter and gradient, not baked into the PNGs.
+Bundled art totals approximately 2.9 MB; image decode widths are capped to the
+rendered physical size and source resolution. No new runtime dependency is used.
+
+Home tests cover identity, missing data, dated attendance, Dinas, leave, pending
+sync, loading/error/retry, logout delegation, navigation/back, and responsive
+layouts. An optional local preview can be written to the ignored build directory:
+`flutter test test/features/home/presentation/screens/home_screen_test.dart --dart-define=HOME_PREVIEW=true`.

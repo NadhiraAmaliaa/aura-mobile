@@ -8,6 +8,7 @@ import '../../features/attendance/presentation/screens/attendance_presence_scree
 import '../../features/auth/presentation/providers/auth_notifier.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/leave/presentation/providers/leave_list_state.dart';
 import '../../features/leave/presentation/screens/leave_detail_screen.dart';
 import '../../features/leave/presentation/screens/leave_landing_screen.dart';
@@ -20,7 +21,6 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/surat/presentation/screens/surat_submit_screen.dart';
 import '../bootstrap/bootstrap_page.dart';
 import '../bootstrap/offline_bootstrap_provider.dart';
-import '../home_page.dart';
 import '../splash_page.dart';
 import 'routes.dart';
 
@@ -90,7 +90,7 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: RoutePaths.home,
         name: RouteNames.home,
-        builder: (context, state) => const HomePage(),
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: RoutePaths.attendance,
