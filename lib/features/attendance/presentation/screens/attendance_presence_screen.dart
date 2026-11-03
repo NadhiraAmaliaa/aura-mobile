@@ -10,6 +10,7 @@ import '../../../../core/device/trusted_time_service.dart';
 import '../../../../core/location/location_result.dart';
 import '../../data/local/attendance_queue_entry.dart';
 import '../../data/models/attendance_models.dart';
+import '../attendance_day.dart';
 import '../geofence_evaluation.dart';
 import '../providers/attendance_dashboard_notifier.dart';
 import '../providers/attendance_locations_provider.dart';
@@ -17,6 +18,7 @@ import '../providers/attendance_queue_controller.dart';
 import '../providers/automatic_time_notifier.dart';
 import '../providers/current_location_notifier.dart';
 import '../providers/current_location_state.dart';
+import '../providers/trusted_attendance_date_provider.dart';
 import '../providers/trusted_time_status_notifier.dart';
 import '../widgets/attendance_map.dart';
 
@@ -296,10 +298,15 @@ class _AttendancePresenceScreenState
   /// never captured out of order (mirrors the backend ordering rule, but also
   /// holds offline where the server can't reject it).
   bool _hasCheckedInToday() {
-    final serverCheckedIn = switch (ref.read(attendanceDashboardProvider)) {
-      AsyncData(:final value) => value.today.attendance?.checkInTime != null,
-      _ => false,
+    final today = switch (ref.read(attendanceDashboardProvider)) {
+      AsyncData(:final value) => value.today,
+      _ => null,
     };
+    final attendance = _currentDayAttendance(
+      today,
+      ref.read(trustedAttendanceDateProvider).value,
+    );
+    final serverCheckedIn = attendance?.checkInTime != null;
     return serverCheckedIn ||
         ref.read(pendingAttendanceActionsProvider).hasCheckIn;
   }
@@ -463,7 +470,12 @@ class _AttendancePresenceScreenState
       AsyncData(:final value) => value.today,
       _ => null,
     };
-    final attendance = today?.attendance;
+    // A snapshot cached on an earlier day is not today's record: it neither
+    // fills today's history nor fixes the check-out work mode.
+    final attendance = _currentDayAttendance(
+      today,
+      ref.watch(trustedAttendanceDateProvider).value,
+    );
 
     // Fold in today's queued (offline) actions so the screen reflects a capture
     // immediately — before it has synced to the server-backed dashboard.
@@ -1161,6 +1173,19 @@ Future<void> showMockLocationBlockedDialog(BuildContext context) {
       ],
     ),
   );
+}
+
+/// [today]'s attendance record when the snapshot belongs to the trusted
+/// [currentDate] (or that date is unknown); `null` for a snapshot cached on
+/// another day.
+AttendanceModel? _currentDayAttendance(
+  AttendanceTodayModel? today,
+  String? currentDate,
+) {
+  if (today == null || isOtherAttendanceDay(today.date, currentDate)) {
+    return null;
+  }
+  return today.attendance;
 }
 
 /// Today's attendance history rendered as a lightweight table.

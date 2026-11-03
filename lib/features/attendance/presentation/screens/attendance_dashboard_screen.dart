@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../app/router/routes.dart';
 import '../../data/models/attendance_models.dart';
+import '../attendance_day.dart';
 import '../providers/attendance_dashboard_notifier.dart';
+import '../providers/trusted_attendance_date_provider.dart';
 import '../widgets/attendance_config_refresher.dart';
 
 /// Attendance landing / dashboard.
@@ -133,18 +135,29 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-class _TodayCard extends StatelessWidget {
+class _TodayCard extends ConsumerWidget {
   const _TodayCard({required this.today});
 
   final AttendanceTodayModel today;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final attendance = today.attendance;
+    // A snapshot cached on an earlier day is not today's record: show the
+    // trusted current date with empty hours and no attendance or leave rather
+    // than the old day's values.
+    final currentDate = ref.watch(trustedAttendanceDateProvider).value;
+    final otherDay = isOtherAttendanceDay(today.date, currentDate);
+    final date = otherDay ? currentDate! : today.date;
+    final attendance = otherDay ? null : today.attendance;
+    final leave = otherDay ? null : today.leave;
     final workHours = today.workHours;
 
-    final hoursLabel = (workHours.start != null && workHours.end != null)
+    // Working hours are per weekday: another day's hours (or its "Hari libur")
+    // are not today's.
+    final hoursLabel = otherDay
+        ? '--:-- - --:--'
+        : (workHours.start != null && workHours.end != null)
         ? '${workHours.start} - ${workHours.end}'
         : 'Hari libur';
 
@@ -173,7 +186,7 @@ class _TodayCard extends StatelessWidget {
             ),
             const Divider(height: 24),
             Text(
-              'Absensi hari ini, ${_formatIndoDate(today.date)}',
+              'Absensi hari ini, ${_formatIndoDate(date)}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer,
               ),
@@ -210,11 +223,11 @@ class _TodayCard extends StatelessWidget {
                     ),
                 ],
               ),
-            ] else if (today.leave != null) ...[
+            ] else if (leave != null) ...[
               const SizedBox(height: 12),
               Chip(
                 avatar: const Icon(Icons.event_busy_outlined, size: 18),
-                label: Text('Sedang ${today.leave!.typeLabel}'),
+                label: Text('Sedang ${leave.typeLabel}'),
                 visualDensity: VisualDensity.compact,
               ),
             ],

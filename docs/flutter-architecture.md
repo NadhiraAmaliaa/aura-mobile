@@ -614,6 +614,14 @@ Dates and times are the dashboard's actual snapshot values; pending captures are
 explicitly separate. Pull to refresh and the inline retry use the existing
 dashboard notifier. Monthly totals and attendance actions remain in Absensi.
 
+A snapshot is only today's when its date matches the trusted-time date
+(`trustedAttendanceDateProvider`). One cached on an earlier day (offline, or a
+long-lived session) is shown as the trusted date with `--:--` times on Home and
+Absensi (whose working hours show `--:-- - --:--`), Presensi's today table shows
+its empty state, and the capture rules treat it like a missing snapshot.
+The cache itself is never rewritten. Without trusted time the snapshot is shown
+as before; capture stays blocked.
+
 Offline bootstrap, queue synchronization, Dinas and capture rules are unchanged.
 On a first online login without cached data, bootstrap and Home may each fetch
 the dashboard. This existing lifecycle is intentionally preserved. Home does not

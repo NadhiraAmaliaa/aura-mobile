@@ -6,6 +6,7 @@ import 'package:aura_mobile/app/router/routes.dart';
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_dashboard_notifier.dart';
 import 'package:aura_mobile/features/attendance/presentation/providers/attendance_queue_controller.dart';
+import 'package:aura_mobile/features/attendance/presentation/providers/trusted_attendance_date_provider.dart';
 import 'package:aura_mobile/features/auth/data/models/user_model.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:aura_mobile/features/auth/presentation/providers/auth_state.dart';
@@ -99,6 +100,7 @@ _pumpHome(
   AttendanceDashboardModel data = _dashboard,
   Future<AttendanceDashboardModel> Function()? load,
   int pending = 0,
+  AsyncValue<String?> currentDate = const AsyncData('2026-07-22'),
   double width = 390,
   double height = 1000,
   double textScale = 1,
@@ -117,6 +119,7 @@ _pumpHome(
       authProvider.overrideWith(() => auth),
       attendanceDashboardProvider.overrideWith(() => dashboard),
       pendingAttendanceCountProvider.overrideWith((ref) => pending),
+      trustedAttendanceDateProvider.overrideWithValue(currentDate),
     ],
   );
   addTearDown(container.dispose);
@@ -259,6 +262,46 @@ void main() {
       await _capturePreview(tester, 'home');
     },
   );
+
+  testWidgets(
+    'a snapshot cached on an earlier day shows the trusted date, empty times',
+    (tester) async {
+      final harness = await _pumpHome(
+        tester,
+        pending: 1,
+        currentDate: const AsyncData('2026-07-23'),
+      );
+      expect(find.text('Absensi, 23 Juli 2026'), findsOneWidget);
+      expect(find.text('Absensi, 22 Juli 2026'), findsNothing);
+      expect(find.text('--:--'), findsNWidgets(2));
+      expect(find.text('07:37'), findsNothing);
+      // A pending capture stays a separate notice, never a confirmed time.
+      expect(
+        find.textContaining('1 absensi menunggu sinkronisasi'),
+        findsOneWidget,
+      );
+      // Presentation only: the cached snapshot itself is left intact.
+      expect(
+        harness.container
+            .read(attendanceDashboardProvider)
+            .value!
+            .today
+            .attendance!
+            .checkInTime,
+        '07:37',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('without a trusted date the snapshot keeps its date and times', (
+    tester,
+  ) async {
+    await _pumpHome(tester, currentDate: const AsyncData(null));
+    expect(find.text('Absensi, 22 Juli 2026'), findsOneWidget);
+    expect(find.text('07:37'), findsOneWidget);
+    expect(find.text('--:--'), findsOneWidget);
+  });
 
   testWidgets('missing identity and attendance never become invented values', (
     tester,

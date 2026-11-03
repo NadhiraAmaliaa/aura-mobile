@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/utils/indo_date.dart';
+import '../../../attendance/presentation/attendance_day.dart';
 import '../../../attendance/presentation/providers/attendance_dashboard_notifier.dart';
 import '../../../attendance/presentation/providers/attendance_queue_controller.dart';
+import '../../../attendance/presentation/providers/trusted_attendance_date_provider.dart';
 import 'home_layout.dart';
 
 class HomeOverviewCard extends StatelessWidget {
@@ -154,13 +156,18 @@ class _AttendanceSummary extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(attendanceDashboardProvider);
+    final currentDate = ref.watch(trustedAttendanceDateProvider).value;
     return dashboard.when(
       skipLoadingOnRefresh: true,
       data: (data) {
         final today = data.today;
+        // A snapshot cached on an earlier day has no times for the trusted
+        // current date: show that date with the empty times instead.
+        final otherDay = isOtherAttendanceDay(today.date, currentDate);
+        final date = otherDay ? currentDate! : today.date;
         // Home stays a compact summary (date + times); status, work mode,
         // leave and holiday details live on the attendance screens.
-        final attendance = today.attendance;
+        final attendance = otherDay ? null : today.attendance;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -178,7 +185,7 @@ class _AttendanceSummary extends ConsumerWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Absensi, ${formatIndoDate(today.date)}',
+                    'Absensi, ${formatIndoDate(date)}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

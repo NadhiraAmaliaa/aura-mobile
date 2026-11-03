@@ -14,6 +14,7 @@ import '../../data/local/offline_providers.dart';
 import '../../data/models/attendance_models.dart';
 import '../../data/sync/attendance_sync_service.dart';
 import '../../data/sync/sync_providers.dart';
+import '../attendance_day.dart';
 import '../geofence_evaluation.dart';
 import 'attendance_dashboard_notifier.dart';
 
@@ -170,8 +171,16 @@ class AttendanceQueueController extends _$AttendanceQueueController {
     required AttendanceTodayModel? today,
     required DateTime now,
   }) {
+    // The snapshot only describes its own calendar day. One cached on an
+    // earlier date (offline across midnight, or a long-lived session) says
+    // nothing about [now]'s day, so it is treated as a missing snapshot: today's
+    // evidence then comes from the pending queue alone, and the day-dependent
+    // rules fall back to the backend exactly as with no snapshot at all.
+    final current = today != null && today.date == attendanceDateKey(now)
+        ? today
+        : null;
     final pending = _pendingActionsFrom(state.asData?.value ?? const [], now);
-    final serverCheckInTime = today?.attendance?.checkInTime;
+    final serverCheckInTime = current?.attendance?.checkInTime;
     final hasCheckIn = serverCheckInTime != null || pending.hasCheckIn;
 
     switch (type) {
@@ -181,7 +190,7 @@ class AttendanceQueueController extends _$AttendanceQueueController {
             'Anda sudah melakukan check in hari ini.',
           );
         }
-        final cutoff = _checkInCutoff(today, workMode, now);
+        final cutoff = _checkInCutoff(current, workMode, now);
         if (cutoff != null && now.isAfter(cutoff.deadline)) {
           throw AttendanceRuleException(
             'Check In untuk mode ini hanya dapat dilakukan hingga pukul '
@@ -226,7 +235,8 @@ class AttendanceQueueController extends _$AttendanceQueueController {
 
   /// The check-in deadline for [today]'s work day, mirroring the backend
   /// `Attendance::checkInDeadline`. Returns `null` (no deadline) for Dinas, a
-  /// non-working day, unknown day state, or a missing end time.
+  /// non-working day, unknown day state (including a snapshot from another
+  /// day), or a missing end time.
   ({DateTime deadline, String label})? _checkInCutoff(
     AttendanceTodayModel? today,
     String? workMode,
