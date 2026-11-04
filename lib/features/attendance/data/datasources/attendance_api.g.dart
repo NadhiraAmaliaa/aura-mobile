@@ -48,11 +48,16 @@ class _AttendanceApi implements AttendanceApi {
   }
 
   @override
-  Future<AttendanceHistoryEnvelope> history(int? page, int? perPage) async {
+  Future<AttendanceHistoryEnvelope> history(
+    int? page,
+    int? perPage,
+    String? month,
+  ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
       r'page': page,
       r'per_page': perPage,
+      r'month': month,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};

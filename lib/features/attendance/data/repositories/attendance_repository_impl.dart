@@ -32,9 +32,10 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   Future<ApiResult<AttendanceHistoryModel>> history({
     int? page,
     int? perPage,
+    String? month,
   }) async {
     try {
-      final response = await _api.history(page, perPage);
+      final response = await _api.history(page, perPage, month);
       return Success(response.data);
     } on DioException catch (e) {
       return Failure(mapDioException(e));

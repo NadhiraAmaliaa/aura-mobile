@@ -66,6 +66,7 @@ class _FakeAttendanceRepository implements AttendanceRepository {
   Future<ApiResult<AttendanceHistoryModel>> history({
     int? page,
     int? perPage,
+    String? month,
   }) => throw UnimplementedError();
 
   @override

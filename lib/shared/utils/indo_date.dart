@@ -43,3 +43,14 @@ String formatIndoDateWithWeekday(String iso) {
   if (date == null) return iso;
   return '${_weekdays[date.weekday - 1]}, ${formatIndoDate(iso)}';
 }
+
+/// The Indonesian name of a 1-based [month], e.g. 7 -> "Juli".
+String indoMonthName(int month) => _months[month - 1];
+
+/// The Indonesian weekday name of an ISO `yyyy-MM-dd` string, e.g. "Senin".
+/// Returns null if it cannot be parsed.
+String? indoWeekdayName(String iso) {
+  final date = DateTime.tryParse(iso);
+  if (date == null) return null;
+  return _weekdays[date.weekday - 1];
+}

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AttendanceHistoryState {
 
- List<AttendanceModel> get items; PaginationModel? get pagination; bool get isLoadingMore;
+ List<AttendanceModel> get items; PaginationModel? get pagination; bool get isLoadingMore; bool get loadMoreFailed;
 /// Create a copy of AttendanceHistoryState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AttendanceHistoryStateCopyWith<AttendanceHistoryState> get copyWith => _$Attend
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttendanceHistoryState&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttendanceHistoryState&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore)&&(identical(other.loadMoreFailed, loadMoreFailed) || other.loadMoreFailed == loadMoreFailed));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),pagination,isLoadingMore);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),pagination,isLoadingMore,loadMoreFailed);
 
 @override
 String toString() {
-  return 'AttendanceHistoryState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore)';
+  return 'AttendanceHistoryState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore, loadMoreFailed: $loadMoreFailed)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AttendanceHistoryStateCopyWith<$Res>  {
   factory $AttendanceHistoryStateCopyWith(AttendanceHistoryState value, $Res Function(AttendanceHistoryState) _then) = _$AttendanceHistoryStateCopyWithImpl;
 @useResult
 $Res call({
- List<AttendanceModel> items, PaginationModel? pagination, bool isLoadingMore
+ List<AttendanceModel> items, PaginationModel? pagination, bool isLoadingMore, bool loadMoreFailed
 });
 
 
@@ -62,11 +62,12 @@ class _$AttendanceHistoryStateCopyWithImpl<$Res>
 
 /// Create a copy of AttendanceHistoryState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,Object? loadMoreFailed = null,}) {
   return _then(_self.copyWith(
 items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<AttendanceModel>,pagination: freezed == pagination ? _self.pagination : pagination // ignore: cast_nullable_to_non_nullable
 as PaginationModel?,isLoadingMore: null == isLoadingMore ? _self.isLoadingMore : isLoadingMore // ignore: cast_nullable_to_non_nullable
+as bool,loadMoreFailed: null == loadMoreFailed ? _self.loadMoreFailed : loadMoreFailed // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -164,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore,  bool loadMoreFailed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AttendanceHistoryState() when $default != null:
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.loadMoreFailed);case _:
   return orElse();
 
 }
@@ -185,10 +186,10 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore,  bool loadMoreFailed)  $default,) {final _that = this;
 switch (_that) {
 case _AttendanceHistoryState():
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.loadMoreFailed);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +206,10 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<AttendanceModel> items,  PaginationModel? pagination,  bool isLoadingMore,  bool loadMoreFailed)?  $default,) {final _that = this;
 switch (_that) {
 case _AttendanceHistoryState() when $default != null:
-return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
+return $default(_that.items,_that.pagination,_that.isLoadingMore,_that.loadMoreFailed);case _:
   return null;
 
 }
@@ -220,7 +221,7 @@ return $default(_that.items,_that.pagination,_that.isLoadingMore);case _:
 
 
 class _AttendanceHistoryState extends AttendanceHistoryState {
-  const _AttendanceHistoryState({final  List<AttendanceModel> items = const <AttendanceModel>[], this.pagination, this.isLoadingMore = false}): _items = items,super._();
+  const _AttendanceHistoryState({final  List<AttendanceModel> items = const <AttendanceModel>[], this.pagination, this.isLoadingMore = false, this.loadMoreFailed = false}): _items = items,super._();
   
 
  final  List<AttendanceModel> _items;
@@ -232,6 +233,7 @@ class _AttendanceHistoryState extends AttendanceHistoryState {
 
 @override final  PaginationModel? pagination;
 @override@JsonKey() final  bool isLoadingMore;
+@override@JsonKey() final  bool loadMoreFailed;
 
 /// Create a copy of AttendanceHistoryState
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +245,16 @@ _$AttendanceHistoryStateCopyWith<_AttendanceHistoryState> get copyWith => __$Att
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttendanceHistoryState&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttendanceHistoryState&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.pagination, pagination) || other.pagination == pagination)&&(identical(other.isLoadingMore, isLoadingMore) || other.isLoadingMore == isLoadingMore)&&(identical(other.loadMoreFailed, loadMoreFailed) || other.loadMoreFailed == loadMoreFailed));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),pagination,isLoadingMore);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),pagination,isLoadingMore,loadMoreFailed);
 
 @override
 String toString() {
-  return 'AttendanceHistoryState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore)';
+  return 'AttendanceHistoryState(items: $items, pagination: $pagination, isLoadingMore: $isLoadingMore, loadMoreFailed: $loadMoreFailed)';
 }
 
 
@@ -263,7 +265,7 @@ abstract mixin class _$AttendanceHistoryStateCopyWith<$Res> implements $Attendan
   factory _$AttendanceHistoryStateCopyWith(_AttendanceHistoryState value, $Res Function(_AttendanceHistoryState) _then) = __$AttendanceHistoryStateCopyWithImpl;
 @override @useResult
 $Res call({
- List<AttendanceModel> items, PaginationModel? pagination, bool isLoadingMore
+ List<AttendanceModel> items, PaginationModel? pagination, bool isLoadingMore, bool loadMoreFailed
 });
 
 
@@ -280,11 +282,12 @@ class __$AttendanceHistoryStateCopyWithImpl<$Res>
 
 /// Create a copy of AttendanceHistoryState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? items = null,Object? pagination = freezed,Object? isLoadingMore = null,Object? loadMoreFailed = null,}) {
   return _then(_AttendanceHistoryState(
 items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<AttendanceModel>,pagination: freezed == pagination ? _self.pagination : pagination // ignore: cast_nullable_to_non_nullable
 as PaginationModel?,isLoadingMore: null == isLoadingMore ? _self.isLoadingMore : isLoadingMore // ignore: cast_nullable_to_non_nullable
+as bool,loadMoreFailed: null == loadMoreFailed ? _self.loadMoreFailed : loadMoreFailed // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

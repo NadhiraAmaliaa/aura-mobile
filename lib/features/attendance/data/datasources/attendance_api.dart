@@ -17,12 +17,14 @@ abstract class AttendanceApi {
   @GET('/attendance/dashboard')
   Future<AttendanceDashboardEnvelope> dashboard(@Query('month') String? month);
 
-  /// A page of past attendance records, newest first. [page] is 1-based;
-  /// [perPage] is clamped server-side (max 50).
+  /// A page of past attendance records on working days, newest first. [page]
+  /// is 1-based; [perPage] is clamped server-side (max 50). [month] is an
+  /// optional `YYYY-MM` filter; when null every month is listed.
   @GET('/attendance/history')
   Future<AttendanceHistoryEnvelope> history(
     @Query('page') int? page,
     @Query('per_page') int? perPage,
+    @Query('month') String? month,
   );
 
   /// Record today's check-in. Body: `work_mode` plus optional `latitude` /
