@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -34,6 +36,42 @@ const _attendanceTypes = <({String value, String label, String hint})>[
   (value: 'wfh', label: 'WFH', hint: 'Bekerja dari rumah'),
   (value: 'dinas', label: 'Dinas', hint: 'Dinas luar / tugas lapangan'),
 ];
+
+// Presensi palette. Heading, page background, divider and shadow are the AURA
+// tokens used on Home, Dashboard and History; the date card, actions, badge
+// and table colours come from the approved Presensi reference design. Kept
+// local until a shared AURA palette exists. There is deliberately no Theme
+// override: the map overlays read the app theme and must render as before.
+const _heading = Color(0xFF123F69);
+const _navy = Color(0xFF0B2559);
+const _bodyMuted = Color(0xFF58636A);
+const _divider = Color(0xFFE6ECF1);
+const _surfaceShadow = BoxShadow(
+  color: Color(0x100E3555),
+  blurRadius: 12,
+  offset: Offset(0, 5),
+);
+const _pageGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [Color(0xFFE5EFFB), Color(0xFFF5F8F8)],
+  stops: [0, 0.7],
+);
+const _dateCardBackground = Color(0xFFD9EEE3);
+const _dateIconBackground = Color(0xFFF1F8F0);
+const _dateIconGreen = Color(0xFF5ABF5F);
+const _checkInColor = Color(0xFFF9A431);
+const _checkOutColor = Color(0xFFE84A4D);
+
+/// Disabled actions blend their fill this far toward [_disabledBlend]: muted
+/// and desaturated, yet deep enough for the white label and spinner.
+const _disabledBlend = Color(0xFF7D8794);
+const _disabledBlendAmount = 0.45;
+const _sectionBadge = Color(0xFF6AB3E9);
+const _tableHeader = Color(0xFF194875);
+const _checkInStatusBackground = Color(0xFFDDEEDC);
+const _checkInStatusText = Color(0xFF1E6B3F);
+const _checkOutStatusBackground = Color(0xFFCEE4FC);
 
 /// Dedicated attendance (presensi) page reached from the summary page's
 /// "Presensi Magang" button.
@@ -498,78 +536,94 @@ class _AttendancePresenceScreenState
     final canCheckOut =
         !isBusy && !autoTimeBlocked && trustedTimeReady && !mockLocationBlocked;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Presensi')),
-      body: Column(
-        children: [
-          SizedBox(
-            height: _mapSectionHeight,
-            width: double.infinity,
-            child: CheckInMap(userPosition: position),
+    // Same page background and transparent AppBar as Home, Dashboard and
+    // History. Only the page is painted — no Theme override — so the map and
+    // the coordinates card render exactly as before.
+    return DecoratedBox(
+      decoration: const BoxDecoration(gradient: _pageGradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Presensi'),
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          scrolledUnderElevation: 0,
+          foregroundColor: _heading,
+          titleTextStyle: const TextStyle(
+            color: _heading,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const _LiveDateTimeCard(),
-                const _PendingSyncNotice(),
-                if (locationState is LocationError) ...[
-                  const SizedBox(height: 12),
-                  _LocationErrorNotice(
-                    error: locationState,
-                    onRetry: () =>
-                        ref.read(currentLocationProvider.notifier).fetch(),
-                    onOpenLocationSettings: () => ref
-                        .read(currentLocationProvider.notifier)
-                        .openLocationSettings(),
-                    onOpenAppSettings: () => ref
-                        .read(currentLocationProvider.notifier)
-                        .openAppSettings(),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _CoordinatesCard(
-                  position: position,
-                  loading: locationState is LocationLoading,
-                  onRefresh: () =>
-                      ref.read(currentLocationProvider.notifier).fetch(),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CheckInButton(
-                        busy: isCheckingIn,
-                        onPressed: canCheckIn ? _onCheckInPressed : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _CheckOutButton(
-                        busy: isCheckingOut,
-                        onPressed: canCheckOut
-                            ? () => _onCheckOutPressed(checkOutWorkMode)
-                            : null,
-                      ),
+          systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+            statusBarColor: Colors.transparent,
+          ),
+        ),
+        body: Column(
+          children: [
+            SizedBox(
+              height: _mapSectionHeight,
+              width: double.infinity,
+              child: CheckInMap(userPosition: position),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                children: [
+                  const _LiveDateTimeCard(),
+                  const _PendingSyncNotice(),
+                  if (locationState is LocationError) ...[
+                    const SizedBox(height: 12),
+                    _LocationErrorNotice(
+                      error: locationState,
+                      onRetry: () =>
+                          ref.read(currentLocationProvider.notifier).fetch(),
+                      onOpenLocationSettings: () => ref
+                          .read(currentLocationProvider.notifier)
+                          .openLocationSettings(),
+                      onOpenAppSettings: () => ref
+                          .read(currentLocationProvider.notifier)
+                          .openAppSettings(),
                     ),
                   ],
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Histori absensi hari ini',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 12),
+                  _CoordinatesCard(
+                    position: position,
+                    loading: locationState is LocationLoading,
+                    onRefresh: () =>
+                        ref.read(currentLocationProvider.notifier).fetch(),
                   ),
-                ),
-                const SizedBox(height: 8),
-                _TodayHistoryTable(
-                  attendance: attendance,
-                  loading: dashboard is AsyncLoading,
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CheckInButton(
+                          busy: isCheckingIn,
+                          onPressed: canCheckIn ? _onCheckInPressed : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _CheckOutButton(
+                          busy: isCheckingOut,
+                          onPressed: canCheckOut
+                              ? () => _onCheckOutPressed(checkOutWorkMode)
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const _HistorySectionTitle(),
+                  const SizedBox(height: 12),
+                  _TodayHistoryTable(
+                    attendance: attendance,
+                    loading: dashboard is AsyncLoading,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -738,7 +792,8 @@ class _PendingSyncNoticeState extends ConsumerState<_PendingSyncNotice> {
   }
 }
 
-/// Green card that shows the current date and time, ticking every second.
+/// Soft mint card (from the Presensi reference) that shows the current date
+/// and time, ticking every second.
 class _LiveDateTimeCard extends StatefulWidget {
   const _LiveDateTimeCard();
 
@@ -766,29 +821,45 @@ class _LiveDateTimeCardState extends State<_LiveDateTimeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: _dateCardBackground,
+        borderRadius: BorderRadius.all(Radius.circular(14)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today, size: 18, color: theme.colorScheme.error),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              _formatIndoDateTime(_now),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
+      child: Padding(
+        // 7 + 40dp circle + 7 = 54dp at normal text size (was 68dp).
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: Row(
+          children: [
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                color: _dateIconBackground,
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: Icon(
+                  Icons.calendar_month_rounded,
+                  size: 20,
+                  color: _dateIconGreen,
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _formatIndoDateTime(_now),
+                style: const TextStyle(
+                  color: _heading,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  // Fixed-width digits so the ticking seconds don't jitter.
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -827,30 +898,12 @@ class _CheckInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
+    return _AttendanceActionButton(
+      label: 'Check In',
+      icon: Icons.login_rounded,
+      color: _checkInColor,
+      busy: busy,
       onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.amber.shade700,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
-      child: busy
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.login, size: 18),
-                SizedBox(width: 8),
-                Text('Check In'),
-              ],
-            ),
     );
   }
 }
@@ -863,29 +916,75 @@ class _CheckOutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return _AttendanceActionButton(
+      label: 'Check Out',
+      icon: Icons.logout_rounded,
+      color: _checkOutColor,
+      busy: busy,
+      onPressed: onPressed,
+    );
+  }
+}
+
+/// Flat, pill-shaped attendance action in its reference colour, without any
+/// shadow.
+///
+/// A `null` [onPressed] disables it and swaps in a muted fill; [busy] replaces
+/// the label with a white spinner.
+class _AttendanceActionButton extends StatelessWidget {
+  const _AttendanceActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.busy,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool busy;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     return FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: theme.colorScheme.error,
-        foregroundColor: theme.colorScheme.onError,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        backgroundColor: color,
+        disabledBackgroundColor: Color.lerp(
+          color,
+          _disabledBlend,
+          _disabledBlendAmount,
+        ),
+        foregroundColor: Colors.white,
+        disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
+        // Flat in every state: no hover/press elevation.
+        elevation: 0,
+        shape: const StadiumBorder(),
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
       child: busy
-          ? SizedBox(
-              width: 18,
-              height: 18,
+          ? const SizedBox(
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.onError,
+                strokeWidth: 2.5,
+                color: Colors.white,
               ),
             )
-          : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          : Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.logout, size: 18),
-                SizedBox(width: 8),
-                Text('Check Out'),
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                // Shrinks rather than wraps under large text, so the two
+                // pills keep one height side by side.
+                Flexible(
+                  child: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
+                ),
               ],
             ),
     );
@@ -982,7 +1081,8 @@ class _LocationErrorNotice extends StatelessWidget {
     required this.onRetry,
     required this.onOpenLocationSettings,
     required this.onOpenAppSettings,
-  });  final LocationError error;
+  });
+  final LocationError error;
 
   /// Re-run the location flow. For a disabled service this re-triggers the
   /// in-app system dialog (the primary path); for a transient error it simply
@@ -1188,16 +1288,142 @@ AttendanceModel? _currentDayAttendance(
   return today.attendance;
 }
 
-/// Today's attendance history rendered as a lightweight table.
+/// "Histori absensi hari ini" heading: a light-blue clock badge and the title.
+class _HistorySectionTitle extends StatelessWidget {
+  const _HistorySectionTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: _sectionBadge,
+            shape: BoxShape.circle,
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(7),
+            child: Icon(Icons.schedule_rounded, size: 20, color: Colors.white),
+          ),
+        ),
+        SizedBox(width: 12),
+        // Wraps under large text instead of overflowing.
+        Flexible(
+          child: Text(
+            'Histori absensi hari ini',
+            style: TextStyle(
+              color: _navy,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal inset of the header and rows inside the history table.
+const _tableInset = 8.0;
+
+/// Space kept on each side of a history cell's content.
+const _cellPadding = 6.0;
+
+const _headerIconSize = 14.0;
+const _headerIconGap = 4.0;
+const _statusPillPadding = EdgeInsets.symmetric(horizontal: 10, vertical: 4);
+
+const _headerTextStyle = TextStyle(
+  color: Colors.white,
+  fontSize: 12,
+  fontWeight: FontWeight.w600,
+  letterSpacing: 0.2,
+);
+const _cellTextStyle = TextStyle(
+  color: _navy,
+  fontSize: 13,
+  fontWeight: FontWeight.w500,
+  fontFeatures: [FontFeature.tabularFigures()],
+);
+const _statusTextStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w600);
+
+/// The history table's columns, in display order.
+enum _HistoryColumn {
+  no('No'),
+  jam('Jam', Icons.schedule_rounded),
+  latitude('Latitude', Icons.location_on_outlined),
+  longitude('Longitude', Icons.location_on_outlined),
+  status('Status', Icons.layers_outlined);
+
+  const _HistoryColumn(this.label, [this.icon]);
+
+  final String label;
+  final IconData? icon;
+}
+
+/// Column widths for the history table within [available] width.
+///
+/// Each column gets its content width — the widest of its header and the
+/// [rows]' cells, measured at the current text scale, plus padding — and any
+/// spare width is shared equally. When the content is wider than [available]
+/// the widths add up to more, and the table scrolls sideways.
+List<double> _historyColumnWidths(
+  BuildContext context,
+  List<_HistoryRow> rows,
+  double available,
+) {
+  final baseStyle = DefaultTextStyle.of(context).style;
+  final textScaler = MediaQuery.textScalerOf(context);
+  final textDirection = Directionality.of(context);
+
+  double textWidth(String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: baseStyle.merge(style)),
+      textDirection: textDirection,
+      textScaler: textScaler,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width.ceilToDouble();
+    painter.dispose();
+    return width;
+  }
+
+  final content = [
+    for (final column in _HistoryColumn.values)
+      [
+            (column.icon == null ? 0.0 : _headerIconSize + _headerIconGap) +
+                textWidth(column.label, _headerTextStyle),
+            for (final row in rows)
+              column == _HistoryColumn.status
+                  ? textWidth(row.status, _statusTextStyle) +
+                        _statusPillPadding.horizontal
+                  : textWidth(row.cell(column), _cellTextStyle),
+          ].reduce(math.max) +
+          2 * _cellPadding,
+  ];
+  final spare =
+      available - 2 * _tableInset - content.fold(0.0, (sum, w) => sum + w);
+  final extra = spare > 0 ? spare / content.length : 0.0;
+  return [for (final width in content) width + extra];
+}
+
+/// Today's attendance history as a five-column table: a navy header over
+/// white rows.
+///
+/// Every column is at least as wide as its widest header or cell, so values
+/// are never truncated. Spare width is shared between the columns; when the
+/// screen is too narrow (small phones, large text) the table scrolls sideways
+/// inside its rounded container instead.
 class _TodayHistoryTable extends StatelessWidget {
   const _TodayHistoryTable({required this.attendance, required this.loading});
 
   final AttendanceModel? attendance;
   final bool loading;
 
+  static const _radius = BorderRadius.all(Radius.circular(16));
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final rows = <_HistoryRow>[];
     final a = attendance;
     if (a != null && a.checkInTime != null) {
@@ -1223,36 +1449,82 @@ class _TodayHistoryTable extends StatelessWidget {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
+    // Rows only appear once the dashboard has resolved, as before.
+    final visibleRows = loading ? const <_HistoryRow>[] : rows;
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: _radius,
+        boxShadow: [_surfaceShadow],
       ),
-      child: Column(
-        children: [
-          const _HistoryHeader(),
-          const Divider(height: 1),
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (rows.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Belum ada absensi hari ini.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+      child: ClipRRect(
+        borderRadius: _radius,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final widths = _historyColumnWidths(
+                  context,
+                  visibleRows,
+                  constraints.maxWidth,
+                );
+                final tableWidth =
+                    widths.fold(0.0, (sum, w) => sum + w) + 2 * _tableInset;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _HistoryHeader(widths: widths),
+                        for (var i = 0; i < visibleRows.length; i++) ...[
+                          if (i > 0)
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color: _divider,
+                            ),
+                          _HistoryDataRow(row: visibleRows[i], widths: widths),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator(color: _navy)),
+              )
+            else if (rows.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.event_note_outlined,
+                      size: 18,
+                      color: _bodyMuted,
+                    ),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Belum ada absensi hari ini.',
+                        style: TextStyle(color: _bodyMuted, fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            for (var i = 0; i < rows.length; i++) ...[
-              if (i > 0) const Divider(height: 1),
-              _HistoryDataRow(row: rows[i]),
-            ],
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1272,65 +1544,120 @@ class _HistoryRow {
   final String? lat;
   final String? long;
   final String status;
+
+  /// The text shown for this row in [column].
+  String cell(_HistoryColumn column) => switch (column) {
+    _HistoryColumn.no => '$no',
+    _HistoryColumn.jam => jam,
+    _HistoryColumn.latitude => lat ?? '-',
+    _HistoryColumn.longitude => long ?? '-',
+    _HistoryColumn.status => status,
+  };
 }
 
+/// Navy header row; each label (with its icon) is centred over its column.
 class _HistoryHeader extends StatelessWidget {
-  const _HistoryHeader();
+  const _HistoryHeader({required this.widths});
+
+  final List<double> widths;
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(
-      context,
-    ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: _tableHeader),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: _tableInset,
+          vertical: 13,
+        ),
+        child: Row(
+          children: [
+            for (final column in _HistoryColumn.values)
+              SizedBox(
+                width: widths[column.index],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (column.icon case final icon?) ...[
+                      Icon(icon, size: _headerIconSize, color: Colors.white),
+                      const SizedBox(width: _headerIconGap),
+                    ],
+                    Text(
+                      column.label,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: _headerTextStyle,
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One white data row; values are centred under their column headers.
+class _HistoryDataRow extends StatelessWidget {
+  const _HistoryDataRow({required this.row, required this.widths});
+
+  final _HistoryRow row;
+  final List<double> widths;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _tableInset,
+        vertical: 12,
+      ),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text('No', style: style)),
-          Expanded(flex: 2, child: Text('Jam', style: style)),
-          Expanded(flex: 3, child: Text('Latitude', style: style)),
-          Expanded(flex: 3, child: Text('Longitude', style: style)),
-          Expanded(flex: 2, child: Text('Status', style: style)),
+          for (final column in _HistoryColumn.values)
+            SizedBox(
+              width: widths[column.index],
+              child: column == _HistoryColumn.status
+                  ? Center(child: _StatusPill(row.status))
+                  : Text(
+                      row.cell(column),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: _cellTextStyle,
+                    ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _HistoryDataRow extends StatelessWidget {
-  const _HistoryDataRow({required this.row});
+/// Small rounded badge for a history row's status (Masuk / Pulang).
+class _StatusPill extends StatelessWidget {
+  const _StatusPill(this.status);
 
-  final _HistoryRow row;
+  final String status;
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(flex: 1, child: Text('${row.no}', style: style)),
-          Expanded(flex: 2, child: Text(row.jam, style: style)),
-          Expanded(
-            flex: 3,
-            child: Text(
-              row.lat ?? '-',
-              style: style,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              row.long ?? '-',
-              style: style,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(flex: 2, child: Text(row.status, style: style)),
-        ],
+    final (background, foreground) = switch (status) {
+      'Masuk' => (_checkInStatusBackground, _checkInStatusText),
+      _ => (_checkOutStatusBackground, _navy),
+    };
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: background,
+        shape: const StadiumBorder(),
+      ),
+      child: Padding(
+        padding: _statusPillPadding,
+        child: Text(
+          status,
+          maxLines: 1,
+          softWrap: false,
+          style: _statusTextStyle.copyWith(color: foreground),
+        ),
       ),
     );
   }
