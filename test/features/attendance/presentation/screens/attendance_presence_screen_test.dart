@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 /// Monday with a check-in and a check-out, coordinates as the API sends them.
 const _today = AttendanceTodayModel(
@@ -91,6 +92,34 @@ class _Location extends CurrentLocation {
   Future<GeoPosition?> acquireFresh() => Completer<GeoPosition?>().future;
 }
 
+/// The failure the location service reports for a mocked fix.
+const _mockedFix = CurrentLocationState.failure(
+  LocationFailureKind.mocked,
+  'Lokasi palsu terdeteksi.',
+);
+
+/// A fix that is reported as mocked: already on the fetch made when the page
+/// opens when [onOpen], otherwise only on the fresh fix taken by a capture.
+class _MockedLocation extends CurrentLocation {
+  _MockedLocation({required this.onOpen});
+
+  final bool onOpen;
+
+  @override
+  CurrentLocationState build() => const CurrentLocationState.success(_position);
+
+  @override
+  Future<void> fetch() async {
+    if (onOpen) state = _mockedFix;
+  }
+
+  @override
+  Future<GeoPosition?> acquireFresh() async {
+    state = _mockedFix;
+    return null;
+  }
+}
+
 class _AutomaticTime extends AutomaticTimeStatus {
   @override
   Future<bool?> build() async => true;
@@ -123,6 +152,9 @@ class _Offices extends AttendanceLocations {
 
 /// Mounts the real Presensi screen with every provider it reads faked.
 ///
+/// When [routed], the screen is pushed by a [GoRouter] on top of a stand-in
+/// "Dashboard" page, as in the app, so it can navigate back.
+///
 /// Tests run on fuchsia (see `fuchsia` in [main]): the maps plugin has no
 /// native view there and renders a text placeholder, so the real [CheckInMap]
 /// can be laid out without a platform view.
@@ -132,6 +164,8 @@ Future<void> _pumpScreen(
   double textScale = 1,
   AttendanceTodayModel? today = _today,
   bool trustedTimeReady = true,
+  CurrentLocation Function() location = _Location.new,
+  bool routed = false,
 }) async {
   // Tall enough that the lazy ListView builds every section.
   tester.view.physicalSize = Size(width, 2000);
@@ -142,7 +176,7 @@ Future<void> _pumpScreen(
     retry: (_, _) => null,
     overrides: [
       attendanceDashboardProvider.overrideWith(() => _Dashboard(today)),
-      currentLocationProvider.overrideWith(_Location.new),
+      currentLocationProvider.overrideWith(location),
       automaticTimeStatusProvider.overrideWith(_AutomaticTime.new),
       trustedTimeStatusProvider.overrideWith(
         () => _TrustedTime(ready: trustedTimeReady),
@@ -156,19 +190,38 @@ Future<void> _pumpScreen(
   );
   addTearDown(container.dispose);
 
-  await tester.pumpWidget(
-    UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
+  Widget scaled(BuildContext context, Widget? child) => MediaQuery(
+    data: MediaQuery.of(
+      context,
+    ).copyWith(textScaler: TextScaler.linear(textScale)),
+    child: child!,
+  );
+
+  final Widget app;
+  if (routed) {
+    final router = GoRouter(
+      initialLocation: '/presensi',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: Text('Dashboard')),
+          routes: [
+            GoRoute(
+              path: 'presensi',
+              builder: (_, _) => const AttendancePresenceScreen(),
+            ),
+          ],
         ),
-        home: const AttendancePresenceScreen(),
-      ),
-    ),
+      ],
+    );
+    addTearDown(router.dispose);
+    app = MaterialApp.router(builder: scaled, routerConfig: router);
+  } else {
+    app = MaterialApp(builder: scaled, home: const AttendancePresenceScreen());
+  }
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(container: container, child: app),
   );
   // Resolve the async providers. The live clock ticks every second and a
   // loading spinner never settles, so pump explicitly instead of settling.
@@ -366,6 +419,85 @@ void main() {
         for (var i = 0; i < 2; i++) {
           expect(action(tester, i).onPressed, isNull);
         }
+      },
+      variant: fuchsia,
+    );
+  });
+
+  group('mock-location block', () {
+    const blockTitle = 'Lokasi tidak dapat diverifikasi';
+
+    /// Lets a dialog or page transition finish; the live clock never settles.
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets(
+      'ignores Back and barrier taps, keeps the actions disabled, and returns '
+      'to the previous screen after Mengerti',
+      (tester) async {
+        await _pumpScreen(
+          tester,
+          routed: true,
+          location: () => _MockedLocation(onOpen: true),
+        );
+        await settle(tester);
+
+        expect(find.text(blockTitle), findsOneWidget);
+        for (var i = 0; i < 2; i++) {
+          expect(action(tester, i).onPressed, isNull);
+        }
+
+        // Android Back (button or gesture) neither closes it nor leaves.
+        await tester.binding.handlePopRoute();
+        await settle(tester);
+        expect(find.text(blockTitle), findsOneWidget);
+        expect(find.byType(AttendancePresenceScreen), findsOneWidget);
+
+        // Tapping outside the dialog does nothing either.
+        await tester.tapAt(const Offset(5, 5));
+        await settle(tester);
+        expect(find.text(blockTitle), findsOneWidget);
+
+        await tester.tap(find.text('Mengerti'));
+        await settle(tester);
+
+        // Exactly one page back: the screen is gone, the dashboard remains.
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(find.byType(AttendancePresenceScreen), findsNothing);
+        expect(find.text('Dashboard'), findsOneWidget);
+      },
+      variant: fuchsia,
+    );
+
+    testWidgets(
+      'a mocked fresh fix during Check In leaves the page exactly once',
+      (tester) async {
+        await _pumpScreen(
+          tester,
+          routed: true,
+          location: () => _MockedLocation(onOpen: false),
+        );
+
+        await tester.tap(find.text('Check In'));
+        await settle(tester);
+        await tester.tap(find.text('Absen'));
+        await settle(tester);
+
+        // The block dialog is shown once; acknowledge every open dialog from
+        // the top down, as the user would.
+        expect(find.text(blockTitle), findsOneWidget);
+        // Bounded, so a dialog that keeps reappearing fails instead of hanging.
+        for (var i = 0; i < 3; i++) {
+          if (find.text('Mengerti').evaluate().isEmpty) break;
+          await tester.tap(find.text('Mengerti').last);
+          await settle(tester);
+        }
+        expect(find.text('Mengerti'), findsNothing);
+
+        expect(find.byType(AttendancePresenceScreen), findsNothing);
+        expect(find.text('Dashboard'), findsOneWidget);
       },
       variant: fuchsia,
     );

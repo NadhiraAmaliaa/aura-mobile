@@ -1,4 +1,4 @@
-import 'package:aura_mobile/features/attendance/presentation/screens/attendance_presence_screen.dart';
+import 'package:aura_mobile/features/attendance/presentation/widgets/attendance_block_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
