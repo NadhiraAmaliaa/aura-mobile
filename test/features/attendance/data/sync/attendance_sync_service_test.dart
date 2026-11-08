@@ -5,6 +5,7 @@ import 'package:aura_mobile/core/error/app_exception.dart';
 import 'package:aura_mobile/core/network/api_result.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_entry.dart';
 import 'package:aura_mobile/features/attendance/data/local/attendance_queue_store.dart';
+import 'package:aura_mobile/features/attendance/data/local/dashboard_cache_store.dart';
 import 'package:aura_mobile/features/attendance/data/models/attendance_models.dart';
 import 'package:aura_mobile/features/attendance/data/sync/attendance_sync_service.dart';
 import 'package:aura_mobile/features/attendance/domain/repositories/attendance_repository.dart';
@@ -142,9 +143,70 @@ class _GatedOfflineRepository implements AttendanceRepository {
       throw UnimplementedError();
 }
 
+/// In-memory [DashboardCacheStore] keyed by user id that counts writes and can
+/// be made to fail, to observe the post-sync dashboard update.
+class _FakeDashboardCache implements DashboardCacheStore {
+  _FakeDashboardCache([Map<int, AttendanceDashboardModel> seed = const {}])
+    : byUser = {...seed};
+
+  final Map<int, AttendanceDashboardModel> byUser;
+  int saves = 0;
+  bool failReads = false;
+  bool failSaves = false;
+
+  @override
+  Future<AttendanceDashboardModel?> read(int userId) async {
+    if (failReads) throw StateError('cache read failed');
+    return byUser[userId];
+  }
+
+  @override
+  Future<void> save(int userId, AttendanceDashboardModel dashboard) async {
+    if (failSaves) throw StateError('cache write failed');
+    saves++;
+    byUser[userId] = dashboard;
+  }
+}
+
 const _ok = AttendanceModel(id: 1, status: 'present', statusLabel: 'Hadir');
 
 const _userId = 7;
+
+/// The day's record as the backend returns it after a sync.
+AttendanceModel _record({String date = '2026-07-12', String? checkOutTime}) =>
+    AttendanceModel(
+      id: 41,
+      attendanceDate: date,
+      checkInTime: '08:00',
+      checkOutTime: checkOutTime,
+      status: 'present',
+      statusLabel: 'Hadir',
+      workMode: 'wfo',
+      workModeLabel: 'WFO',
+    );
+
+/// A cached dashboard for [date] whose work hours and recap hold non-default
+/// values, so a test can prove they survive the post-sync update.
+AttendanceDashboardModel _cachedDashboard({
+  String date = '2026-07-12',
+  AttendanceModel? attendance,
+}) => AttendanceDashboardModel(
+  today: AttendanceTodayModel(
+    date: date,
+    isWorkingDay: true,
+    workHours: const WorkHoursModel(start: '07:30', end: '16:30'),
+    attendance: attendance,
+  ),
+  summary: const MonthlySummaryModel(
+    month: '2026-07',
+    hadir: 9,
+    terlambat: 2,
+    izin: 1,
+    sakit: 1,
+    dinas: 3,
+    tidakAbsen: 4,
+  ),
+);
 
 AttendanceQueueEntry _entry(
   String id, {
@@ -187,11 +249,13 @@ void main() {
   AttendanceSyncService serviceWith(
     _ScriptedRepository repository, {
     DateTime Function()? clock,
+    DashboardCacheStore? dashboardCache,
   }) {
     return AttendanceSyncService(
       store,
       repository,
       clock: clock ?? () => DateTime(2026, 7, 12, 14, 5),
+      dashboardCache: dashboardCache,
     );
   }
 
@@ -359,6 +423,208 @@ void main() {
       expect(repository.calls, ['a-in']);
       expect(summary.synced, 1);
       expect(store.entries['b-in']!.status, QueuedEventStatus.pending);
+    });
+  });
+
+  // Regression: a successful sync whose follow-up dashboard refresh fails must
+  // not leave the pre-sync snapshot as the dashboard's offline fallback.
+  group('dashboard cache after a successful sync', () {
+    test(
+      "replaces only today's attendance in the owner's same-day snapshot",
+      () async {
+        final cached = _cachedDashboard(attendance: _record());
+        final cache = _FakeDashboardCache({_userId: cached});
+        final returned = _record(checkOutTime: '17:00');
+        final service = serviceWith(
+          _ScriptedRepository(fallback: Success(returned)),
+          dashboardCache: cache,
+        );
+
+        final result = await service.enqueue(
+          _checkOut('co', capturedAt: '2026-07-12T17:00:00+07:00'),
+        );
+
+        expect(result.status, QueuedEventStatus.synced);
+        // Date, working day, work hours and the monthly recap are kept.
+        expect(
+          cache.byUser[_userId],
+          cached.copyWith(today: cached.today.copyWith(attendance: returned)),
+        );
+      },
+    );
+
+    test("stores the server's record, not the event's own capture", () async {
+      // A delayed 17:00 check-out reaches a server that already holds 17:30:
+      // last-write-wins keeps 17:30 and returns that row.
+      final cache = _FakeDashboardCache({
+        _userId: _cachedDashboard(attendance: _record()),
+      });
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(_record(checkOutTime: '17:30'))),
+        dashboardCache: cache,
+      );
+
+      await service.enqueue(
+        _checkOut('late', capturedAt: '2026-07-12T17:00:00+07:00'),
+      );
+
+      expect(cache.byUser[_userId]!.today.attendance?.checkOutTime, '17:30');
+    });
+
+    test('leaves a snapshot from another day untouched', () async {
+      final yesterday = _cachedDashboard(
+        date: '2026-07-11',
+        attendance: _record(date: '2026-07-11', checkOutTime: '17:00'),
+      );
+      final cache = _FakeDashboardCache({_userId: yesterday});
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(_record())),
+        dashboardCache: cache,
+      );
+
+      await service.enqueue(_entry('ci'));
+
+      expect(cache.saves, 0);
+      expect(cache.byUser[_userId], yesterday);
+    });
+
+    test('never creates a snapshot when none is cached', () async {
+      final cache = _FakeDashboardCache();
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(_record())),
+        dashboardCache: cache,
+      );
+
+      final result = await service.enqueue(_entry('ci'));
+
+      expect(result.status, QueuedEventStatus.synced);
+      expect(cache.saves, 0);
+      expect(cache.byUser, isEmpty);
+    });
+
+    test('ignores a record without an attendance date', () async {
+      final cached = _cachedDashboard();
+      final cache = _FakeDashboardCache({_userId: cached});
+      final service = serviceWith(
+        _ScriptedRepository(fallback: const Success(_ok)),
+        dashboardCache: cache,
+      );
+
+      await service.enqueue(_entry('ci'));
+
+      expect(cache.saves, 0);
+      expect(cache.byUser[_userId], cached);
+    });
+
+    test(
+      'leaves the cache untouched when the sync is rejected or retried',
+      () async {
+        final cached = _cachedDashboard();
+        final cache = _FakeDashboardCache({_userId: cached});
+        final service = serviceWith(
+          _ScriptedRepository(
+            byEventId: {
+              'bad': const Failure(ValidationException(message: 'Ditolak.')),
+              'later': const Failure(RequestTimeoutException()),
+            },
+          ),
+          dashboardCache: cache,
+        );
+
+        final rejected = await service.enqueue(_entry('bad'));
+        final pending = await service.enqueue(_entry('later'));
+
+        expect(rejected.status, QueuedEventStatus.rejected);
+        expect(pending.status, QueuedEventStatus.pending);
+        expect(cache.saves, 0);
+        expect(cache.byUser[_userId], cached);
+      },
+    );
+
+    test("only updates the event owner's snapshot", () async {
+      final mine = _cachedDashboard();
+      final theirs = _cachedDashboard();
+      final cache = _FakeDashboardCache({_userId: mine, 8: theirs});
+      final returned = _record();
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(returned)),
+        dashboardCache: cache,
+      );
+
+      await service.enqueue(_entry('b-in', owner: 8));
+
+      expect(cache.byUser[8]!.today.attendance, returned);
+      expect(cache.byUser[_userId], mine);
+    });
+
+    test('skips an entry without an owner', () async {
+      final cache = _FakeDashboardCache({_userId: _cachedDashboard()});
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(_record())),
+        dashboardCache: cache,
+      );
+
+      final result = await service.enqueue(
+        _entry('legacy').copyWith(userId: null),
+      );
+
+      expect(result.status, QueuedEventStatus.synced);
+      expect(cache.saves, 0);
+    });
+
+    test('a failing cache read never changes the flush outcome', () async {
+      await store.save(_entry('first', createdAt: DateTime(2026, 7, 12, 8)));
+      await store.save(_entry('second', createdAt: DateTime(2026, 7, 12, 9)));
+      final repository = _ScriptedRepository(fallback: Success(_record()));
+      final service = serviceWith(
+        repository,
+        dashboardCache: _FakeDashboardCache({_userId: _cachedDashboard()})
+          ..failReads = true,
+      );
+
+      final summary = await service.flush(_userId);
+
+      expect(repository.calls, ['first', 'second']);
+      expect(summary.synced, 2);
+      expect(summary.stillPending, 0);
+      expect(store.entries['first']!.status, QueuedEventStatus.synced);
+      expect(store.entries['second']!.status, QueuedEventStatus.synced);
+    });
+
+    test('a failing cache write never changes the sync outcome', () async {
+      final service = serviceWith(
+        _ScriptedRepository(fallback: Success(_record())),
+        dashboardCache: _FakeDashboardCache({_userId: _cachedDashboard()})
+          ..failSaves = true,
+      );
+
+      final result = await service.enqueue(_entry('ci'));
+
+      expect(result.status, QueuedEventStatus.synced);
+      expect(store.entries['ci']!.status, QueuedEventStatus.synced);
+    });
+
+    test('flush leaves the newest server record in the cache', () async {
+      await store.save(
+        _entry('ci', createdAt: DateTime.parse('2026-07-12T08:00:00+07:00')),
+      );
+      await store.save(
+        _checkOut('co', capturedAt: '2026-07-12T17:00:00+07:00'),
+      );
+      final checkedOut = _record(checkOutTime: '17:00');
+      final cache = _FakeDashboardCache({_userId: _cachedDashboard()});
+      final service = serviceWith(
+        _ScriptedRepository(
+          byEventId: {'ci': Success(_record()), 'co': Success(checkedOut)},
+        ),
+        dashboardCache: cache,
+      );
+
+      final summary = await service.flush(_userId);
+
+      expect(summary.synced, 2);
+      expect(cache.saves, 2);
+      expect(cache.byUser[_userId]!.today.attendance, checkedOut);
     });
   });
 

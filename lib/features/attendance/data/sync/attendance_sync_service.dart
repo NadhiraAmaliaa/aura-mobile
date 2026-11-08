@@ -3,6 +3,8 @@ import '../../../../core/network/api_result.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../local/attendance_queue_entry.dart';
 import '../local/attendance_queue_store.dart';
+import '../local/dashboard_cache_store.dart';
+import '../models/attendance_models.dart';
 
 /// How a single sync attempt was resolved.
 enum SyncOutcome {
@@ -37,15 +39,24 @@ class SyncSummary {
 /// kill or network outage, then an immediate sync is attempted. [flush] retries
 /// everything still pending, oldest first, and stops early on the first
 /// transient failure to avoid hammering an unreachable network.
+///
+/// After every successful sync the record the backend returns is folded into
+/// the owner's cached dashboard for that day, so a failed follow-up dashboard
+/// refresh falls back to the server's post-sync state, not the pre-sync one.
 class AttendanceSyncService {
   AttendanceSyncService(
     this._store,
     this._repository, {
     this.clock = DateTime.now,
+    this._dashboardCache,
   });
 
   final AttendanceQueueStore _store;
   final AttendanceRepository _repository;
+
+  /// The cached dashboards updated with each successful sync's server record.
+  /// `null` skips that step.
+  final DashboardCacheStore? _dashboardCache;
 
   /// Injectable clock, so tests can assert deterministic `syncedAt` values.
   final DateTime Function() clock;
@@ -123,7 +134,37 @@ class AttendanceSyncService {
     // resurrecting the row. Two near-simultaneous same-day offline check-outs
     // therefore can never leave more than one pending capture.
     await _store.updateIfPresent(updated);
+    if (result case Success(:final data)) {
+      await _rememberSyncedRecord(entry.userId, data);
+    }
     return updated;
+  }
+
+  /// Best-effort: replaces `today.attendance` in [userId]'s cached dashboard
+  /// with the [record] the backend returned, when that snapshot is for the
+  /// record's attendance date.
+  ///
+  /// The record is the server's full, current row (also for an idempotent
+  /// replay or a last-write-wins no-op), so the cache never moves backwards.
+  /// Never creates a snapshot, never touches its other fields, and never
+  /// affects the queue outcome, which is already persisted.
+  Future<void> _rememberSyncedRecord(
+    int? userId,
+    AttendanceModel record,
+  ) async {
+    final cache = _dashboardCache;
+    final date = record.attendanceDate;
+    if (cache == null || userId == null || date == null) return;
+    try {
+      final cached = await cache.read(userId);
+      if (cached == null || cached.today.date != date) return;
+      await cache.save(
+        userId,
+        cached.copyWith(today: cached.today.copyWith(attendance: record)),
+      );
+    } on Object {
+      // Ignore: the next successful dashboard load is the source of truth.
+    }
   }
 
   SyncOutcome _classify(AppException exception) => switch (exception) {
