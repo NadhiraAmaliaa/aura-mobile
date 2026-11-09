@@ -1,115 +1,836 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/routes.dart';
 
+// Heading, body and page tokens reused verbatim from
+// attendance_dashboard_screen.dart (itself taken from Home); the pastel card
+// colours follow the approved Izin & Sakit reference design. Kept local until
+// a shared AURA palette exists.
+const _heading = Color(0xFF123F69);
+const _bodyMuted = Color(0xFF58636A);
+const _navy = Color(0xFF194875);
+const _chevronTint = Color(0xFFD8E7FC);
+const _surfaceShadow = BoxShadow(
+  color: Color(0x100E3555),
+  blurRadius: 12,
+  offset: Offset(0, 5),
+);
+
+// Zero letter spacing overrides the inherited M3 body tracking (0.25), as on
+// Home, so short phrases do not spill onto an extra line in narrow cards.
+const _cardTitleStyle = TextStyle(
+  color: _heading,
+  fontSize: 15,
+  fontWeight: FontWeight.w700,
+  height: 1.25,
+);
+const _cardDescriptionStyle = TextStyle(
+  color: _bodyMuted,
+  fontSize: 12,
+  height: 1.35,
+  letterSpacing: 0,
+);
+
+/// Page gutter and content width, matching Home and the dashboard.
+double _gutter(double screenWidth) => screenWidth < 360 ? 16 : 18;
+const _maxContentWidth = 680.0;
+
+/// Same breakpoint as `HomeLayout.largeText` (body text measured at 14sp):
+/// side-by-side compositions stack.
+bool _largeText(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(14) / 14 > 1.35;
+
+/// Size of [text] rendered in [style] at the current text scale, wrapped at
+/// [maxWidth] — what a `Text` with the same style renders here.
+Size _textSize(
+  BuildContext context,
+  String text,
+  TextStyle style, {
+  double maxWidth = double.infinity,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: DefaultTextStyle.of(context).style.merge(style),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: maxWidth);
+  try {
+    return painter.size;
+  } finally {
+    painter.dispose();
+  }
+}
+
 /// Entry point for the leave feature. Presents the intern's available leave
-/// actions as tappable tiles.
+/// actions as cards.
 ///
-/// Alongside the submission entry ("Ajukan Izin / Sakit") and the two read
-/// destinations (pending list and history), it surfaces the isolated "Surat
-/// Pulang Cepat" letter utility.
+/// The submission card ("Ajukan Izin / Sakit") leads, followed by the two read
+/// destinations (pending list and history), the isolated "Surat Pulang Cepat"
+/// letter utility and a static reminder. Every card only pushes its existing
+/// route; the page holds no state of its own.
 class LeaveLandingScreen extends StatelessWidget {
   const LeaveLandingScreen({super.key});
 
+  // The supplied design is light; same local palette as the dashboard.
+  static final _theme = ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF174B76),
+      brightness: Brightness.light,
+    ),
+    scaffoldBackgroundColor: const Color(0xFFF5F8F8),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Izin & Sakit')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _LeaveMenuTile(
-            icon: Icons.edit_note,
-            title: 'Ajukan Izin / Sakit',
-            subtitle: 'Buat pengajuan izin atau sakit baru',
-            onTap: () => context.pushNamed(RouteNames.leaveSubmit),
+    final width = MediaQuery.sizeOf(context).width;
+    // Centres the content at Home's max width on tablets.
+    final horizontal = math.max(_gutter(width), (width - _maxContentWidth) / 2);
+
+    return Theme(
+      data: _theme,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE5EFFB), Color(0xFFF5F8F8)],
+            stops: [0, 0.7],
           ),
-          const SizedBox(height: 12),
-          _LeaveMenuTile(
-            icon: Icons.hourglass_top_outlined,
-            title: 'Menunggu Persetujuan',
-            subtitle: 'Pengajuan yang masih diproses',
-            onTap: () => context.pushNamed(RouteNames.leavePending),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Izin & Sakit'),
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            foregroundColor: _heading,
+            titleTextStyle: const TextStyle(
+              color: _heading,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+            systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+            ),
           ),
-          const SizedBox(height: 12),
-          _LeaveMenuTile(
-            icon: Icons.history,
-            title: 'Riwayat Pengajuan',
-            subtitle: 'Pengajuan yang disetujui atau ditolak',
-            onTap: () => context.pushNamed(RouteNames.leaveHistory),
+          body: ListView(
+            padding: EdgeInsets.fromLTRB(horizontal, 8, horizontal, 24),
+            children: [
+              _SubmitCard(
+                onTap: () => context.pushNamed(RouteNames.leaveSubmit),
+              ),
+              const SizedBox(height: 24),
+              // Section heading styled as Home's "Menu Utama".
+              const Row(
+                children: [
+                  Icon(Icons.eco_rounded, size: 21, color: Color(0xFF5791A8)),
+                  SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      'Pantau Pengajuan',
+                      style: TextStyle(
+                        color: _heading,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _StatusCards(
+                onPending: () => context.pushNamed(RouteNames.leavePending),
+                onHistory: () => context.pushNamed(RouteNames.leaveHistory),
+              ),
+              const SizedBox(height: 16),
+              _LetterCard(
+                onTap: () => context.pushNamed(RouteNames.leaveSurat),
+              ),
+              const SizedBox(height: 16),
+              const _NoteCard(),
+            ],
           ),
-          const SizedBox(height: 12),
-          _LeaveMenuTile(
-            icon: Icons.description_outlined,
-            title: 'Surat Pulang Cepat',
-            subtitle: 'Buat surat izin pulang sebelum waktunya',
-            onTap: () => context.pushNamed(RouteNames.leaveSurat),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _LeaveMenuTile extends StatelessWidget {
-  const _LeaveMenuTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
+/// Rounded, tappable card shared by the page's cards: a pastel fill with an
+/// optional [wave] along the bottom edge, a thin white rim and a soft shadow.
+///
+/// As on Home's menu cards, the whole surface is one button whose semantics
+/// read [label]. The fill is painted below a transparent [Material], so press
+/// feedback stays visible over the wave.
+class _CardSurface extends StatelessWidget {
+  const _CardSurface({
+    required this.label,
     required this.onTap,
+    required this.accent,
+    required this.child,
+    this.color,
+    this.gradient,
+    this.wave,
+    this.radius = 22,
+    this.shadow = _surfaceShadow,
   });
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
+  final String label;
   final VoidCallback onTap;
+
+  /// Tints the press feedback so it reads on the pastel fill.
+  final Color accent;
+  final Widget child;
+  final Color? color;
+  final Gradient? gradient;
+  final _WavePainter? wave;
+  final double radius;
+  final BoxShadow shadow;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final borderRadius = BorderRadius.circular(radius);
+    return Semantics(
+      button: true,
+      onTap: onTap,
+      label: label,
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: [shadow],
+        ),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Stack(
+              // The content sizes the card; the fill follows it.
+              fit: StackFit.passthrough,
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: color, gradient: gradient),
+                    child: wave == null ? null : CustomPaint(painter: wave),
+                  ),
+                ),
+                Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: onTap,
+                    splashColor: accent.withValues(alpha: 0.12),
+                    highlightColor: accent.withValues(alpha: 0.08),
+                    child: child,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    return Card(
-      elevation: 0,
-      color: scheme.surfaceContainerHighest,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+/// Soft pastel swoosh along a card's bottom edge, as in the reference. Kept to
+/// a shallow band behind the content so it never competes with the text.
+class _WavePainter extends CustomPainter {
+  const _WavePainter({required this.color, this.rising = false});
+
+  final Color color;
+
+  /// A short accent rising into the bottom-right corner, instead of a band
+  /// that falls from left to right across the full width.
+  final bool rising;
+
+  static const _depth = 30.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final bottom = size.height;
+    final top = bottom - _depth;
+    final path = rising
+        ? (Path()
+            ..moveTo(width * 0.4, bottom)
+            ..cubicTo(
+              width * 0.7,
+              bottom,
+              width * 0.82,
+              top + _depth * 0.35,
+              width,
+              top,
+            )
+            ..lineTo(width, bottom)
+            ..close())
+        : (Path()
+            ..moveTo(0, top + _depth * 0.15)
+            ..cubicTo(
+              width * 0.3,
+              top - _depth * 0.1,
+              width * 0.55,
+              bottom - _depth * 0.15,
+              width,
+              bottom - _depth * 0.3,
+            )
+            ..lineTo(width, bottom)
+            ..lineTo(0, bottom)
+            ..close());
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_WavePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.rising != rising;
+}
+
+/// Thin vertical rule separating a card's icon or illustration from its copy.
+class _CardDivider extends StatelessWidget {
+  const _CardDivider({required this.color, this.height = 40});
+
+  /// Horizontal room taken by the rule and its margins.
+  static const space = 29.0;
+
+  final Color color;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: height,
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      color: color,
+    );
+  }
+}
+
+/// Rounded-square icon container used by the status and letter cards.
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({
+    required this.icon,
+    required this.tint,
+    required this.color,
+    this.size = 44,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: tint,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(icon, size: size * 0.55, color: color),
+      ),
+    );
+  }
+}
+
+/// Highlighted submission entry: illustration, rule and copy side by side on
+/// a soft blue card, as in the reference. The illustration moves above the
+/// copy when the copy column would be too narrow for the title or the pill
+/// (small phones, large text).
+class _SubmitCard extends StatelessWidget {
+  const _SubmitCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const _title = 'Ajukan\nIzin / Sakit';
+  static const _description = 'Buat pengajuan izin atau sakit baru';
+  static const _action = 'Ajukan Sekarang';
+
+  static const _titleStyle = TextStyle(
+    color: _heading,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+  static const _descriptionStyle = TextStyle(
+    color: _bodyMuted,
+    fontSize: 13,
+    height: 1.35,
+    letterSpacing: 0,
+  );
+  static const _actionStyle = TextStyle(
+    color: _heading,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+  );
+
+  /// Pill padding, gap and arrow around the action label.
+  static const _actionChrome = 14 * 2 + 6 + 18.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardSurface(
+      label: 'Ajukan Izin / Sakit. $_description',
+      onTap: onTap,
+      accent: _navy,
+      radius: 24,
+      // Barely-there diagonal shift between two soft blues.
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFE8F1FC), Color(0xFFD5E5F9)],
+      ),
+      shadow: const BoxShadow(
+        color: Color(0x142C6898),
+        blurRadius: 16,
+        offset: Offset(0, 6),
+      ),
+      child: Padding(
+        // The illustration carries its own transparent margin on the left.
+        padding: const EdgeInsets.fromLTRB(10, 16, 18, 16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final illustrationWidth = (constraints.maxWidth * 0.34).clamp(
+              88.0,
+              136.0,
+            );
+            final copyWidth =
+                constraints.maxWidth - illustrationWidth - _CardDivider.space;
+            final copyNeeds = math.max(
+              _textSize(context, _action, _actionStyle).width + _actionChrome,
+              _textSize(context, 'Izin / Sakit', _titleStyle).width,
+            );
+            const copy = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_title, style: _titleStyle),
+                SizedBox(height: 6),
+                Text(_description, style: _descriptionStyle),
+                SizedBox(height: 14),
+                _ActionPill(),
+              ],
+            );
+
+            if (_largeText(context) || copyNeeds > copyWidth) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: _LeaveIllustration(
+                      width: math.min(140, constraints.maxWidth * 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(padding: EdgeInsets.only(left: 8), child: copy),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                _LeaveIllustration(width: illustrationWidth),
+                _CardDivider(
+                  color: const Color(0x4D7FAACB),
+                  height: illustrationWidth * 0.75,
+                ),
+                const Expanded(child: copy),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// White "Ajukan Sekarang" pill. Visual only: the whole card is the button.
+class _ActionPill extends StatelessWidget {
+  const _ActionPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: StadiumBorder(),
+        shadows: [
+          BoxShadow(
+            color: Color(0x14224F78),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Flexible only as a safety net: the card stacks before the label
+            // would have to wrap.
+            Flexible(
+              child: Text(_SubmitCard._action, style: _SubmitCard._actionStyle),
+            ),
+            SizedBox(width: 6),
+            Icon(Icons.arrow_forward_rounded, size: 18, color: _heading),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The leave illustration shared with Home's "Izin" card.
+///
+/// The artwork covers only about three quarters of the asset; the rest is
+/// transparent margin. A 6:5 cover box trims the top and bottom margin, and
+/// [_scale] enlarges the painted image (layout unchanged) so the clipboard
+/// fills its column as in the reference while the side margins spill
+/// harmlessly into the card padding.
+class _LeaveIllustration extends StatelessWidget {
+  const _LeaveIllustration({required this.width});
+
+  final double width;
+
+  static const _scale = 1.3;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: AspectRatio(
+        aspectRatio: 1.2,
+        child: Transform.scale(
+          scale: _scale,
+          child: Image.asset(
+            'assets/images/home/menu_leave.png',
+            fit: BoxFit.cover,
+            cacheWidth:
+                (width * _scale * MediaQuery.devicePixelRatioOf(context))
+                    .ceil()
+                    .clamp(1, 600),
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+typedef _StatusItem = ({
+  String title,
+  String description,
+  IconData icon,
+  Color background,
+  Color wave,
+  Color iconTint,
+  Color iconColor,
+  VoidCallback onTap,
+});
+
+/// "Menunggu Persetujuan" (soft yellow) and "Riwayat Pengajuan" (soft green)
+/// as two equal pastel cards side by side, as in the reference.
+///
+/// Both cards reserve the taller title and description, measured at the
+/// current width and text scale, so they line up without an intrinsic-height
+/// pass. The icon sits beside the copy when the longest word still fits next
+/// to it and above it otherwise. When a word would not fit even a half-width
+/// card, or the text is large, the cards stack at full width.
+class _StatusCards extends StatelessWidget {
+  const _StatusCards({required this.onPending, required this.onHistory});
+
+  final VoidCallback onPending;
+  final VoidCallback onHistory;
+
+  static const _gap = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_StatusItem> items = [
+      (
+        title: 'Menunggu Persetujuan',
+        description: 'Pengajuan yang masih diproses',
+        icon: Icons.hourglass_bottom_rounded,
+        background: const Color(0xFFFFF8EA),
+        wave: const Color(0xFFFFE8B8),
+        iconTint: const Color(0xFFFFEBC4),
+        iconColor: const Color(0xFF97610B),
+        onTap: onPending,
+      ),
+      (
+        title: 'Riwayat Pengajuan',
+        description: 'Pengajuan yang disetujui atau ditolak',
+        icon: Icons.history_rounded,
+        background: const Color(0xFFF1F8EE),
+        wave: const Color(0xFFD7ECCF),
+        iconTint: const Color(0xFFDDEFD6),
+        iconColor: const Color(0xFF2B713D),
+        onTap: onHistory,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const padding = _StatusCard.padding * 2;
+        final widestWord = _widestWord(context, items);
+        final pairWidth = (constraints.maxWidth - _gap) / 2;
+        final paired =
+            !_largeText(context) && widestWord <= pairWidth - padding;
+        final inner = (paired ? pairWidth : constraints.maxWidth) - padding;
+        final besideWidth = inner - _StatusCard.iconSize - _StatusCard.iconGap;
+        final iconBeside = widestWord <= besideWidth;
+        final copyWidth = iconBeside ? besideWidth : inner;
+
+        double tallest(String Function(_StatusItem) text, TextStyle style) =>
+            items
+                .map(
+                  (item) => _textSize(
+                    context,
+                    text(item),
+                    style,
+                    maxWidth: copyWidth,
+                  ).height,
+                )
+                .reduce(math.max)
+                .ceilToDouble();
+        final titleHeight = tallest((item) => item.title, _cardTitleStyle);
+        final descriptionHeight = tallest(
+          (item) => item.description,
+          _cardDescriptionStyle,
+        );
+
+        final cards = [
+          for (final item in items)
+            _StatusCard(
+              item: item,
+              iconBeside: iconBeside,
+              titleHeight: titleHeight,
+              descriptionHeight: descriptionHeight,
+            ),
+        ];
+        if (!paired) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CircleAvatar(
-                backgroundColor: scheme.primaryContainer,
-                foregroundColor: scheme.onPrimaryContainer,
-                child: Icon(icon),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              cards[0],
+              const SizedBox(height: _gap),
+              cards[1],
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: cards[0]),
+            const SizedBox(width: _gap),
+            Expanded(child: cards[1]),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Widest single word of any title or description, so a card's layout
+  /// never forces a word to split across lines.
+  static double _widestWord(BuildContext context, List<_StatusItem> items) {
+    var widest = 0.0;
+    for (final item in items) {
+      for (final (text, style) in [
+        (item.title, _cardTitleStyle),
+        (item.description, _cardDescriptionStyle),
+      ]) {
+        for (final word in text.split(' ')) {
+          widest = math.max(widest, _textSize(context, word, style).width);
+        }
+      }
+    }
+    return widest.ceilToDouble();
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.item,
+    required this.iconBeside,
+    required this.titleHeight,
+    required this.descriptionHeight,
+  });
+
+  final _StatusItem item;
+  final bool iconBeside;
+  final double titleHeight;
+  final double descriptionHeight;
+
+  static const padding = 14.0;
+  static const iconSize = 44.0;
+  static const iconGap = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = _IconBadge(
+      icon: item.icon,
+      tint: item.iconTint,
+      color: item.iconColor,
+      size: iconSize,
+    );
+    final copy = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: titleHeight),
+          child: Text(item.title, style: _cardTitleStyle),
+        ),
+        const SizedBox(height: 4),
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: descriptionHeight),
+          child: Text(item.description, style: _cardDescriptionStyle),
+        ),
+      ],
+    );
+
+    return _CardSurface(
+      label: '${item.title}. ${item.description}',
+      onTap: item.onTap,
+      accent: item.iconColor,
+      color: item.background,
+      wave: _WavePainter(color: item.wave),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(padding, padding, padding, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (iconBeside)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  icon,
+                  const SizedBox(width: iconGap),
+                  Expanded(child: copy),
+                ],
+              )
+            else ...[
+              icon,
+              const SizedBox(height: 10),
+              copy,
+            ],
+            const SizedBox(height: 8),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox.square(
+                dimension: 30,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _chevronTint,
+                  ),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: _navy,
+                  ),
                 ),
               ),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Surat Pulang Cepat" utility: a light horizontal card with a lavender icon
+/// and a short lavender accent in its bottom-right corner.
+class _LetterCard extends StatelessWidget {
+  const _LetterCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const _title = 'Surat Pulang Cepat';
+  static const _description = 'Buat surat izin pulang sebelum waktunya';
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardSurface(
+      label: '$_title. $_description',
+      onTap: onTap,
+      accent: _navy,
+      color: Colors.white,
+      wave: const _WavePainter(color: Color(0xFFE8E5FA), rising: true),
+      child: const Padding(
+        padding: EdgeInsets.fromLTRB(14, 14, 10, 14),
+        child: Row(
+          children: [
+            _IconBadge(
+              icon: Icons.description_outlined,
+              tint: Color(0xFFE6E5FB),
+              color: _navy,
+              size: 48,
+            ),
+            _CardDivider(color: Color(0xFFE1E6EE)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_title, style: _cardTitleStyle),
+                  SizedBox(height: 3),
+                  Text(_description, style: _cardDescriptionStyle),
+                ],
+              ),
+            ),
+            SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 28, color: _navy),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Static reminder closing the page. Informational only, not a button.
+class _NoteCard extends StatelessWidget {
+  const _NoteCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE9F1FB),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.info_rounded, size: 36, color: Color(0xFF5B8ED0)),
+            _CardDivider(color: Color(0x335B8ED0)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Catatan Penting', style: _cardTitleStyle),
+                  SizedBox(height: 3),
+                  Text(
+                    'Pastikan data dan alasan pengajuan sesuai dengan '
+                    'ketentuan yang berlaku.',
+                    style: _cardDescriptionStyle,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
