@@ -475,6 +475,46 @@ void main() {
     }
   });
 
+  // At 320dp with 2x text the Alasan error shares its line with the counter,
+  // and "Buat & Cetak Surat" wraps beside its icon, with Roboto or the
+  // 1em-wide test font.
+  testWidgets('wraps errors and the button label readably at 320dp, 2x', (
+    tester,
+  ) async {
+    await _pumpForm(tester, width: 320, height: 568, textScale: 2);
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+
+    final error = find.text('Alasan wajib diisi.');
+    await tester.ensureVisible(error);
+    await tester.pumpAndSettle();
+    expect(
+      tester.renderObject<RenderParagraph>(error).didExceedMaxLines,
+      isFalse,
+    );
+    expect(
+      tester.getRect(error).right,
+      lessThanOrEqualTo(tester.getRect(find.text('0/1000')).left),
+    );
+
+    final label = find.text('Buat & Cetak Surat');
+    await tester.ensureVisible(label);
+    await tester.pumpAndSettle();
+    await _capturePreview(tester, 'surat_320x568@2.0_button');
+    expect(tester.widget<Text>(label).textAlign, TextAlign.center);
+    // Two lines, and the pill grows past its 52dp minimum around both.
+    final text = tester.getRect(label);
+    final button = tester.getRect(find.byType(FilledButton));
+    final icon = tester.getRect(find.byIcon(Icons.print_outlined));
+    expect(text.height, greaterThan(52));
+    expect(text.top, greaterThanOrEqualTo(button.top));
+    expect(text.bottom, lessThanOrEqualTo(button.bottom));
+    // The icon stays beside the wrapped lines, centred on them.
+    expect(icon.right, lessThan(text.left));
+    expect(icon.center.dy, moreOrLessEquals(text.center.dy));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('submits the same payload, shows progress, stays on the form', (
     tester,
   ) async {
@@ -659,6 +699,15 @@ void main() {
           await _tapSubmit(tester);
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          // Shown in full, never cut off beside its counter.
+          expect(
+            tester
+                .renderObject<RenderParagraph>(
+                  find.text('Alasan wajib diisi.', skipOffstage: false),
+                )
+                .didExceedMaxLines,
+            isFalse,
+          );
           await _capturePreview(tester, '${name}_errors');
 
           // Everything stays inside the page gutters.

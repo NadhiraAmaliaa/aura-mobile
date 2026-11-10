@@ -502,6 +502,42 @@ void main() {
     });
   }
 
+  // At 320dp with 2x text the Alasan error shares its line with the counter,
+  // and the 1em-wide test font wraps "Kirim Pengajuan" (Roboto keeps it on
+  // one line, which must look as before).
+  testWidgets('wraps errors and the button label readably at 320dp, 2x', (
+    tester,
+  ) async {
+    await _pumpForm(tester, width: 320, height: 568, textScale: 2);
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+
+    final error = find.text('Alasan wajib diisi.');
+    await tester.ensureVisible(error);
+    await tester.pumpAndSettle();
+    expect(
+      tester.renderObject<RenderParagraph>(error).didExceedMaxLines,
+      isFalse,
+    );
+    expect(
+      tester.getRect(error).right,
+      lessThanOrEqualTo(tester.getRect(find.text('0/1000')).left),
+    );
+
+    final label = find.text('Kirim Pengajuan');
+    await tester.ensureVisible(label);
+    await tester.pumpAndSettle();
+    await _capturePreview(tester, 'submit_320x568@2.0_button');
+    expect(tester.widget<Text>(label).textAlign, TextAlign.center);
+    // Centred, and the pill grows around every line.
+    final text = tester.getRect(label);
+    final button = tester.getRect(find.byType(FilledButton));
+    expect(text.center.dx, moreOrLessEquals(button.center.dx));
+    expect(text.top, greaterThanOrEqualTo(button.top));
+    expect(text.bottom, lessThanOrEqualTo(button.bottom));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('submits the same payload, shows progress, then returns', (
     tester,
   ) async {
@@ -704,6 +740,15 @@ void main() {
           await _tapSubmit(tester);
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          // Shown in full, never cut off beside its counter.
+          expect(
+            tester
+                .renderObject<RenderParagraph>(
+                  find.text('Alasan wajib diisi.', skipOffstage: false),
+                )
+                .didExceedMaxLines,
+            isFalse,
+          );
           await _capturePreview(tester, '${name}_errors');
 
           // Every control stays inside the page gutters.

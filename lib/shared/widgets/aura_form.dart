@@ -73,6 +73,11 @@ abstract final class AuraForm {
         errorBorder: outline(scheme.error),
         focusedErrorBorder: outline(scheme.error, 1.5),
         counterStyle: const TextStyle(color: bodyMuted, fontSize: 12),
+        // Wrap long errors, as the pickers' AuraFieldError does, instead of
+        // cutting them off beside a counter on narrow screens or large text.
+        // Ten lines fits every message even at the largest text sizes;
+        // one-line errors render as before.
+        errorMaxLines: 10,
       ),
     );
   }
@@ -503,19 +508,24 @@ class AuraSubmitButton extends StatelessWidget {
     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
   );
 
+  // Centred, so a label that wraps at large text keeps its lines balanced
+  // and clear of the pill's rounded ends; one line renders as before.
+  static Widget _text(String text) =>
+      Text(text, style: _labelTextStyle, textAlign: TextAlign.center);
+
   @override
   Widget build(BuildContext context) {
     final Widget? leading;
     final Widget content;
     if (!isBusy) {
       leading = icon == null ? null : Icon(icon);
-      content = Text(label, style: _labelTextStyle);
+      content = _text(label);
     } else if (busyLabel == null) {
       leading = null;
       content = _spinner;
     } else {
       leading = _spinner;
-      content = Text(busyLabel!, style: _labelTextStyle);
+      content = _text(busyLabel!);
     }
     // Without an icon this is the plain FilledButton with [content] as child.
     return FilledButton.icon(
