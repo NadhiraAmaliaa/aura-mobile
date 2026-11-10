@@ -92,8 +92,17 @@ Size _textSize(
   }
 }
 
-/// A picked date as shown in its field, e.g. "28 Sep 2026". Display only: the
-/// picked [DateTime] is what gets submitted.
+/// A picked date as shown in its field, in full through the shared formatter
+/// the Surat form uses, e.g. "28 September 2026". Display only: the picked
+/// [DateTime] is what gets submitted.
+String _fullDate(DateTime date) => formatIndoDate(
+  '${date.year.toString().padLeft(4, '0')}-'
+  '${date.month.toString().padLeft(2, '0')}-'
+  '${date.day.toString().padLeft(2, '0')}',
+);
+
+/// The same date with a three-letter month, e.g. "28 Sep 2026", for a field
+/// too narrow for [_fullDate].
 String _shortDate(DateTime date) =>
     '${date.day} ${indoMonthName(date.month).substring(0, 3)} ${date.year}';
 
@@ -696,15 +705,16 @@ class _DateField extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
-  static const _iconSize = 18.0;
+  // The calendar badge matches the evidence panel's attachment badge.
+  static const _iconSize = 22.0;
   static const _iconGap = 8.0;
-  static const _badgeSize = 32.0;
+  static const _badgeSize = 40.0;
 
-  /// The calendar badge sits 12dp from the outline at the top, bottom and
-  /// end. The text adds 4dp of its own, so it starts 16dp down as in the text
-  /// fields: the field stays 56dp (12 + 32 + 12) and grows with large text
+  /// The calendar badge sits 8dp from the outline at the top, bottom and end.
+  /// The text adds 8dp of its own, so it starts 16dp down as in the text
+  /// fields: the field stays 56dp (8 + 40 + 8) and grows with large text
   /// exactly as they do (16 + line + 16).
-  static const _badgeInset = 12.0;
+  static const _badgeInset = 8.0;
   static const _padding = EdgeInsetsDirectional.fromSTEB(
     _fieldInset,
     _badgeInset,
@@ -765,14 +775,18 @@ class _DateField extends StatelessWidget {
                       Expanded(
                         child: Padding(
                           padding: _textPadding,
-                          child: Text(
-                            value != null
-                                ? _shortDate(value!)
-                                : 'Pilih tanggal',
-                            style: value != null
-                                ? _valueStyle
-                                : _placeholderStyle,
-                          ),
+                          child: value == null
+                              ? const Text(
+                                  'Pilih tanggal',
+                                  style: _placeholderStyle,
+                                )
+                              : LayoutBuilder(
+                                  builder: (context, constraints) => _dateText(
+                                    context,
+                                    value!,
+                                    constraints.maxWidth,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(width: _iconGap),
@@ -781,7 +795,7 @@ class _DateField extends StatelessWidget {
                         child: DecoratedBox(
                           decoration: const BoxDecoration(
                             color: _dateIconFill,
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
                           ),
                           child: Icon(
                             Icons.calendar_today_outlined,
@@ -799,6 +813,19 @@ class _DateField extends StatelessWidget {
           if (errorText != null) _FieldError(message: errorText!),
         ],
       ),
+    );
+  }
+
+  /// [date] in full when it fits on one line in [maxWidth] at the current
+  /// text scale, otherwise with a short month. Screen readers always hear the
+  /// full date.
+  Widget _dateText(BuildContext context, DateTime date, double maxWidth) {
+    final full = _fullDate(date);
+    final fits = _textSize(context, full, _valueStyle).width <= maxWidth;
+    return Text(
+      fits ? full : _shortDate(date),
+      style: _valueStyle,
+      semanticsLabel: fits ? null : full,
     );
   }
 }

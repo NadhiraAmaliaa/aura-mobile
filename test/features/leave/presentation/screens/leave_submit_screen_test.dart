@@ -28,18 +28,18 @@ const _created = LeaveRequestModel(
 
 const _evidenceHint = 'PDF atau gambar (jpg, jpeg, png, webp), maksimal 5 MB.';
 const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
   'Mei',
-  'Jun',
-  'Jul',
-  'Agu',
-  'Sep',
-  'Okt',
-  'Nov',
-  'Des',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 DateTime _today() {
@@ -47,8 +47,11 @@ DateTime _today() {
   return DateTime(now.year, now.month, now.day);
 }
 
-String _shortDate(DateTime date) =>
+String _fullDate(DateTime date) =>
     '${date.day} ${_months[date.month - 1]} ${date.year}';
+
+String _shortDate(DateTime date) =>
+    '${date.day} ${_months[date.month - 1].substring(0, 3)} ${date.year}';
 
 /// Records submissions instead of calling the repository. [gate] holds the
 /// response back so the in-flight state can be inspected.
@@ -358,13 +361,14 @@ void main() {
     );
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    // Shown short in the field.
-    expect(find.text(_shortDate(tomorrow)), findsOneWidget);
+    // Shown in full while it fits, as on the Surat form.
+    expect(find.text(_fullDate(tomorrow)), findsOneWidget);
+    expect(find.text(_shortDate(tomorrow)), findsNothing);
 
     // Sakit may start today.
     await tester.tap(find.text('Sakit'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(_shortDate(tomorrow)));
+    await tester.tap(find.text(_fullDate(tomorrow)));
     await tester.pumpAndSettle();
     expect(tester.widget<DatePickerDialog>(dialog).firstDate, _today());
     await tester.tap(find.text('Cancel'));
@@ -424,15 +428,39 @@ void main() {
         (tester.widget<DecoratedBox>(badge).decoration as BoxDecoration).color,
         const Color(0xFFE3EEFF),
       );
-      // A 32dp square inside the 56dp field, 12dp from its top, bottom and
-      // end, with the icon centred on it.
+      // The attachment badge's 40dp square and 22dp icon, inside the 56dp
+      // field 8dp from its top, bottom and end, with the icon centred on it.
       final box = tester.getRect(badge);
       final field = tester.getRect(_dateBox(index));
-      expect(box.size, const Size.square(32));
-      expect(box.top - field.top, 12);
-      expect(field.bottom - box.bottom, 12);
-      expect(field.right - box.right, 12);
+      expect(box.size, const Size.square(40));
+      expect(tester.widget<Icon>(icon).size, 22);
+      expect(box.top - field.top, 8);
+      expect(field.bottom - box.bottom, 8);
+      expect(field.right - box.right, 8);
       expect(tester.getCenter(icon), box.center);
+    }
+  });
+
+  // At 320dp with 2x text a full date such as "11 November 2026" does not fit
+  // on one line, with Roboto or the 1em-wide test font.
+  testWidgets('shortens the month only when the full date does not fit', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    try {
+      await _pumpForm(tester, width: 320, height: 568, textScale: 2);
+      final tomorrow = _today().add(const Duration(days: 1));
+      await _pickFirstEmptyDate(tester);
+      expect(find.text(_shortDate(tomorrow)), findsOneWidget);
+      expect(find.text(_fullDate(tomorrow)), findsNothing);
+      expect(tester.takeException(), isNull);
+      // Screen readers still hear the full date.
+      expect(
+        tester.getSemantics(find.text('Tanggal Mulai *')).label,
+        contains(_fullDate(tomorrow)),
+      );
+    } finally {
+      handle.dispose();
     }
   });
 
@@ -622,6 +650,13 @@ void main() {
           }
 
           _expectStackedDates(tester);
+
+          // Picked dates, in full or shortened, never overflow either.
+          await _pickFirstEmptyDate(tester);
+          await _pickFirstEmptyDate(tester);
+          expect(find.text('Pilih tanggal'), findsNothing);
+          expect(tester.takeException(), isNull);
+          await _capturePreview(tester, '${name}_dates');
         },
       );
     }
