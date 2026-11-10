@@ -215,7 +215,9 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
         onSuccess: (_) => _showSnack('Surat siap dicetak atau disimpan.'),
         onFailure: (error) {
           if (error is ValidationException) {
-            setState(() => _serverErrors = error.errors);
+            // A copy: entries are removed as fields change, and a 422
+            // without field errors carries an unmodifiable empty map.
+            setState(() => _serverErrors = Map.of(error.errors));
           }
           _showSnack(error.message);
         },

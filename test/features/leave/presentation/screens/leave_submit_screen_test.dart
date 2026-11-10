@@ -193,6 +193,31 @@ Future<void> _pickFirstEmptyDate(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Opens the date picker from [field], types [date] in its input mode and
+/// accepts it.
+Future<void> _enterDate(
+  WidgetTester tester,
+  Finder field,
+  DateTime date,
+) async {
+  await tester.ensureVisible(field);
+  await tester.pumpAndSettle();
+  await tester.tap(field);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.edit_outlined));
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.descendant(
+      of: find.byType(DatePickerDialog),
+      matching: find.byType(TextField),
+    ),
+    '${date.month.toString().padLeft(2, '0')}/'
+    '${date.day.toString().padLeft(2, '0')}/${date.year}',
+  );
+  await tester.tap(find.text('OK'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _tapSubmit(WidgetTester tester) async {
   await tester.ensureVisible(find.text('Kirim Pengajuan'));
   await tester.pumpAndSettle();
@@ -542,6 +567,52 @@ void main() {
     expect(find.text('Tanggal bentrok dengan pengajuan lain.'), findsOneWidget);
     expect(find.text('Data tidak valid.'), findsOneWidget);
     expect(find.byType(LeaveSubmitScreen), findsOneWidget);
+  });
+
+  // The error mapper gives a 422 without an "errors" map a const empty map;
+  // changing any input afterwards used to throw while clearing its entry.
+  testWidgets('keeps taking input after a 422 without field errors', (
+    tester,
+  ) async {
+    final notifier = _FakeSubmitNotifier(
+      result: const Failure(ValidationException(message: 'Data tidak valid.')),
+    );
+    await _pumpForm(tester, notifier: notifier);
+    await tester.enterText(find.byType(TextFormField).at(0), 'Acara keluarga');
+    await _pickFirstEmptyDate(tester);
+    await _pickFirstEmptyDate(tester);
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+    expect(notifier.submissions, hasLength(1));
+    expect(find.text('Data tidak valid.'), findsOneWidget);
+
+    // A later start date clears the end date, which is picked again.
+    final tomorrow = _today().add(const Duration(days: 1));
+    final dayAfter = tomorrow.add(const Duration(days: 1));
+    await _enterDate(tester, find.text(_fullDate(tomorrow)).first, dayAfter);
+    expect(find.text(_fullDate(dayAfter)), findsOneWidget);
+    expect(find.text('Pilih tanggal'), findsOneWidget);
+    await _pickFirstEmptyDate(tester);
+    await tester.enterText(find.byType(TextFormField).at(1), '0812345678');
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+    expect(notifier.submissions, hasLength(2));
+    expect(notifier.submissions.last.startDate, dayAfter);
+    expect(notifier.submissions.last.endDate, dayAfter);
+    expect(notifier.submissions.last.contactPhone, '0812345678');
+
+    // Switching the type clears its entry too.
+    await tester.ensureVisible(find.text('Sakit'));
+    await tester.tap(find.text('Sakit'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SegmentedButton<String>>(find.byType(SegmentedButton<String>))
+          .selected,
+      {'sakit'},
+    );
+    expect(find.text('Lampiran Bukti *'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('validates Alasan even after it scrolls out of view', (

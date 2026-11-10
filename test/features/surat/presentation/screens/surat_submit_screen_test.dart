@@ -527,15 +527,17 @@ void main() {
   });
 
   testWidgets('maps a 422 back onto its fields', (tester) async {
-    // A growable map, as the Dio error mapper builds it: picking again
-    // removes that field's entry.
-    final errors = <String, List<String>>{
-      'early_leave_date': ['Tanggal pulang tidak valid.'],
-      'leave_time': ['Format jam tidak valid.'],
-    };
+    // Const, so picking again also proves the form never edits the
+    // exception's own map.
     final notifier = _FakeSuratNotifier(
-      result: Failure(
-        ValidationException(message: 'Data tidak valid.', errors: errors),
+      result: const Failure(
+        ValidationException(
+          message: 'Data tidak valid.',
+          errors: {
+            'early_leave_date': ['Tanggal pulang tidak valid.'],
+            'leave_time': ['Format jam tidak valid.'],
+          },
+        ),
       ),
     );
     await _pumpForm(tester, notifier: notifier);
@@ -554,6 +556,42 @@ void main() {
     await _pickInitialTime(tester);
     expect(find.text('Format jam tidak valid.'), findsNothing);
     expect(find.text('Tanggal pulang tidak valid.'), findsOneWidget);
+  });
+
+  // The error mapper gives a 422 without an "errors" map a const empty map;
+  // changing the date or time afterwards used to throw while clearing its
+  // entry.
+  testWidgets('keeps taking input after a 422 without field errors', (
+    tester,
+  ) async {
+    final notifier = _FakeSuratNotifier(
+      result: const Failure(ValidationException(message: 'Data tidak valid.')),
+    );
+    await _pumpForm(tester, notifier: notifier);
+    await _pickInitialDate(tester);
+    await _pickInitialTime(tester);
+    await tester.enterText(find.byType(TextFormField), 'Kontrol ke dokter');
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+    expect(notifier.submissions, hasLength(1));
+    expect(find.text('Data tidak valid.'), findsOneWidget);
+
+    final date = _september28();
+    await _enterDate(tester, date);
+    expect(find.text(_fullDate(date)), findsOneWidget);
+    final time = await _pickInitialTime(tester);
+    expect(find.text(time), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextFormField),
+      'Kontrol ke dokter gigi',
+    );
+    await _tapSubmit(tester);
+    await tester.pumpAndSettle();
+    expect(notifier.submissions, hasLength(2));
+    expect(notifier.submissions.last.earlyLeaveDate, date);
+    expect(notifier.submissions.last.leaveTime, time);
+    expect(notifier.submissions.last.reason, 'Kontrol ke dokter gigi');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('captures previews of the form, pickers and states', (
