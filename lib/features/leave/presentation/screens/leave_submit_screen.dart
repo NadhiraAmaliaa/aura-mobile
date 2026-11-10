@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,6 +12,80 @@ import '../../../../core/network/api_result.dart';
 import '../../../../shared/utils/indo_date.dart';
 import '../../data/models/leave_submission.dart';
 import '../providers/leave_submit_notifier.dart';
+
+// Heading, body and page tokens shared with the leave landing page and the
+// attendance dashboard; field and accent colours follow the approved form
+// reference. Kept local until a shared AURA palette exists.
+const _heading = Color(0xFF123F69);
+const _bodyMuted = Color(0xFF58636A);
+const _navy = Color(0xFF194875);
+const _hint = Color(0xFF8B959D);
+const _fieldBorder = Color(0xFFD5DEE8);
+const _fieldBorderDisabled = Color(0xFFE4E9EF);
+const _segmentSelected = Color(0xFFFFEBC4);
+const _lavenderFill = Color(0xFFF7F6FE);
+const _lavenderDash = Color(0xFFB4AEE8);
+const _lavenderTint = Color(0xFFE6E5FB);
+
+const _fieldRadius = 14.0;
+const _sectionGap = 20.0;
+const _labelGap = 8.0;
+
+/// Below a field's character counter, which already adds its own line.
+const _counterGap = 14.0;
+
+/// Where text starts inside every input: M3 adds a 4dp gap to the text
+/// fields' content padding, so the date fields and error lines use 16 too.
+const _fieldInset = 16.0;
+
+// A 24dp line in every input, so single-line fields share one height.
+const _inputStyle = TextStyle(fontSize: 15, height: 1.6, letterSpacing: 0);
+
+// Zero letter spacing overrides the inherited M3 body tracking, as on Home.
+const _labelStyle = TextStyle(
+  color: _heading,
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+  letterSpacing: 0,
+);
+
+/// Page gutter and content width, matching Home and the leave landing page.
+double _gutter(double screenWidth) => screenWidth < 360 ? 16 : 18;
+const _maxContentWidth = 680.0;
+
+/// Same breakpoint as `HomeLayout.largeText` (body text measured at 14sp):
+/// side-by-side compositions stack.
+bool _largeText(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(14) / 14 > 1.35;
+
+/// Size of [text] rendered in [style] at the current text scale, wrapped at
+/// [maxWidth] — what a `Text` with the same style renders here.
+Size _textSize(
+  BuildContext context,
+  String text,
+  TextStyle style, {
+  double maxWidth = double.infinity,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: DefaultTextStyle.of(context).style.merge(style),
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: maxWidth);
+  try {
+    return painter.size;
+  } finally {
+    painter.dispose();
+  }
+}
+
+/// A picked date as shown in its field, e.g. "28 Sep 2026", so both date
+/// fields fit side by side on a phone. Display only: the picked [DateTime] is
+/// what gets submitted.
+String _shortDate(DateTime date) =>
+    '${date.day} ${indoMonthName(date.month).substring(0, 3)} ${date.year}';
 
 /// Form for submitting a new leave request (izin / sakit).
 ///
@@ -27,6 +103,74 @@ class LeaveSubmitScreen extends ConsumerStatefulWidget {
 class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
   static const _maxEvidenceBytes = 5 * 1024 * 1024; // 5 MB, matches backend.
   static const _allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+
+  // Light AURA palette of the leave landing page, plus white, softly outlined
+  // inputs. Also applied to the date picker.
+  static final _theme = _buildTheme();
+
+  static ThemeData _buildTheme() {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF174B76),
+      brightness: Brightness.light,
+    );
+    OutlineInputBorder outline(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_fieldRadius),
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: const Color(0xFFF5F8F8),
+      inputDecorationTheme: InputDecorationThemeData(
+        filled: true,
+        fillColor: Colors.white,
+        hintStyle: _inputStyle.copyWith(color: _hint),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: _fieldInset - 4,
+          vertical: 13,
+        ),
+        border: outline(_fieldBorder),
+        enabledBorder: outline(_fieldBorder),
+        disabledBorder: outline(_fieldBorderDisabled),
+        focusedBorder: outline(_navy, 1.5),
+        errorBorder: outline(scheme.error),
+        focusedErrorBorder: outline(scheme.error, 1.5),
+        counterStyle: const TextStyle(color: _bodyMuted, fontSize: 12),
+      ),
+    );
+  }
+
+  // The existing two-segment control, recoloured: pastel yellow when
+  // selected, white otherwise. The selection stays visible while submitting.
+  static final _segmentStyle = ButtonStyle(
+    backgroundColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? _segmentSelected
+          : Colors.white,
+    ),
+    foregroundColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.disabled)
+          ? _heading.withValues(alpha: 0.5)
+          : _heading,
+    ),
+    iconColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.disabled)
+          ? _heading.withValues(alpha: 0.5)
+          : _heading,
+    ),
+    side: const WidgetStatePropertyAll(BorderSide(color: _fieldBorder)),
+    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+  );
+
+  // Button labels are styled on their Text rather than through
+  // ButtonStyle.textStyle, which replaces the theme's label style (and its
+  // font family) instead of merging with it.
+  static const _segmentLabelStyle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+  );
 
   final _formKey = GlobalKey<FormState>();
   final _reasonController = TextEditingController();
@@ -73,145 +217,219 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    // Centres the form at Home's max width on tablets.
+    final horizontal = math.max(_gutter(width), (width - _maxContentWidth) / 2);
     final startError = _startDateError ?? _serverError('start_date');
     final endError = _endDateError ?? _serverError('end_date');
     final evidenceError = _evidenceError ?? _serverError('evidence');
     final typeError = _serverError('type');
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Ajukan Izin / Sakit')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text('Jenis Pengajuan', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'izin', label: Text('Izin')),
-                ButtonSegment(value: 'sakit', label: Text('Sakit')),
-              ],
-              selected: {_type},
-              onSelectionChanged: _isSubmitting
-                  ? null
-                  : (selection) => _onTypeChanged(selection.first),
+    return Theme(
+      data: _theme,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE5EFFB), Color(0xFFF5F8F8)],
+            stops: [0, 0.7],
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Ajukan Izin / Sakit'),
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            foregroundColor: _heading,
+            titleTextStyle: const TextStyle(
+              color: _heading,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
-            if (typeError != null) _FieldError(message: typeError),
-            const SizedBox(height: 20),
+            systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.transparent,
+            ),
+          ),
+          body: SafeArea(
+            top: false,
+            child: Form(
+              key: _formKey,
+              // A plain scroll view, not a lazy ListView: the list disposed
+              // fields scrolled far out of view, so Form.validate() skipped
+              // their validators and an empty Alasan could be submitted.
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(horizontal, 8, horizontal, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _FieldLabel('Jenis Pengajuan'),
+                    const SizedBox(height: _labelGap),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'izin',
+                          label: Text('Izin', style: _segmentLabelStyle),
+                        ),
+                        ButtonSegment(
+                          value: 'sakit',
+                          label: Text('Sakit', style: _segmentLabelStyle),
+                        ),
+                      ],
+                      selected: {_type},
+                      onSelectionChanged: _isSubmitting
+                          ? null
+                          : (selection) => _onTypeChanged(selection.first),
+                      style: _segmentStyle,
+                    ),
+                    if (typeError != null) _FieldError(message: typeError),
+                    const SizedBox(height: _sectionGap),
 
-            TextFormField(
-              controller: _reasonController,
-              enabled: !_isSubmitting,
-              maxLines: 4,
-              maxLength: 1000,
-              textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
-                labelText: 'Alasan',
-                hintText: 'Jelaskan alasan pengajuan Anda',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
+                    _LabeledField(
+                      label: 'Alasan',
+                      child: TextFormField(
+                        controller: _reasonController,
+                        enabled: !_isSubmitting,
+                        maxLines: 4,
+                        maxLength: 1000,
+                        textInputAction: TextInputAction.newline,
+                        style: _inputStyle,
+                        decoration: const InputDecoration(
+                          hintText: 'Jelaskan alasan pengajuan Anda',
+                        ),
+                        onChanged: (_) => _clearServerError('reason'),
+                        validator: (value) {
+                          final text = value?.trim() ?? '';
+                          if (text.isEmpty) return 'Alasan wajib diisi.';
+                          if (text.length > 1000) {
+                            return 'Alasan maksimal 1000 karakter.';
+                          }
+                          return _serverError('reason');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: _counterGap),
+
+                    _DateFields(
+                      start: _DateField(
+                        label: 'Tanggal Mulai',
+                        value: _startDate,
+                        errorText: startError,
+                        enabled: !_isSubmitting,
+                        onTap: () => _pickDate(isStart: true),
+                      ),
+                      end: _DateField(
+                        label: 'Tanggal Selesai',
+                        value: _endDate,
+                        errorText: endError,
+                        enabled: !_isSubmitting,
+                        onTap: () => _pickDate(isStart: false),
+                      ),
+                    ),
+                    const SizedBox(height: _sectionGap),
+
+                    _EvidenceField(
+                      fileName: _evidence?.name,
+                      fileSize: _evidenceSize,
+                      errorText: evidenceError,
+                      isRequired: _type == 'sakit',
+                      enabled: !_isSubmitting,
+                      onPick: _pickEvidence,
+                      onRemove: () => setState(() {
+                        _evidence = null;
+                        _evidenceSize = 0;
+                        _evidenceError = null;
+                        _serverErrors.remove('evidence');
+                      }),
+                      formatBytes: _formatBytes,
+                    ),
+                    const SizedBox(height: _sectionGap),
+
+                    _LabeledField(
+                      label: 'Nomor Kontak',
+                      optional: true,
+                      child: TextFormField(
+                        controller: _contactController,
+                        enabled: !_isSubmitting,
+                        maxLength: 30,
+                        keyboardType: TextInputType.phone,
+                        style: _inputStyle,
+                        decoration: const InputDecoration(
+                          hintText: 'Masukkan nomor kontak',
+                        ),
+                        onChanged: (_) => _clearServerError('contact_phone'),
+                        validator: (value) {
+                          final text = value?.trim() ?? '';
+                          if (text.length > 30) {
+                            return 'Nomor kontak maksimal 30 karakter.';
+                          }
+                          return _serverError('contact_phone');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: _counterGap),
+
+                    _LabeledField(
+                      label: 'Alamat Selama Izin',
+                      optional: true,
+                      child: TextFormField(
+                        controller: _addressController,
+                        enabled: !_isSubmitting,
+                        maxLines: 2,
+                        maxLength: 500,
+                        style: _inputStyle,
+                        decoration: const InputDecoration(
+                          hintText: 'Masukkan alamat selama izin',
+                        ),
+                        onChanged: (_) => _clearServerError('address'),
+                        validator: (value) {
+                          final text = value?.trim() ?? '';
+                          if (text.length > 500) {
+                            return 'Alamat maksimal 500 karakter.';
+                          }
+                          return _serverError('address');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: _sectionGap),
+
+                    FilledButton(
+                      onPressed: _isSubmitting ? null : _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _navy,
+                        foregroundColor: Colors.white,
+                        // Still navy while sending, so the spinner reads.
+                        disabledBackgroundColor: _navy.withValues(alpha: 0.6),
+                        disabledForegroundColor: Colors.white,
+                        elevation: 0,
+                        shape: const StadiumBorder(),
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Kirim Pengajuan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
-              onChanged: (_) => _clearServerError('reason'),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.isEmpty) return 'Alasan wajib diisi.';
-                if (text.length > 1000) {
-                  return 'Alasan maksimal 1000 karakter.';
-                }
-                return _serverError('reason');
-              },
             ),
-            const SizedBox(height: 12),
-
-            _DateField(
-              label: 'Tanggal Mulai',
-              value: _startDate,
-              errorText: startError,
-              enabled: !_isSubmitting,
-              onTap: () => _pickDate(isStart: true),
-            ),
-            const SizedBox(height: 12),
-
-            _DateField(
-              label: 'Tanggal Selesai',
-              value: _endDate,
-              errorText: endError,
-              enabled: !_isSubmitting,
-              onTap: () => _pickDate(isStart: false),
-            ),
-            const SizedBox(height: 20),
-
-            _EvidenceField(
-              fileName: _evidence?.name,
-              fileSize: _evidenceSize,
-              errorText: evidenceError,
-              isRequired: _type == 'sakit',
-              enabled: !_isSubmitting,
-              onPick: _pickEvidence,
-              onRemove: () => setState(() {
-                _evidence = null;
-                _evidenceSize = 0;
-                _evidenceError = null;
-                _serverErrors.remove('evidence');
-              }),
-              formatBytes: _formatBytes,
-            ),
-            const SizedBox(height: 20),
-
-            TextFormField(
-              controller: _contactController,
-              enabled: !_isSubmitting,
-              maxLength: 30,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Nomor Kontak (opsional)',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (_) => _clearServerError('contact_phone'),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.length > 30) {
-                  return 'Nomor kontak maksimal 30 karakter.';
-                }
-                return _serverError('contact_phone');
-              },
-            ),
-            const SizedBox(height: 12),
-
-            TextFormField(
-              controller: _addressController,
-              enabled: !_isSubmitting,
-              maxLines: 2,
-              maxLength: 500,
-              decoration: const InputDecoration(
-                labelText: 'Alamat Selama Izin (opsional)',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              onChanged: (_) => _clearServerError('address'),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.length > 500) {
-                  return 'Alamat maksimal 500 karakter.';
-                }
-                return _serverError('address');
-              },
-            ),
-            const SizedBox(height: 24),
-
-            FilledButton(
-              onPressed: _isSubmitting ? null : _submit,
-              child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Kirim Pengajuan'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -250,6 +468,8 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
       initialDate: initial,
       firstDate: first,
       lastDate: DateTime(min.year + 2),
+      // AURA colours only; the limits and behaviour above are unchanged.
+      builder: (context, child) => Theme(data: _theme, child: child!),
     );
     if (picked == null) return;
 
@@ -385,6 +605,99 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
   }
 }
 
+/// A field's title above its input, with an optional muted "(opsional)".
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text, {this.optional = false});
+
+  final String text;
+  final bool optional;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: text,
+        children: [
+          if (optional)
+            const TextSpan(
+              text: ' (opsional)',
+              style: TextStyle(fontWeight: FontWeight.w400, color: _bodyMuted),
+            ),
+        ],
+      ),
+      style: _labelStyle,
+    );
+  }
+}
+
+/// A text input under its label. The label sits outside the outline, so the
+/// two are merged for screen readers, which read it as the field's name.
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({
+    required this.label,
+    required this.child,
+    this.optional = false,
+  });
+
+  final String label;
+  final bool optional;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FieldLabel(label, optional: optional),
+          const SizedBox(height: _labelGap),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// "Tanggal Mulai" and "Tanggal Selesai" side by side when the longer label
+/// and the widest date fit half the width at the current text scale;
+/// otherwise stacked.
+class _DateFields extends StatelessWidget {
+  const _DateFields({required this.start, required this.end});
+
+  final _DateField start;
+  final _DateField end;
+
+  static const _gap = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final half = (constraints.maxWidth - _gap) / 2;
+        final paired =
+            !_largeText(context) &&
+            _DateField.widestContent(context, [start.label, end.label]) <= half;
+        if (!paired) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [start, const SizedBox(height: 16), end],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: start),
+            const SizedBox(width: _gap),
+            Expanded(child: end),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Tappable date input styled like the text fields: label above, the picked
+/// date (or "Pilih tanggal") and a calendar icon inside the outline.
 class _DateField extends StatelessWidget {
   const _DateField({
     required this.label,
@@ -400,40 +713,117 @@ class _DateField extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
+  static const _iconSize = 20.0;
+  static const _iconGap = 8.0;
+  static const _padding = EdgeInsetsDirectional.fromSTEB(
+    _fieldInset,
+    13,
+    12,
+    13,
+  );
+
+  /// Horizontal room around the date text: padding, gap and icon.
+  static const _chrome = _fieldInset + _iconGap + _iconSize + 12;
+
+  // A 24dp line, as in the text fields, so all inputs share one height.
+  static const _valueStyle = TextStyle(
+    color: _heading,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.6,
+    letterSpacing: 0,
+  );
+  static const _placeholderStyle = TextStyle(
+    color: _hint,
+    fontSize: 15,
+    height: 1.6,
+    letterSpacing: 0,
+  );
+
+  /// Width a date field needs to show everything on one line: its label, or
+  /// the widest date it can display (or the placeholder) plus its chrome.
+  static double widestContent(BuildContext context, List<String> labels) {
+    var widest = 0.0;
+    for (final label in labels) {
+      widest = math.max(widest, _textSize(context, label, _labelStyle).width);
+    }
+    final texts = [
+      (text: 'Pilih tanggal', style: _placeholderStyle),
+      for (var month = 1; month <= 12; month++)
+        (text: _shortDate(DateTime(2026, month, 28)), style: _valueStyle),
+    ];
+    for (final (:text, :style) in texts) {
+      widest = math.max(
+        widest,
+        _textSize(context, text, style).width + _chrome,
+      );
+    }
+    return widest.ceilToDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        errorText: errorText,
-        suffixIcon: const Icon(Icons.calendar_today_outlined),
-      ),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            value != null
-                ? formatIndoDate(
-                    '${value!.year.toString().padLeft(4, '0')}-'
-                    '${value!.month.toString().padLeft(2, '0')}-'
-                    '${value!.day.toString().padLeft(2, '0')}',
-                  )
-                : 'Pilih tanggal',
-            style: value != null
-                ? theme.textTheme.bodyLarge
-                : theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+    final scheme = Theme.of(context).colorScheme;
+    final borderColor = errorText != null
+        ? scheme.error
+        : enabled
+        ? _fieldBorder
+        : _fieldBorderDisabled;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(_fieldRadius),
+      side: BorderSide(color: borderColor),
+    );
+
+    return MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FieldLabel(label),
+          const SizedBox(height: _labelGap),
+          Semantics(
+            button: true,
+            child: Material(
+              color: Colors.white,
+              shape: shape,
+              child: InkWell(
+                onTap: enabled ? onTap : null,
+                customBorder: shape,
+                child: Padding(
+                  padding: _padding,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          value != null ? _shortDate(value!) : 'Pilih tanggal',
+                          style: value != null
+                              ? _valueStyle
+                              : _placeholderStyle,
+                        ),
+                      ),
+                      const SizedBox(width: _iconGap),
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: _iconSize,
+                        color: enabled ? _navy : _hint,
+                      ),
+                    ],
                   ),
+                ),
+              ),
+            ),
           ),
-        ),
+          if (errorText != null) _FieldError(message: errorText!),
+        ],
       ),
     );
   }
 }
 
+/// Compact upload area: a lavender panel with a dashed outline, the
+/// attachment rules and the "Pilih Berkas" action, or the selected file.
+///
+/// The action sits beside the copy when the description still fits on two
+/// lines next to it, and below the copy otherwise.
 class _EvidenceField extends StatelessWidget {
   const _EvidenceField({
     required this.fileName,
@@ -455,44 +845,181 @@ class _EvidenceField extends StatelessWidget {
   final VoidCallback onRemove;
   final String Function(int bytes) formatBytes;
 
+  // A no-break space keeps "5 MB" together instead of orphaning "MB.".
+  static const _description =
+      'PDF atau gambar (jpg, jpeg, png, webp), maksimal 5 MB.';
+  static const _titleStyle = TextStyle(
+    color: _heading,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
+    letterSpacing: 0,
+  );
+  static const _descriptionStyle = TextStyle(
+    color: _bodyMuted,
+    fontSize: 12,
+    height: 1.35,
+    letterSpacing: 0,
+  );
+  static const _actionStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+  );
+  static const _radius = 18.0;
+  static const _badgeSize = 40.0;
+  static const _gap = 12.0;
+
+  /// Pill padding, icon and gap around the "Pilih Berkas" label.
+  static const _actionChrome = 14 * 2 + 18 + 8.0;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
+    final scheme = Theme.of(context).colorScheme;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CustomPaint(
+          foregroundPainter: _DashedBorderPainter(
+            color: errorText != null ? scheme.error : _lavenderDash,
+            radius: _radius,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _lavenderFill,
+              borderRadius: BorderRadius.circular(_radius),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: LayoutBuilder(
+                builder: (context, constraints) =>
+                    _content(context, constraints.maxWidth, scheme.error),
+              ),
+            ),
+          ),
+        ),
+        if (errorText != null) _FieldError(message: errorText!),
+      ],
+    );
+  }
+
+  Widget _content(BuildContext context, double maxWidth, Color errorColor) {
+    final copyWidth = maxWidth - _badgeSize - _gap;
+    final pickWidth =
+        _textSize(context, 'Pilih Berkas', _actionStyle).width + _actionChrome;
+    final besideWidth = copyWidth - _gap - pickWidth;
+    final lineHeight = _textSize(context, 'M', _descriptionStyle).height;
+    final beside =
+        fileName == null &&
+        !_largeText(context) &&
+        besideWidth > 0 &&
+        _textSize(context, 'Lampiran Bukti *', _titleStyle).width <=
+            besideWidth &&
+        _textSize(
+              context,
+              _description,
+              _descriptionStyle,
+              maxWidth: besideWidth,
+            ).height <=
+            lineHeight * 2 + 0.5;
+
+    const badge = SizedBox.square(
+      dimension: _badgeSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _lavenderTint,
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        child: Icon(Icons.attach_file_rounded, size: 22, color: _navy),
+      ),
+    );
+    final copy = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text.rich(
+          TextSpan(
+            text: 'Lampiran Bukti',
+            children: [
+              if (isRequired)
+                TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: errorColor),
+                ),
+            ],
+          ),
+          style: _titleStyle,
+        ),
+        const SizedBox(height: 2),
+        const Text(_description, style: _descriptionStyle),
+      ],
+    );
+    final pick = OutlinedButton.icon(
+      onPressed: enabled ? onPick : null,
+      icon: const Icon(Icons.file_upload_outlined, size: 18),
+      label: const Text('Pilih Berkas', style: _actionStyle),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _navy,
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: _navy),
+        shape: const StadiumBorder(),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minimumSize: const Size(0, 40),
+      ),
+    );
+
+    if (beside) {
+      return Row(
+        children: [
+          badge,
+          const SizedBox(width: _gap),
+          Expanded(child: copy),
+          const SizedBox(width: _gap),
+          pick,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Text('Lampiran Bukti', style: theme.textTheme.labelLarge),
-            const SizedBox(width: 4),
-            if (isRequired) Text('*', style: TextStyle(color: scheme.error)),
+            badge,
+            const SizedBox(width: _gap),
+            Expanded(child: copy),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'PDF atau gambar (jpg, jpeg, png, webp), maksimal 5 MB.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         if (fileName != null)
-          Card(
-            elevation: 0,
-            color: scheme.surfaceContainerHighest,
+          Material(
+            color: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: _lavenderTint),
             ),
             child: ListTile(
-              leading: const Icon(Icons.insert_drive_file_outlined),
+              contentPadding: const EdgeInsetsDirectional.only(
+                start: 12,
+                end: 4,
+              ),
+              horizontalTitleGap: 12,
+              leading: const Icon(
+                Icons.insert_drive_file_outlined,
+                color: _navy,
+              ),
               title: Text(
                 fileName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _heading,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              subtitle: Text(formatBytes(fileSize)),
+              subtitle: Text(
+                formatBytes(fileSize),
+                style: const TextStyle(color: _bodyMuted, fontSize: 12),
+              ),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: enabled ? onRemove : null,
@@ -501,17 +1028,67 @@ class _EvidenceField extends StatelessWidget {
             ),
           )
         else
-          OutlinedButton.icon(
-            onPressed: enabled ? onPick : null,
-            icon: const Icon(Icons.attach_file),
-            label: const Text('Pilih Berkas'),
+          // Indented under the copy when it fits there.
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                start: pickWidth <= copyWidth ? _badgeSize + _gap : 0,
+              ),
+              child: pick,
+            ),
           ),
-        if (errorText != null) _FieldError(message: errorText!),
       ],
     );
   }
 }
 
+/// Dashed rounded outline for the upload area, cut from the rounded
+/// rectangle's path so no extra package is needed.
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  static const _dash = 6.0;
+  static const _space = 4.0;
+  static const _strokeWidth = 1.2;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final outline = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          (Offset.zero & size).deflate(_strokeWidth / 2),
+          Radius.circular(radius),
+        ),
+      );
+    final dashes = Path();
+    for (final metric in outline.computeMetrics()) {
+      for (var start = 0.0; start < metric.length; start += _dash + _space) {
+        dashes.addPath(
+          metric.extractPath(start, math.min(start + _dash, metric.length)),
+          Offset.zero,
+        );
+      }
+    }
+    canvas.drawPath(
+      dashes,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _strokeWidth,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
+}
+
+/// Error line under a control that is not a text field, aligned with the
+/// text fields' own error text.
 class _FieldError extends StatelessWidget {
   const _FieldError({required this.message});
 
@@ -521,7 +1098,7 @@ class _FieldError extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 12),
+      padding: const EdgeInsetsDirectional.only(top: 6, start: _fieldInset),
       child: Text(
         message,
         style: theme.textTheme.bodySmall?.copyWith(
