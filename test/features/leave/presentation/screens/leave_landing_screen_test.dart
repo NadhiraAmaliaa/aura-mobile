@@ -272,6 +272,7 @@ void main() {
     final history = _cardRect(tester, 'Riwayat Pengajuan');
     expect(history.top, pending.top);
     expect(history.height, pending.height);
+    expect(pending.height, lessThanOrEqualTo(84));
     expect(pending.right, lessThan(history.left));
     expect(
       tester.getRect(find.byIcon(Icons.hourglass_bottom_rounded)).right,

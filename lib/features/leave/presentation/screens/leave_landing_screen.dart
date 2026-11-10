@@ -250,11 +250,16 @@ class _WavePainter extends CustomPainter {
 
   final Color color;
 
-  /// A short accent rising into the bottom-right corner, instead of a band
-  /// that falls from left to right across the full width.
+  /// A short accent rising into the bottom-right corner, instead of a thin
+  /// band along the full width.
   final bool rising;
 
+  /// How high the rising accent climbs into the corner.
   static const _depth = 30.0;
+
+  /// Thickness of the band at both ends. A fixed depth keeps it hugging the
+  /// bottom edge however tall the card grows.
+  static const _bandDepth = 14.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -274,15 +279,17 @@ class _WavePainter extends CustomPainter {
             )
             ..lineTo(width, bottom)
             ..close())
+        // Long, gentle S: a slight crest (~1.15x the depth) at 15% of the
+        // width, a dip to under half the depth at 70%, back up at the corner.
         : (Path()
-            ..moveTo(0, top + _depth * 0.15)
+            ..moveTo(0, bottom - _bandDepth)
             ..cubicTo(
-              width * 0.3,
-              top - _depth * 0.1,
-              width * 0.55,
-              bottom - _depth * 0.15,
+              width * 0.35,
+              bottom - _bandDepth * 1.65,
+              width * 0.6,
+              bottom + _bandDepth * 0.5,
               width,
-              bottom - _depth * 0.3,
+              bottom - _bandDepth,
             )
             ..lineTo(width, bottom)
             ..lineTo(0, bottom)
@@ -579,7 +586,7 @@ class _StatusCards extends StatelessWidget {
               (item) => _textSize(
                 context,
                 item.title,
-                _cardTitleStyle,
+                _StatusCard.titleStyle,
                 maxWidth: titleWidth,
               ).height,
             )
@@ -624,7 +631,7 @@ class _StatusCards extends StatelessWidget {
       for (final word in item.title.split(' ')) {
         widest = math.max(
           widest,
-          _textSize(context, word, _cardTitleStyle).width,
+          _textSize(context, word, _StatusCard.titleStyle).width,
         );
       }
     }
@@ -644,11 +651,21 @@ class _StatusCard extends StatelessWidget {
   final double titleHeight;
 
   static const padding = 14.0;
-  static const iconSize = 44.0;
-  static const iconGap = 10.0;
+  static const iconSize = 40.0;
+  static const iconGap = 8.0;
 
-  /// Bottom inset keeping the content clear of most of the wave band.
-  static const _waveInset = 26.0;
+  /// A step below the other card titles, so two lines sit comfortably beside
+  /// the icon in a short card.
+  static const titleStyle = TextStyle(
+    color: _heading,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: 0,
+  );
+
+  /// Bottom inset leaving breathing room above the wave band.
+  static const _waveInset = 30.0;
 
   @override
   Widget build(BuildContext context) {
@@ -667,7 +684,7 @@ class _StatusCard extends StatelessWidget {
         alignment: iconBeside
             ? AlignmentDirectional.centerStart
             : AlignmentDirectional.topStart,
-        child: Text(item.title, style: _cardTitleStyle),
+        child: Text(item.title, style: titleStyle),
       ),
     );
 
