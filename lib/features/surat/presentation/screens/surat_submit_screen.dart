@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
-import '../../../../shared/utils/indo_date.dart';
+import '../../../../shared/widgets/aura_form.dart';
 import '../../data/models/surat_submission.dart';
 import '../providers/surat_submit_notifier.dart';
 
@@ -27,6 +27,22 @@ class SuratSubmitScreen extends ConsumerStatefulWidget {
 }
 
 class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
+  // The letter's title and intro, sized and coloured like the leave landing
+  // page's section heading and body copy.
+  static const _titleStyle = TextStyle(
+    color: AuraForm.heading,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: 0,
+  );
+  static const _introStyle = TextStyle(
+    color: AuraForm.bodyMuted,
+    fontSize: 13,
+    height: 1.4,
+    letterSpacing: 0,
+  );
+
   final _formKey = GlobalKey<FormState>();
   final _reasonController = TextEditingController();
 
@@ -55,93 +71,78 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final dateError = _dateError ?? _serverError('early_leave_date');
     final timeError = _timeError ?? _serverError('leave_time');
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Surat Pulang Cepat')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              'Surat Izin Pulang Sebelum Waktunya',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Identitas Anda diambil otomatis dari akun. Lengkapi rincian '
-              'berikut, lalu surat akan dibuat untuk dicetak atau disimpan.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            _PickerField(
-              label: 'Tanggal Pulang',
-              value: _date != null ? formatIndoDate(_isoDate(_date!)) : null,
-              placeholder: 'Pilih tanggal',
-              icon: Icons.calendar_today_outlined,
-              errorText: dateError,
-              enabled: !_isSubmitting,
-              onTap: _pickDate,
-            ),
-            const SizedBox(height: 12),
-
-            _PickerField(
-              label: 'Jam Meninggalkan Kantor',
-              value: _time != null ? _formatTime(_time!) : null,
-              placeholder: 'Pilih jam',
-              icon: Icons.schedule_outlined,
-              errorText: timeError,
-              enabled: !_isSubmitting,
-              onTap: _pickTime,
-            ),
-            const SizedBox(height: 20),
-
-            TextFormField(
-              controller: _reasonController,
-              enabled: !_isSubmitting,
-              maxLines: 4,
-              maxLength: 1000,
-              textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
-                labelText: 'Alasan',
-                hintText: 'Jelaskan alasan Anda pulang lebih awal',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              onChanged: (_) => _clearServerError('reason'),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                if (text.isEmpty) return 'Alasan wajib diisi.';
-                if (text.length > 1000) {
-                  return 'Alasan maksimal 1000 karakter.';
-                }
-                return _serverError('reason');
-              },
-            ),
-            const SizedBox(height: 24),
-
-            FilledButton.icon(
-              onPressed: _isSubmitting ? null : _submit,
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.print_outlined),
-              label: Text(_isSubmitting ? 'Menyiapkan…' : 'Buat & Cetak Surat'),
-            ),
-          ],
+    return AuraFormPage(
+      title: 'Surat Pulang Cepat',
+      formKey: _formKey,
+      children: [
+        const Text('Surat Izin Pulang Sebelum Waktunya', style: _titleStyle),
+        const SizedBox(height: 4),
+        const Text(
+          'Identitas Anda diambil otomatis dari akun. Lengkapi rincian '
+          'berikut, lalu surat akan dibuat untuk dicetak atau disimpan.',
+          style: _introStyle,
         ),
-      ),
+        const SizedBox(height: AuraForm.sectionGap),
+
+        AuraPickerField.date(
+          label: 'Tanggal Pulang',
+          isRequired: true,
+          date: _date,
+          errorText: dateError,
+          enabled: !_isSubmitting,
+          onTap: _pickDate,
+        ),
+        const SizedBox(height: AuraForm.pairGap),
+
+        AuraPickerField(
+          label: 'Jam Meninggalkan Kantor',
+          isRequired: true,
+          value: _time != null ? _formatTime(_time!) : null,
+          placeholder: 'Pilih jam',
+          icon: Icons.schedule_outlined,
+          errorText: timeError,
+          enabled: !_isSubmitting,
+          onTap: _pickTime,
+        ),
+        const SizedBox(height: AuraForm.sectionGap),
+
+        AuraLabeledField(
+          label: 'Alasan',
+          isRequired: true,
+          child: TextFormField(
+            controller: _reasonController,
+            enabled: !_isSubmitting,
+            maxLines: 4,
+            maxLength: 1000,
+            textInputAction: TextInputAction.newline,
+            style: AuraForm.inputStyle,
+            decoration: const InputDecoration(
+              hintText: 'Jelaskan alasan Anda pulang lebih awal',
+            ),
+            onChanged: (_) => _clearServerError('reason'),
+            validator: (value) {
+              final text = value?.trim() ?? '';
+              if (text.isEmpty) return 'Alasan wajib diisi.';
+              if (text.length > 1000) {
+                return 'Alasan maksimal 1000 karakter.';
+              }
+              return _serverError('reason');
+            },
+          ),
+        ),
+        const SizedBox(height: AuraForm.sectionGap),
+
+        AuraSubmitButton(
+          label: 'Buat & Cetak Surat',
+          icon: Icons.print_outlined,
+          busyLabel: 'Menyiapkan…',
+          onPressed: _submit,
+          isBusy: _isSubmitting,
+        ),
+      ],
     );
   }
 
@@ -159,6 +160,8 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
       initialDate: initial,
       firstDate: DateTime(today.year - 1),
       lastDate: DateTime(today.year + 2),
+      // AURA colours only; the limits and behaviour above are unchanged.
+      builder: AuraForm.pickerBuilder,
     );
     if (picked == null) return;
     setState(() {
@@ -172,6 +175,7 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _time ?? TimeOfDay.now(),
+      builder: AuraForm.pickerBuilder,
     );
     if (picked == null) return;
     setState(() {
@@ -221,12 +225,6 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
     }
   }
 
-  /// Machine-readable `yyyy-MM-dd` for [formatIndoDate] and the API.
-  String _isoDate(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
-
   /// 24-hour `HH:mm` for the API and display (matches the backend `H:i` rule).
   String _formatTime(TimeOfDay time) =>
       '${time.hour.toString().padLeft(2, '0')}:'
@@ -236,52 +234,5 @@ class _SuratSubmitScreenState extends ConsumerState<SuratSubmitScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-}
-
-class _PickerField extends StatelessWidget {
-  const _PickerField({
-    required this.label,
-    required this.value,
-    required this.placeholder,
-    required this.icon,
-    required this.errorText,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final String label;
-  final String? value;
-  final String placeholder;
-  final IconData icon;
-  final String? errorText;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        errorText: errorText,
-        suffixIcon: Icon(icon),
-      ),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            value ?? placeholder,
-            style: value != null
-                ? theme.textTheme.bodyLarge
-                : theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-          ),
-        ),
-      ),
-    );
   }
 }
