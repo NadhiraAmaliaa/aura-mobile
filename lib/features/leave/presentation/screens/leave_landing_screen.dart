@@ -13,7 +13,6 @@ import '../../../../app/router/routes.dart';
 const _heading = Color(0xFF123F69);
 const _bodyMuted = Color(0xFF58636A);
 const _navy = Color(0xFF194875);
-const _chevronTint = Color(0xFFD8E7FC);
 const _surfaceShadow = BoxShadow(
   color: Color(0x100E3555),
   blurRadius: 12,
@@ -70,10 +69,10 @@ Size _textSize(
 /// Entry point for the leave feature. Presents the intern's available leave
 /// actions as cards.
 ///
-/// The submission card ("Ajukan Izin / Sakit") leads, followed by the two read
-/// destinations (pending list and history), the isolated "Surat Pulang Cepat"
-/// letter utility and a static reminder. Every card only pushes its existing
-/// route; the page holds no state of its own.
+/// The submission card ("Pengajuan Izin / Sakit") leads, followed by the two
+/// read destinations (pending list and history), the isolated "Surat Pulang
+/// Cepat" letter utility and a static reminder. Every card only pushes its
+/// existing route; the page holds no state of its own.
 class LeaveLandingScreen extends StatelessWidget {
   const LeaveLandingScreen({super.key});
 
@@ -355,21 +354,14 @@ class _SubmitCard extends StatelessWidget {
 
   final VoidCallback onTap;
 
-  static const _title = 'Ajukan\nIzin / Sakit';
-  static const _description = 'Buat pengajuan izin atau sakit baru';
-  static const _action = 'Ajukan Sekarang';
+  static const _title = 'Pengajuan\nIzin / Sakit';
+  static const _action = 'Buat Pengajuan';
 
   static const _titleStyle = TextStyle(
     color: _heading,
     fontSize: 22,
     fontWeight: FontWeight.w700,
     height: 1.2,
-  );
-  static const _descriptionStyle = TextStyle(
-    color: _bodyMuted,
-    fontSize: 13,
-    height: 1.35,
-    letterSpacing: 0,
   );
   static const _actionStyle = TextStyle(
     color: _heading,
@@ -378,13 +370,13 @@ class _SubmitCard extends StatelessWidget {
     letterSpacing: 0,
   );
 
-  /// Pill padding, gap and arrow around the action label.
-  static const _actionChrome = 14 * 2 + 6 + 18.0;
+  /// Pill padding on each side of the action label.
+  static const _actionPadding = 18.0;
 
   @override
   Widget build(BuildContext context) {
     return _CardSurface(
-      label: 'Ajukan Izin / Sakit. $_description',
+      label: 'Pengajuan Izin / Sakit. $_action',
       onTap: onTap,
       accent: _navy,
       radius: 24,
@@ -411,15 +403,15 @@ class _SubmitCard extends StatelessWidget {
             final copyWidth =
                 constraints.maxWidth - illustrationWidth - _CardDivider.space;
             final copyNeeds = math.max(
-              _textSize(context, _action, _actionStyle).width + _actionChrome,
-              _textSize(context, 'Izin / Sakit', _titleStyle).width,
+              _textSize(context, _action, _actionStyle).width +
+                  _actionPadding * 2,
+              // Widest line of the two-line title.
+              _textSize(context, _title, _titleStyle).width,
             );
             const copy = Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_title, style: _titleStyle),
-                SizedBox(height: 6),
-                Text(_description, style: _descriptionStyle),
                 SizedBox(height: 14),
                 _ActionPill(),
               ],
@@ -456,7 +448,7 @@ class _SubmitCard extends StatelessWidget {
   }
 }
 
-/// White "Ajukan Sekarang" pill. Visual only: the whole card is the button.
+/// White "Buat Pengajuan" pill. Visual only: the whole card is the button.
 class _ActionPill extends StatelessWidget {
   const _ActionPill();
 
@@ -475,19 +467,11 @@ class _ActionPill extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Flexible only as a safety net: the card stacks before the label
-            // would have to wrap.
-            Flexible(
-              child: Text(_SubmitCard._action, style: _SubmitCard._actionStyle),
-            ),
-            SizedBox(width: 6),
-            Icon(Icons.arrow_forward_rounded, size: 18, color: _heading),
-          ],
+        padding: EdgeInsets.symmetric(
+          horizontal: _SubmitCard._actionPadding,
+          vertical: 9,
         ),
+        child: Text(_SubmitCard._action, style: _SubmitCard._actionStyle),
       ),
     );
   }
@@ -532,7 +516,6 @@ class _LeaveIllustration extends StatelessWidget {
 
 typedef _StatusItem = ({
   String title,
-  String description,
   IconData icon,
   Color background,
   Color wave,
@@ -544,11 +527,11 @@ typedef _StatusItem = ({
 /// "Menunggu Persetujuan" (soft yellow) and "Riwayat Pengajuan" (soft green)
 /// as two equal pastel cards side by side, as in the reference.
 ///
-/// Both cards reserve the taller title and description, measured at the
-/// current width and text scale, so they line up without an intrinsic-height
-/// pass. The icon sits beside the copy when the longest word still fits next
-/// to it and above it otherwise. When a word would not fit even a half-width
-/// card, or the text is large, the cards stack at full width.
+/// Both cards reserve the taller title, measured at the current width and
+/// text scale, so they line up without an intrinsic-height pass. The icon
+/// sits beside the title when the longest word still fits next to it and
+/// above it otherwise. When a word would not fit even a half-width card, or
+/// the text is large, the cards stack at full width.
 class _StatusCards extends StatelessWidget {
   const _StatusCards({required this.onPending, required this.onHistory});
 
@@ -562,7 +545,6 @@ class _StatusCards extends StatelessWidget {
     final List<_StatusItem> items = [
       (
         title: 'Menunggu Persetujuan',
-        description: 'Pengajuan yang masih diproses',
         icon: Icons.hourglass_bottom_rounded,
         background: const Color(0xFFFFF8EA),
         wave: const Color(0xFFFFE8B8),
@@ -572,7 +554,6 @@ class _StatusCards extends StatelessWidget {
       ),
       (
         title: 'Riwayat Pengajuan',
-        description: 'Pengajuan yang disetujui atau ditolak',
         icon: Icons.history_rounded,
         background: const Color(0xFFF1F8EE),
         wave: const Color(0xFFD7ECCF),
@@ -592,25 +573,18 @@ class _StatusCards extends StatelessWidget {
         final inner = (paired ? pairWidth : constraints.maxWidth) - padding;
         final besideWidth = inner - _StatusCard.iconSize - _StatusCard.iconGap;
         final iconBeside = widestWord <= besideWidth;
-        final copyWidth = iconBeside ? besideWidth : inner;
-
-        double tallest(String Function(_StatusItem) text, TextStyle style) =>
-            items
-                .map(
-                  (item) => _textSize(
-                    context,
-                    text(item),
-                    style,
-                    maxWidth: copyWidth,
-                  ).height,
-                )
-                .reduce(math.max)
-                .ceilToDouble();
-        final titleHeight = tallest((item) => item.title, _cardTitleStyle);
-        final descriptionHeight = tallest(
-          (item) => item.description,
-          _cardDescriptionStyle,
-        );
+        final titleWidth = iconBeside ? besideWidth : inner;
+        final titleHeight = items
+            .map(
+              (item) => _textSize(
+                context,
+                item.title,
+                _cardTitleStyle,
+                maxWidth: titleWidth,
+              ).height,
+            )
+            .reduce(math.max)
+            .ceilToDouble();
 
         final cards = [
           for (final item in items)
@@ -618,7 +592,6 @@ class _StatusCards extends StatelessWidget {
               item: item,
               iconBeside: iconBeside,
               titleHeight: titleHeight,
-              descriptionHeight: descriptionHeight,
             ),
         ];
         if (!paired) {
@@ -643,18 +616,16 @@ class _StatusCards extends StatelessWidget {
     );
   }
 
-  /// Widest single word of any title or description, so a card's layout
-  /// never forces a word to split across lines.
+  /// Widest single word of either title, so a card's layout never forces a
+  /// word to split across lines.
   static double _widestWord(BuildContext context, List<_StatusItem> items) {
     var widest = 0.0;
     for (final item in items) {
-      for (final (text, style) in [
-        (item.title, _cardTitleStyle),
-        (item.description, _cardDescriptionStyle),
-      ]) {
-        for (final word in text.split(' ')) {
-          widest = math.max(widest, _textSize(context, word, style).width);
-        }
+      for (final word in item.title.split(' ')) {
+        widest = math.max(
+          widest,
+          _textSize(context, word, _cardTitleStyle).width,
+        );
       }
     }
     return widest.ceilToDouble();
@@ -666,17 +637,18 @@ class _StatusCard extends StatelessWidget {
     required this.item,
     required this.iconBeside,
     required this.titleHeight,
-    required this.descriptionHeight,
   });
 
   final _StatusItem item;
   final bool iconBeside;
   final double titleHeight;
-  final double descriptionHeight;
 
   static const padding = 14.0;
   static const iconSize = 44.0;
   static const iconGap = 10.0;
+
+  /// Bottom inset keeping the content clear of most of the wave band.
+  static const _waveInset = 26.0;
 
   @override
   Widget build(BuildContext context) {
@@ -686,66 +658,44 @@ class _StatusCard extends StatelessWidget {
       color: item.iconColor,
       size: iconSize,
     );
-    final copy = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: titleHeight),
-          child: Text(item.title, style: _cardTitleStyle),
-        ),
-        const SizedBox(height: 4),
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: descriptionHeight),
-          child: Text(item.description, style: _cardDescriptionStyle),
-        ),
-      ],
+    // Both cards reserve the same title height. Beside the icon a shorter
+    // title is centred on it; below the icon it starts at the top, level with
+    // its sibling's.
+    final title = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: titleHeight),
+      child: Align(
+        alignment: iconBeside
+            ? AlignmentDirectional.centerStart
+            : AlignmentDirectional.topStart,
+        child: Text(item.title, style: _cardTitleStyle),
+      ),
     );
 
     return _CardSurface(
-      label: '${item.title}. ${item.description}',
+      label: item.title,
       onTap: item.onTap,
       accent: item.iconColor,
       color: item.background,
       wave: _WavePainter(color: item.wave),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(padding, padding, padding, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (iconBeside)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(
+          padding,
+          padding,
+          padding,
+          _waveInset,
+        ),
+        child: iconBeside
+            ? Row(
                 children: [
                   icon,
                   const SizedBox(width: iconGap),
-                  Expanded(child: copy),
+                  Expanded(child: title),
                 ],
               )
-            else ...[
-              icon,
-              const SizedBox(height: 10),
-              copy,
-            ],
-            const SizedBox(height: 8),
-            const Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox.square(
-                dimension: 30,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _chevronTint,
-                  ),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    size: 20,
-                    color: _navy,
-                  ),
-                ),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [icon, const SizedBox(height: 10), title],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -759,12 +709,11 @@ class _LetterCard extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _title = 'Surat Pulang Cepat';
-  static const _description = 'Buat surat izin pulang sebelum waktunya';
 
   @override
   Widget build(BuildContext context) {
     return _CardSurface(
-      label: '$_title. $_description',
+      label: _title,
       onTap: onTap,
       accent: _navy,
       color: Colors.white,
@@ -780,16 +729,7 @@ class _LetterCard extends StatelessWidget {
               size: 48,
             ),
             _CardDivider(color: Color(0xFFE1E6EE)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_title, style: _cardTitleStyle),
-                  SizedBox(height: 3),
-                  Text(_description, style: _cardDescriptionStyle),
-                ],
-              ),
-            ),
+            Expanded(child: Text(_title, style: _cardTitleStyle)),
             SizedBox(width: 6),
             Icon(Icons.chevron_right_rounded, size: 28, color: _navy),
           ],

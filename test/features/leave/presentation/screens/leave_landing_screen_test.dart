@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 const _destinations = [
-  (title: 'Ajukan\nIzin / Sakit', name: RouteNames.leaveSubmit),
+  (title: 'Pengajuan\nIzin / Sakit', name: RouteNames.leaveSubmit),
   (title: 'Menunggu Persetujuan', name: RouteNames.leavePending),
   (title: 'Riwayat Pengajuan', name: RouteNames.leaveHistory),
   (title: 'Surat Pulang Cepat', name: RouteNames.leaveSurat),
@@ -176,11 +176,51 @@ void main() {
     });
   }
 
-  testWidgets('Ajukan Sekarang opens the submission form', (tester) async {
+  testWidgets('Buat Pengajuan opens the submission form', (tester) async {
     await _pumpLanding(tester);
-    await tester.tap(find.text('Ajukan Sekarang'));
+    await tester.tap(find.text('Buat Pengajuan'));
     await tester.pumpAndSettle();
     expect(find.text('Destination ${RouteNames.leaveSubmit}'), findsOneWidget);
+  });
+
+  testWidgets('navigation cards show titles only; the note keeps its text', (
+    tester,
+  ) async {
+    // Tall enough for the lazy list to build every card.
+    await _pumpLanding(tester, height: 2000);
+    expect(find.text('Catatan Penting'), findsOneWidget);
+    expect(
+      find.text(
+        'Pastikan data dan alasan pengajuan sesuai dengan '
+        'ketentuan yang berlaku.',
+      ),
+      findsOneWidget,
+    );
+    for (final removed in [
+      'Ajukan Sekarang',
+      'Buat pengajuan izin atau sakit baru',
+      'Pengajuan yang masih diproses',
+      'Pengajuan yang disetujui atau ditolak',
+      'Buat surat izin pulang sebelum waktunya',
+    ]) {
+      expect(find.text(removed), findsNothing);
+    }
+    // No arrow in the pill; only Surat Pulang Cepat keeps its chevron.
+    expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    final chevronCard = find
+        .ancestor(
+          of: find.byIcon(Icons.chevron_right_rounded),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    expect(
+      find.descendant(
+        of: chevronCard,
+        matching: find.text('Surat Pulang Cepat'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('each card is one accessible button; the note is not', (
@@ -190,10 +230,10 @@ void main() {
     try {
       await _pumpLanding(tester);
       for (final label in [
-        'Ajukan Izin / Sakit. Buat pengajuan izin atau sakit baru',
-        'Menunggu Persetujuan. Pengajuan yang masih diproses',
-        'Riwayat Pengajuan. Pengajuan yang disetujui atau ditolak',
-        'Surat Pulang Cepat. Buat surat izin pulang sebelum waktunya',
+        'Pengajuan Izin / Sakit. Buat Pengajuan',
+        'Menunggu Persetujuan',
+        'Riwayat Pengajuan',
+        'Surat Pulang Cepat',
       ]) {
         expect(
           tester.getSemantics(find.bySemanticsLabel(label)),
@@ -219,10 +259,14 @@ void main() {
     tester,
   ) async {
     await _pumpLanding(tester, width: 768, height: 1024);
-    // Illustration beside the submission copy.
+    // Illustration beside the submission copy, the pill below the title.
     final illustration = tester.getRect(find.byType(Image));
-    final title = tester.getRect(find.text('Ajukan\nIzin / Sakit'));
+    final title = tester.getRect(find.text('Pengajuan\nIzin / Sakit'));
     expect(illustration.right, lessThan(title.left));
+    expect(
+      tester.getRect(find.text('Buat Pengajuan')).top,
+      greaterThan(title.bottom),
+    );
     // Two equal status cards in one row, each icon beside its title.
     final pending = _cardRect(tester, 'Menunggu Persetujuan');
     final history = _cardRect(tester, 'Riwayat Pengajuan');
