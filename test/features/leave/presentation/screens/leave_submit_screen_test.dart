@@ -165,6 +165,19 @@ Finder _dateBox(int index) => find
     )
     .first;
 
+/// Both empty date fields stack, Tanggal Mulai first, each as wide as the
+/// text fields.
+void _expectStackedDates(WidgetTester tester) {
+  final reason = tester.getRect(find.byType(TextField).first);
+  final start = tester.getRect(_dateBox(0));
+  final end = tester.getRect(_dateBox(1));
+  expect(end.top, greaterThan(start.bottom));
+  for (final box in [start, end]) {
+    expect(box.left, reason.left);
+    expect(box.right, reason.right);
+  }
+}
+
 /// Opens the first empty date field and accepts the picker's initial date,
 /// the earliest one allowed.
 Future<void> _pickFirstEmptyDate(WidgetTester tester) async {
@@ -232,14 +245,15 @@ void main() {
     );
     expect(selector.style!.backgroundColor!.resolve({}), Colors.white);
 
-    // Labels sit above the inputs, not inside their outline.
+    // Labels sit above the inputs, not inside their outline. Required fields
+    // carry a "*"; the always-filled selector and optional fields carry none.
     for (final label in [
       'Jenis Pengajuan',
-      'Alasan',
-      'Tanggal Mulai',
-      'Tanggal Selesai',
-      'Nomor Kontak (opsional)',
-      'Alamat Selama Izin (opsional)',
+      'Alasan *',
+      'Tanggal Mulai *',
+      'Tanggal Selesai *',
+      'Nomor Kontak',
+      'Alamat Selama Izin',
     ]) {
       expect(find.text(label), findsOneWidget);
       expect(
@@ -249,6 +263,16 @@ void main() {
         ),
         findsNothing,
       );
+    }
+    expect(find.textContaining('opsional'), findsNothing);
+    final error = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF174B76),
+    ).error;
+    for (final label in ['Alasan *', 'Tanggal Mulai *', 'Tanggal Selesai *']) {
+      final span = tester.widget<Text>(find.text(label)).textSpan! as TextSpan;
+      final marker = span.children!.single as TextSpan;
+      expect(marker.text, ' *');
+      expect(marker.style!.color, error);
     }
     for (final hint in [
       'Jelaskan alasan pengajuan Anda',
@@ -271,16 +295,17 @@ void main() {
       final fields = find.byType(TextField);
       for (final (index, label) in [
         'Alasan',
-        'Nomor Kontak (opsional)',
-        'Alamat Selama Izin (opsional)',
+        'Nomor Kontak',
+        'Alamat Selama Izin',
       ].indexed) {
         final node = tester.getSemantics(fields.at(index));
         expect(node, isSemantics(isTextField: true));
         expect(node.label, contains(label));
       }
       for (final label in ['Tanggal Mulai', 'Tanggal Selesai']) {
-        final node = tester.getSemantics(find.text(label));
+        final node = tester.getSemantics(find.text('$label *'));
         expect(node, isSemantics(isButton: true, hasTapAction: true));
+        expect(node.label, contains(label));
         expect(node.label, contains('Pilih tanggal'));
       }
     } finally {
@@ -346,18 +371,83 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('keeps the character limits and counters', (tester) async {
+  testWidgets('keeps the character limits, counting only Alasan', (
+    tester,
+  ) async {
     await _pumpForm(tester);
+    final fields = find.byType(TextField);
     expect(
       tester
-          .widgetList<TextField>(find.byType(TextField))
+          .widgetList<TextField>(fields)
           .map((field) => (field.maxLength, field.maxLines)),
       [(1000, 4), (30, 1), (500, 2)],
     );
-    for (final counter in ['0/1000', '0/30', '0/500']) {
-      expect(find.text(counter), findsOneWidget);
+    expect(find.text('0/1000'), findsOneWidget);
+    expect(find.text('0/30'), findsNothing);
+    expect(find.text('0/500'), findsNothing);
+
+    // The hidden counters' limits still cut input off.
+    for (final (index, limit) in [(1, 30), (2, 500)]) {
+      await tester.enterText(fields.at(index), '1' * (limit + 10));
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(fields.at(index)).controller!.text,
+        hasLength(limit),
+      );
     }
   });
+
+  testWidgets('restores the original input heights', (tester) async {
+    await _pumpForm(tester);
+    // Alasan's box ends where its counter line starts: M3 leaves a 4dp gap
+    // between the outline and the counter text.
+    final reason = tester.getRect(find.byType(TextField).first);
+    expect(tester.getRect(find.text('0/1000')).top - 4 - reason.top, 128);
+    // Without a counter, the other text fields are just their box.
+    expect(tester.getSize(find.byType(TextField).at(1)).height, 56);
+    expect(tester.getSize(find.byType(TextField).at(2)).height, 80);
+    expect(tester.getSize(_dateBox(0)).height, 56);
+    expect(tester.getSize(_dateBox(1)).height, 56);
+  });
+
+  testWidgets('puts the calendar icons on a light-blue badge', (tester) async {
+    await _pumpForm(tester);
+    final icons = find.byIcon(Icons.calendar_today_outlined);
+    expect(icons, findsNWidgets(2));
+    for (var index = 0; index < 2; index++) {
+      final icon = icons.at(index);
+      expect(tester.widget<Icon>(icon).color, const Color(0xFF0B2559));
+      final badge = find
+          .ancestor(of: icon, matching: find.byType(DecoratedBox))
+          .first;
+      expect(
+        (tester.widget<DecoratedBox>(badge).decoration as BoxDecoration).color,
+        const Color(0xFFE3EEFF),
+      );
+      // A 32dp square inside the 56dp field, 12dp from its top, bottom and
+      // end, with the icon centred on it.
+      final box = tester.getRect(badge);
+      final field = tester.getRect(_dateBox(index));
+      expect(box.size, const Size.square(32));
+      expect(box.top - field.top, 12);
+      expect(field.bottom - box.bottom, 12);
+      expect(field.right - box.right, 12);
+      expect(tester.getCenter(icon), box.center);
+    }
+  });
+
+  // At 768 even the 1em-wide test font keeps "Pilih tanggal" on one line at
+  // every scale, as Roboto does on phones.
+  for (final scale in [1.0, 1.3, 2.0]) {
+    testWidgets('date fields grow like Nomor Kontak at text scale $scale', (
+      tester,
+    ) async {
+      await _pumpForm(tester, width: 768, height: 1024, textScale: scale);
+      final contact = tester.getSize(find.byType(TextField).at(1)).height;
+      expect(tester.getSize(_dateBox(0)).height, moreOrLessEquals(contact));
+      expect(tester.getSize(_dateBox(1)).height, moreOrLessEquals(contact));
+    });
+  }
 
   testWidgets('submits the same payload, shows progress, then returns', (
     tester,
@@ -454,18 +544,14 @@ void main() {
   });
 
   // The FlutterTest font draws every glyph 1em wide, far wider than Roboto,
-  // so the measured layouts fall back earlier here than on a device. A wide
-  // page fits the full composition even with that font; phone widths are
-  // covered by the LEAVE_PREVIEW captures with real Roboto.
-  testWidgets('pairs the dates and the upload action when they fit', (
+  // so the measured upload layout falls back earlier here than on a device.
+  // A wide page fits the action beside the copy even with that font; phone
+  // widths are covered by the LEAVE_PREVIEW captures with real Roboto.
+  testWidgets('stacks the dates on a wide page, pairs the upload action', (
     tester,
   ) async {
     await _pumpForm(tester, width: 768, height: 1024);
-    final start = tester.getRect(_dateBox(0));
-    final end = tester.getRect(_dateBox(1));
-    expect(end.top, start.top);
-    expect(end.height, start.height);
-    expect(start.right, lessThan(end.left));
+    _expectStackedDates(tester);
     expect(
       tester.getRect(find.text('Pilih Berkas')).left,
       greaterThan(tester.getRect(find.text(_evidenceHint)).right),
@@ -535,12 +621,7 @@ void main() {
             expect(rect.right, lessThanOrEqualTo(viewport.width - 16));
           }
 
-          // Date fields form one row of equal boxes or one column.
-          final start = tester.getRect(_dateBox(0));
-          final end = tester.getRect(_dateBox(1));
-          final oneRow = end.top == start.top && end.height == start.height;
-          final oneColumn = end.left == start.left && end.top > start.bottom;
-          expect(oneRow || oneColumn, isTrue);
+          _expectStackedDates(tester);
         },
       );
     }

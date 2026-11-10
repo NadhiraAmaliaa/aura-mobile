@@ -26,20 +26,31 @@ const _segmentSelected = Color(0xFFFFEBC4);
 const _lavenderFill = Color(0xFFF7F6FE);
 const _lavenderDash = Color(0xFFB4AEE8);
 const _lavenderTint = Color(0xFFE6E5FB);
+const _dateIconFill = Color(0xFFE3EEFF);
+const _dateIcon = Color(0xFF0B2559);
 
 const _fieldRadius = 14.0;
 const _sectionGap = 20.0;
 const _labelGap = 8.0;
 
-/// Below a field's character counter, which already adds its own line.
-const _counterGap = 14.0;
+/// Below a field's character counter, whose own line (4dp gap plus 16dp
+/// text) already separates it from the box.
+const _counterGap = 8.0;
+
+/// Between the two stacked date fields, which read as one pair.
+const _dateGap = 16.0;
 
 /// Where text starts inside every input: M3 adds a 4dp gap to the text
 /// fields' content padding, so the date fields and error lines use 16 too.
 const _fieldInset = 16.0;
 
-// A 24dp line in every input, so single-line fields share one height.
-const _inputStyle = TextStyle(fontSize: 15, height: 1.6, letterSpacing: 0);
+/// Vertical padding inside every input. With the 24dp line below it gives the
+/// original form's boxes: 56dp per single line, 128 for Alasan, 80 for Alamat.
+const _fieldPadding = 16.0;
+
+// The original 16sp input text on a 24dp line, so single-line fields share
+// one height.
+const _inputStyle = TextStyle(fontSize: 16, height: 1.5, letterSpacing: 0);
 
 // Zero letter spacing overrides the inherited M3 body tracking, as on Home.
 const _labelStyle = TextStyle(
@@ -81,9 +92,8 @@ Size _textSize(
   }
 }
 
-/// A picked date as shown in its field, e.g. "28 Sep 2026", so both date
-/// fields fit side by side on a phone. Display only: the picked [DateTime] is
-/// what gets submitted.
+/// A picked date as shown in its field, e.g. "28 Sep 2026". Display only: the
+/// picked [DateTime] is what gets submitted.
 String _shortDate(DateTime date) =>
     '${date.day} ${indoMonthName(date.month).substring(0, 3)} ${date.year}';
 
@@ -128,7 +138,7 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
         hintStyle: _inputStyle.copyWith(color: _hint),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: _fieldInset - 4,
-          vertical: 13,
+          vertical: _fieldPadding,
         ),
         border: outline(_fieldBorder),
         enabledBorder: outline(_fieldBorder),
@@ -171,6 +181,14 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
     fontWeight: FontWeight.w700,
     letterSpacing: 0,
   );
+
+  // Hides the counter of an optional field; its maxLength still applies.
+  static Widget? _noCounter(
+    BuildContext context, {
+    required int currentLength,
+    required bool isFocused,
+    required int? maxLength,
+  }) => null;
 
   final _formKey = GlobalKey<FormState>();
   final _reasonController = TextEditingController();
@@ -289,6 +307,7 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
 
                     _LabeledField(
                       label: 'Alasan',
+                      isRequired: true,
                       child: TextFormField(
                         controller: _reasonController,
                         enabled: !_isSubmitting,
@@ -312,21 +331,21 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
                     ),
                     const SizedBox(height: _counterGap),
 
-                    _DateFields(
-                      start: _DateField(
-                        label: 'Tanggal Mulai',
-                        value: _startDate,
-                        errorText: startError,
-                        enabled: !_isSubmitting,
-                        onTap: () => _pickDate(isStart: true),
-                      ),
-                      end: _DateField(
-                        label: 'Tanggal Selesai',
-                        value: _endDate,
-                        errorText: endError,
-                        enabled: !_isSubmitting,
-                        onTap: () => _pickDate(isStart: false),
-                      ),
+                    _DateField(
+                      label: 'Tanggal Mulai',
+                      value: _startDate,
+                      errorText: startError,
+                      enabled: !_isSubmitting,
+                      onTap: () => _pickDate(isStart: true),
+                    ),
+                    const SizedBox(height: _dateGap),
+
+                    _DateField(
+                      label: 'Tanggal Selesai',
+                      value: _endDate,
+                      errorText: endError,
+                      enabled: !_isSubmitting,
+                      onTap: () => _pickDate(isStart: false),
                     ),
                     const SizedBox(height: _sectionGap),
 
@@ -349,11 +368,11 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
 
                     _LabeledField(
                       label: 'Nomor Kontak',
-                      optional: true,
                       child: TextFormField(
                         controller: _contactController,
                         enabled: !_isSubmitting,
                         maxLength: 30,
+                        buildCounter: _noCounter,
                         keyboardType: TextInputType.phone,
                         style: _inputStyle,
                         decoration: const InputDecoration(
@@ -369,16 +388,16 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(height: _counterGap),
+                    const SizedBox(height: _sectionGap),
 
                     _LabeledField(
                       label: 'Alamat Selama Izin',
-                      optional: true,
                       child: TextFormField(
                         controller: _addressController,
                         enabled: !_isSubmitting,
                         maxLines: 2,
                         maxLength: 500,
+                        buildCounter: _noCounter,
                         style: _inputStyle,
                         decoration: const InputDecoration(
                           hintText: 'Masukkan alamat selama izin',
@@ -605,12 +624,13 @@ class _LeaveSubmitScreenState extends ConsumerState<LeaveSubmitScreen> {
   }
 }
 
-/// A field's title above its input, with an optional muted "(opsional)".
+/// A field's title above its input. Required fields add a red "*", the same
+/// marker the evidence panel shows for sakit; optional fields add nothing.
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text, {this.optional = false});
+  const _FieldLabel(this.text, {this.isRequired = false});
 
   final String text;
-  final bool optional;
+  final bool isRequired;
 
   @override
   Widget build(BuildContext context) {
@@ -618,10 +638,10 @@ class _FieldLabel extends StatelessWidget {
       TextSpan(
         text: text,
         children: [
-          if (optional)
-            const TextSpan(
-              text: ' (opsional)',
-              style: TextStyle(fontWeight: FontWeight.w400, color: _bodyMuted),
+          if (isRequired)
+            TextSpan(
+              text: ' *',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
         ],
       ),
@@ -636,11 +656,11 @@ class _LabeledField extends StatelessWidget {
   const _LabeledField({
     required this.label,
     required this.child,
-    this.optional = false,
+    this.isRequired = false,
   });
 
   final String label;
-  final bool optional;
+  final bool isRequired;
   final Widget child;
 
   @override
@@ -649,7 +669,7 @@ class _LabeledField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FieldLabel(label, optional: optional),
+          _FieldLabel(label, isRequired: isRequired),
           const SizedBox(height: _labelGap),
           child,
         ],
@@ -658,46 +678,9 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
-/// "Tanggal Mulai" and "Tanggal Selesai" side by side when the longer label
-/// and the widest date fit half the width at the current text scale;
-/// otherwise stacked.
-class _DateFields extends StatelessWidget {
-  const _DateFields({required this.start, required this.end});
-
-  final _DateField start;
-  final _DateField end;
-
-  static const _gap = 12.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final half = (constraints.maxWidth - _gap) / 2;
-        final paired =
-            !_largeText(context) &&
-            _DateField.widestContent(context, [start.label, end.label]) <= half;
-        if (!paired) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [start, const SizedBox(height: 16), end],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: start),
-            const SizedBox(width: _gap),
-            Expanded(child: end),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Tappable date input styled like the text fields: label above, the picked
-/// date (or "Pilih tanggal") and a calendar icon inside the outline.
+/// Full-width, tappable date input styled like the text fields: its required
+/// label above, the picked date (or "Pilih tanggal") and a calendar icon on a
+/// light-blue badge inside the outline.
 class _DateField extends StatelessWidget {
   const _DateField({
     required this.label,
@@ -713,53 +696,40 @@ class _DateField extends StatelessWidget {
   final bool enabled;
   final VoidCallback onTap;
 
-  static const _iconSize = 20.0;
+  static const _iconSize = 18.0;
   static const _iconGap = 8.0;
+  static const _badgeSize = 32.0;
+
+  /// The calendar badge sits 12dp from the outline at the top, bottom and
+  /// end. The text adds 4dp of its own, so it starts 16dp down as in the text
+  /// fields: the field stays 56dp (12 + 32 + 12) and grows with large text
+  /// exactly as they do (16 + line + 16).
+  static const _badgeInset = 12.0;
   static const _padding = EdgeInsetsDirectional.fromSTEB(
     _fieldInset,
-    13,
-    12,
-    13,
+    _badgeInset,
+    _badgeInset,
+    _badgeInset,
+  );
+  static const _textPadding = EdgeInsets.symmetric(
+    vertical: _fieldPadding - _badgeInset,
   );
 
-  /// Horizontal room around the date text: padding, gap and icon.
-  static const _chrome = _fieldInset + _iconGap + _iconSize + 12;
-
-  // A 24dp line, as in the text fields, so all inputs share one height.
+  // The text fields' 16sp, 24dp line, so all single-line inputs share one
+  // height.
   static const _valueStyle = TextStyle(
     color: _heading,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
-    height: 1.6,
+    height: 1.5,
     letterSpacing: 0,
   );
   static const _placeholderStyle = TextStyle(
     color: _hint,
-    fontSize: 15,
-    height: 1.6,
+    fontSize: 16,
+    height: 1.5,
     letterSpacing: 0,
   );
-
-  /// Width a date field needs to show everything on one line: its label, or
-  /// the widest date it can display (or the placeholder) plus its chrome.
-  static double widestContent(BuildContext context, List<String> labels) {
-    var widest = 0.0;
-    for (final label in labels) {
-      widest = math.max(widest, _textSize(context, label, _labelStyle).width);
-    }
-    final texts = [
-      (text: 'Pilih tanggal', style: _placeholderStyle),
-      for (var month = 1; month <= 12; month++)
-        (text: _shortDate(DateTime(2026, month, 28)), style: _valueStyle),
-    ];
-    for (final (:text, :style) in texts) {
-      widest = math.max(
-        widest,
-        _textSize(context, text, style).width + _chrome,
-      );
-    }
-    return widest.ceilToDouble();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -778,7 +748,7 @@ class _DateField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FieldLabel(label),
+          _FieldLabel(label, isRequired: true),
           const SizedBox(height: _labelGap),
           Semantics(
             button: true,
@@ -793,18 +763,32 @@ class _DateField extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          value != null ? _shortDate(value!) : 'Pilih tanggal',
-                          style: value != null
-                              ? _valueStyle
-                              : _placeholderStyle,
+                        child: Padding(
+                          padding: _textPadding,
+                          child: Text(
+                            value != null
+                                ? _shortDate(value!)
+                                : 'Pilih tanggal',
+                            style: value != null
+                                ? _valueStyle
+                                : _placeholderStyle,
+                          ),
                         ),
                       ),
                       const SizedBox(width: _iconGap),
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: _iconSize,
-                        color: enabled ? _navy : _hint,
+                      SizedBox.square(
+                        dimension: _badgeSize,
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            color: _dateIconFill,
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                          ),
+                          child: Icon(
+                            Icons.calendar_today_outlined,
+                            size: _iconSize,
+                            color: enabled ? _dateIcon : _hint,
+                          ),
+                        ),
                       ),
                     ],
                   ),
