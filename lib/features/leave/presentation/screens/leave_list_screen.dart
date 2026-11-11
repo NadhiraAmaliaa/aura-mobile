@@ -9,14 +9,7 @@ import '../../../../shared/widgets/aura_form.dart';
 import '../../data/models/leave_models.dart';
 import '../providers/leave_list_notifier.dart';
 import '../providers/leave_list_state.dart';
-
-// The card surface of the leave landing page's cards.
-const _cardRadius = 20.0;
-const _cardShadow = BoxShadow(
-  color: Color(0x100E3555),
-  blurRadius: 12,
-  offset: Offset(0, 5),
-);
+import '../widgets/leave_request_visuals.dart';
 
 /// A paginated, newest-first list of the intern's leave requests for one
 /// [LeaveListFilter] (pending or history).
@@ -146,42 +139,6 @@ class _OfflineBanner extends StatelessWidget {
   }
 }
 
-/// Colours and icon of a request type: soft pink for sakit, pastel green for
-/// izin, the AURA blue for anything else.
-class _TypeAccent {
-  const _TypeAccent({required this.tint, required this.foreground, this.asset});
-
-  /// Behind the type icon and the day count.
-  final Color tint;
-
-  /// The day count's icon and text, dark enough to read on [tint].
-  final Color foreground;
-
-  /// The type's icon; types without one get a generic Material icon.
-  final String? asset;
-
-  static const sakit = _TypeAccent(
-    tint: Color(0xFFFFE5E8),
-    foreground: Color(0xFFC62F3B),
-    asset: 'assets/images/leave/sakit.png',
-  );
-  static const izin = _TypeAccent(
-    tint: Color(0xFFE3F4DC),
-    foreground: Color(0xFF237A12),
-    asset: 'assets/images/leave/izin.png',
-  );
-  static const other = _TypeAccent(
-    tint: Color(0xFFE3EEFF),
-    foreground: AuraForm.navy,
-  );
-
-  static _TypeAccent of(String type) => switch (type) {
-    'sakit' => sakit,
-    'izin' => izin,
-    _ => other,
-  };
-}
-
 /// One leave request: its type icon, type and number with the status badge,
 /// the date range and, when known, the day count. Shared by the pending and
 /// history lists.
@@ -190,27 +147,10 @@ class _LeaveCard extends StatelessWidget {
 
   final LeaveRequestModel request;
 
-  static const _tileSize = 48.0;
-  static const _iconSize = 30.0;
-  static const _headerGap = 12.0;
-  static const _badgeGap = 8.0;
   static const _dateIconSize = 18.0;
   static const _dateIconGap = 8.0;
 
   // Zero letter spacing overrides the inherited M3 body tracking, as on Home.
-  static const _titleStyle = TextStyle(
-    color: AuraForm.heading,
-    fontSize: 17,
-    fontWeight: FontWeight.w700,
-    height: 1.25,
-    letterSpacing: 0,
-  );
-  static const _numberStyle = TextStyle(
-    color: AuraForm.bodyMuted,
-    fontSize: 13,
-    height: 1.3,
-    letterSpacing: 0,
-  );
   static const _dateStyle = TextStyle(
     color: AuraForm.heading,
     fontSize: 14,
@@ -221,110 +161,36 @@ class _LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = _TypeAccent.of(request.type);
-    final borderRadius = BorderRadius.circular(_cardRadius);
+    final accent = LeaveTypeAccent.of(request.type);
     final totalDays = request.totalDays;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: const [_cardShadow],
-      ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: borderRadius,
-        child: InkWell(
-          borderRadius: borderRadius,
-          onTap: () => context.pushNamed(
-            RouteNames.leaveDetail,
-            pathParameters: {'id': request.id.toString()},
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ..._header(context, accent, constraints.maxWidth),
-                  const SizedBox(height: 14),
-                  _dates(context, constraints.maxWidth),
-                  // Hidden rather than "null hari" when the count is unknown.
-                  if (totalDays != null) ...[
-                    const SizedBox(height: 10),
-                    _DaysPill(days: totalDays, accent: accent),
-                  ],
+    return LeaveCardSurface(
+      child: InkWell(
+        borderRadius: LeaveCardSurface.borderRadius,
+        onTap: () => context.pushNamed(
+          RouteNames.leaveDetail,
+          pathParameters: {'id': request.id.toString()},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LeaveRequestHeading(request: request),
+                const SizedBox(height: 14),
+                _dates(context, constraints.maxWidth),
+                // Hidden rather than "null hari" when the count is unknown.
+                if (totalDays != null) ...[
+                  const SizedBox(height: 10),
+                  LeaveDaysPill(days: totalDays, accent: accent),
                 ],
-              ),
+              ],
             ),
           ),
         ),
       ),
     );
-  }
-
-  /// The type tile with the type and number beside it, in [maxWidth]. The
-  /// status badge follows the type while both fit on one line and comes
-  /// after the number otherwise. When the number does not fit beside the
-  /// tile either, it moves under the tile, so it never breaks mid-number.
-  List<Widget> _header(
-    BuildContext context,
-    _TypeAccent accent,
-    double maxWidth,
-  ) {
-    final besideTile = maxWidth - _tileSize - _headerGap;
-    final badge = _StatusBadge(
-      label: request.statusLabel,
-      status: request.status,
-    );
-    final title = Text(request.typeLabel, style: _titleStyle);
-    final number = Text(request.requestNumber, style: _numberStyle);
-    final badgeBesideTitle =
-        AuraForm.textSize(context, request.typeLabel, _titleStyle).width +
-            _badgeGap +
-            _StatusBadge.widthOf(context, request.statusLabel) <=
-        besideTile;
-    final numberBesideTile =
-        AuraForm.textSize(context, request.requestNumber, _numberStyle).width <=
-        besideTile;
-
-    return [
-      Row(
-        crossAxisAlignment: numberBesideTile
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: [
-          _TypeTile(accent: accent),
-          const SizedBox(width: _headerGap),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (badgeBesideTitle)
-                  Row(
-                    children: [
-                      Expanded(child: title),
-                      const SizedBox(width: _badgeGap),
-                      badge,
-                    ],
-                  )
-                else
-                  title,
-                if (numberBesideTile) ...[
-                  const SizedBox(height: 2),
-                  number,
-                  if (!badgeBesideTitle) ...[const SizedBox(height: 8), badge],
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-      if (!numberBesideTile) ...[
-        const SizedBox(height: 8),
-        number,
-        if (!badgeBesideTitle) ...[const SizedBox(height: 8), badge],
-      ],
-    ];
   }
 
   /// The date range beside a calendar icon centred on its first line, in
@@ -375,128 +241,6 @@ class _LeaveCard extends StatelessWidget {
                 ),
         ),
       ],
-    );
-  }
-}
-
-/// The type icon on its tinted rounded square.
-class _TypeTile extends StatelessWidget {
-  const _TypeTile({required this.accent});
-
-  final _TypeAccent accent;
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = accent.asset;
-    return SizedBox.square(
-      dimension: _LeaveCard._tileSize,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: accent.tint,
-          borderRadius: const BorderRadius.all(Radius.circular(14)),
-        ),
-        child: Center(
-          // Decorative: the type is read from the title next to it.
-          child: asset != null
-              ? Image.asset(
-                  asset,
-                  width: _LeaveCard._iconSize,
-                  height: _LeaveCard._iconSize,
-                  excludeFromSemantics: true,
-                )
-              : Icon(
-                  Icons.event_note_outlined,
-                  size: 26,
-                  color: accent.foreground,
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The request's status as a pill: light blue while pending, green once
-/// approved, soft red when rejected and neutral for anything else.
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label, required this.status});
-
-  final String label;
-  final String status;
-
-  static const _padding = EdgeInsets.symmetric(horizontal: 12, vertical: 5);
-  static const _style = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w700,
-    height: 1.3,
-    letterSpacing: 0,
-  );
-
-  /// The badge's width for [label] at the current text scale.
-  static double widthOf(BuildContext context, String label) =>
-      AuraForm.textSize(context, label, _style).width + _padding.horizontal;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color background, Color foreground) = switch (status) {
-      'pending' => (const Color(0xFFD9F1F8), const Color(0xFF155A7A)),
-      'approved' => (const Color(0xFFDDF3E1), const Color(0xFF1E6B2E)),
-      'rejected' => (const Color(0xFFFDE3E3), const Color(0xFFB3261E)),
-      _ => (const Color(0xFFECEFF3), AuraForm.bodyMuted),
-    };
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: const BorderRadius.all(Radius.circular(999)),
-      ),
-      child: Padding(
-        padding: _padding,
-        child: Text(label, style: _style.copyWith(color: foreground)),
-      ),
-    );
-  }
-}
-
-/// "N hari" on the type's tint, with a small calendar icon.
-class _DaysPill extends StatelessWidget {
-  const _DaysPill({required this.days, required this.accent});
-
-  final int days;
-  final _TypeAccent accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: accent.tint,
-        borderRadius: const BorderRadius.all(Radius.circular(999)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 5, 12, 5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.calendar_month_outlined,
-              size: 16,
-              color: accent.foreground,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                '$days hari',
-                style: TextStyle(
-                  color: accent.foreground,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.3,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

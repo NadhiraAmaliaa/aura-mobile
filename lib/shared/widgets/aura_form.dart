@@ -485,7 +485,7 @@ class AuraFieldError extends StatelessWidget {
 /// The forms' navy, pill-shaped submit button, with an optional [icon]
 /// before [label]. While [isBusy] it is disabled, stays navy and shows a
 /// white spinner: on its own, or in the icon's place before [busyLabel]
-/// when one is given.
+/// when one is given. A null [onPressed] disables it without the spinner.
 class AuraSubmitButton extends StatelessWidget {
   const AuraSubmitButton({
     super.key,
@@ -497,7 +497,7 @@ class AuraSubmitButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData? icon;
   final bool isBusy;
   final String? busyLabel;
