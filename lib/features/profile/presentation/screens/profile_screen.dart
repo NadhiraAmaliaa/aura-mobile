@@ -355,8 +355,8 @@ class _ProfileHeader extends ConsumerWidget {
 /// The action chosen from the profile-photo bottom sheet.
 enum _PhotoAction { camera, gallery, remove }
 
-/// The round photo inside a soft green ring, with the navy camera button on
-/// its lower right.
+/// The round photo on a white layer inside a soft green-to-mint ring, with
+/// the navy camera button on its lower right.
 class _Avatar extends StatelessWidget {
   const _Avatar({
     required this.avatarUrl,
@@ -369,10 +369,19 @@ class _Avatar extends StatelessWidget {
   final VoidCallback onEditPhoto;
 
   static const size = 88.0;
-  static const _ring = Color(0xFFB9E0AB);
   static const _ringWidth = 3.0;
   static const _ringGap = 3.0;
   static const _placeholder = Color(0xFF5E7787);
+
+  /// As in the reference: pastel green on the left and lower left, easing
+  /// into a light mint teal on the upper right and right.
+  static const _ring = SweepGradient(
+    colors: [_ringMint, _ringGreen, _ringMint],
+    // Mint at half past one, green opposite it at half past seven.
+    transform: GradientRotation(-math.pi / 4),
+  );
+  static const _ringGreen = Color(0xFF9DD39A);
+  static const _ringMint = Color(0xFFA6DCD3);
 
   @override
   Widget build(BuildContext context) {
@@ -386,21 +395,29 @@ class _Avatar extends StatelessWidget {
         children: [
           Positioned.fill(
             child: DecoratedBox(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(color: _ring, width: _ringWidth),
+                gradient: _ring,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(_ringGap),
-                child: CircleAvatar(
-                  radius: size / 2 - inset,
-                  backgroundColor: _pastelBlue,
-                  foregroundColor: _placeholder,
-                  backgroundImage: url == null ? null : NetworkImage(url),
-                  child: url == null
-                      ? const Icon(Icons.person, size: 48)
-                      : null,
+                padding: const EdgeInsets.all(_ringWidth),
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(_ringGap),
+                    child: CircleAvatar(
+                      radius: size / 2 - inset,
+                      backgroundColor: _pastelBlue,
+                      foregroundColor: _placeholder,
+                      backgroundImage: url == null ? null : NetworkImage(url),
+                      child: url == null
+                          ? const Icon(Icons.person, size: 48)
+                          : null,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -460,60 +477,126 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// Soft pastel waves rising into the profile card's bottom-right corner, as
-/// in the reference: a gold crest just above a green swell. Kept to a fixed
-/// band along the bottom, behind the content, however tall the card grows.
+/// Soft, layered pastel hills in the profile card's bottom-right corner, as
+/// in the reference: soft yellow rising highest into the corner at the back,
+/// a pastel green swell in front of it and a translucent mint wave lowest at
+/// the front, each fading in from the left so the layers blend. At the right
+/// edge they read, top to bottom, as yellow, green and mint bands.
+///
+/// The hills sit in a fixed band along the bottom, behind the content, and
+/// span at most [_maxSpan], so they keep their shape however tall or wide the
+/// card grows.
 class _CardWavePainter extends CustomPainter {
   const _CardWavePainter();
 
-  static const _band = 58.0;
-  static const _gold = Color(0xFFF8E3A3);
-  static const _greenLight = Color(0xFFD3EDC8);
-  static const _green = Color(0xFFB2DCA2);
+  /// The share of the card's width the hills cover, from its right edge.
+  static const _spanFactor = 0.46;
+  static const _maxSpan = 240.0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final width = size.width;
+    final span = math.min(size.width * _spanFactor, _maxSpan);
+    final left = size.width - span;
+    final band = Rect.fromLTRB(left, size.height - 48, size.width, size.height);
+
+    // Back to front. Positions are fractions of the span from its left end;
+    // heights are dp above the card's bottom edge.
+    _paintHill(
+      canvas,
+      band,
+      _hill(size, left, span, start: 0.5, crest: 1, crestHeight: 46, end: 46),
+      const [Color(0x00F5E2A0), Color(0xE6F5E2A0)],
+      const [0.6, 0.85],
+    );
+    _paintHill(
+      canvas,
+      band,
+      _hill(
+        size,
+        left,
+        span,
+        start: 0.12,
+        crest: 0.74,
+        crestHeight: 33,
+        end: 30,
+      ),
+      // Pastel green, warming toward the yellow in the corner.
+      const [
+        Color(0x00C9E6B8),
+        Color(0xFFC9E6B8),
+        Color(0xFFBFE0A7),
+        Color(0xFFD9E6A6),
+      ],
+      const [0.1, 0.38, 0.72, 1],
+    );
+    _paintHill(
+      canvas,
+      band,
+      _hill(size, left, span, start: 0, crest: 0.48, crestHeight: 21, end: 14),
+      // A translucent mint, so the green shows through where they overlap.
+      const [Color(0x00B7E1D5), Color(0xB3B7E1D5), Color(0xBFAADBCC)],
+      const [0, 0.3, 1],
+    );
+  }
+
+  /// A hill rising from the bottom edge at [start] to [crestHeight] at
+  /// [crest], then easing to [end] at the card's right edge. Both curves meet
+  /// level, at the foot and at the crest, so the outline reads as a soft wave
+  /// rather than a slope.
+  Path _hill(
+    Size size,
+    double left,
+    double span, {
+    required double start,
+    required double crest,
+    required double crestHeight,
+    required double end,
+  }) {
     final bottom = size.height;
-    final top = bottom - _band;
-
-    final gold = Path()
-      ..moveTo(width * 0.6, bottom)
+    final startX = left + span * start;
+    final crestX = left + span * crest;
+    final crestY = bottom - crestHeight;
+    final rise = crestX - startX;
+    final fall = size.width - crestX;
+    return Path()
+      ..moveTo(startX, bottom)
       ..cubicTo(
-        width * 0.78,
-        bottom - _band * 0.1,
-        width * 0.86,
-        top + _band * 0.05,
-        width,
-        top - _band * 0.08,
+        startX + rise * 0.55,
+        bottom,
+        crestX - rise * 0.45,
+        crestY,
+        crestX,
+        crestY,
       )
-      ..lineTo(width, bottom)
-      ..close();
-    final green = Path()
-      ..moveTo(width * 0.42, bottom)
       ..cubicTo(
-        width * 0.64,
-        bottom - _band * 0.04,
-        width * 0.76,
-        top + _band * 0.42,
-        width,
-        top + _band * 0.24,
+        crestX + fall * 0.5,
+        crestY,
+        size.width - fall * 0.35,
+        bottom - end,
+        size.width,
+        bottom - end,
       )
-      ..lineTo(width, bottom)
+      ..lineTo(size.width, bottom)
       ..close();
-    final rect = Rect.fromLTRB(width * 0.42, top, width, bottom);
+  }
 
-    canvas
-      ..drawPath(gold, Paint()..color = _gold.withValues(alpha: 0.85))
-      ..drawPath(
-        green,
-        Paint()
-          ..shader = const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [_greenLight, _green],
-          ).createShader(rect),
-      );
+  /// Fills [hill] with a left-to-right gradient of [colors] at [stops]
+  /// across the span, each starting transparent so it fades in.
+  void _paintHill(
+    Canvas canvas,
+    Rect band,
+    Path hill,
+    List<Color> colors,
+    List<double> stops,
+  ) {
+    canvas.drawPath(
+      hill,
+      Paint()
+        ..shader = LinearGradient(
+          colors: colors,
+          stops: stops,
+        ).createShader(band),
+    );
   }
 
   @override

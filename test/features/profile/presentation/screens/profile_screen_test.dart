@@ -291,11 +291,35 @@ void main() {
       greaterThan(tester.getRect(find.text('Aurelia Safanisa')).bottom),
     );
 
-    // No photo yet: the placeholder inside a soft green ring.
+    // No photo yet: the placeholder on a white layer inside a ring that
+    // blends pastel green into mint, all at the original size.
     expect(find.byIcon(Icons.person), findsOneWidget);
-    final ring = _boxAround(tester, find.byType(CircleAvatar));
+    final layers = tester
+        .widgetList<DecoratedBox>(
+          find.ancestor(
+            of: find.byType(CircleAvatar),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration as BoxDecoration)
+        .toList();
+    final (inner, ring) = (layers[0], layers[1]);
+    expect((inner.shape, inner.color), (BoxShape.circle, Colors.white));
     expect(ring.shape, BoxShape.circle);
-    expect(ring.border!.top.color, const Color(0xFFB9E0AB));
+    final gradient = ring.gradient! as SweepGradient;
+    expect(gradient.colors, [
+      const Color(0xFFA6DCD3),
+      const Color(0xFF9DD39A),
+      const Color(0xFFA6DCD3),
+    ]);
+    final ringBox = find
+        .ancestor(
+          of: find.byType(CircleAvatar),
+          matching: find.byType(DecoratedBox),
+        )
+        .at(1);
+    expect(tester.getSize(ringBox), const Size.square(88));
+    expect(tester.getSize(find.byType(CircleAvatar)), const Size.square(76));
 
     // The waves are painted behind the content, inside the clipped card.
     final waves = find.descendant(
