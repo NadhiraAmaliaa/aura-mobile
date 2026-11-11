@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 
 import '../utils/indo_date.dart';
 
-/// Look shared by AURA's request forms, Ajukan Izin / Sakit and Surat Pulang
-/// Cepat, so both read as one design. Only what both forms use lives here;
-/// controls specific to one form stay with it.
+/// Look shared by AURA's leave pages, so they read as one design: the request
+/// forms (Ajukan Izin / Sakit, Surat Pulang Cepat) and, through
+/// [AuraPageScaffold], the request lists (Menunggu Persetujuan, Riwayat
+/// Pengajuan). Only what several pages use lives here; controls specific to
+/// one page stay with it.
 ///
 /// Heading, body and page tokens match the leave landing page and the
 /// attendance dashboard; field and accent colours follow the approved form
@@ -17,6 +19,11 @@ abstract final class AuraForm {
   static const bodyMuted = Color(0xFF58636A);
   static const navy = Color(0xFF194875);
   static const fieldBorder = Color(0xFFD5DEE8);
+
+  /// Horizontal page padding for [screenWidth]: Home's gutter, widened to
+  /// centre the content at Home's max width on tablets.
+  static double pageInset(double screenWidth) =>
+      math.max(_gutter(screenWidth), (screenWidth - _maxContentWidth) / 2);
 
   static const sectionGap = 20.0;
   static const labelGap = 8.0;
@@ -145,26 +152,16 @@ String _fullDate(DateTime date) => formatIndoDate(
 String _shortDate(DateTime date) =>
     '${date.day} ${indoMonthName(date.month).substring(0, 3)} ${date.year}';
 
-/// An AURA form page: the light gradient under a transparent app bar, and
-/// [children] in one scrolling column inside the page gutters, centred at
-/// Home's max width on tablets.
-class AuraFormPage extends StatelessWidget {
-  const AuraFormPage({
-    super.key,
-    required this.title,
-    required this.formKey,
-    required this.children,
-  });
+/// An AURA page: the AURA theme and light gradient under a transparent app
+/// bar titled [title], with [body] below it.
+class AuraPageScaffold extends StatelessWidget {
+  const AuraPageScaffold({super.key, required this.title, required this.body});
 
   final String title;
-  final GlobalKey<FormState> formKey;
-  final List<Widget> children;
+  final Widget body;
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final horizontal = math.max(_gutter(width), (width - _maxContentWidth) / 2);
-
     return Theme(
       data: AuraForm.theme,
       child: DecoratedBox(
@@ -193,20 +190,45 @@ class AuraFormPage extends StatelessWidget {
               statusBarColor: Colors.transparent,
             ),
           ),
-          body: SafeArea(
-            top: false,
-            child: Form(
-              key: formKey,
-              // A plain scroll view, not a lazy ListView: the list disposed
-              // fields scrolled far out of view, so Form.validate() skipped
-              // their validators and an empty Alasan could be submitted.
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(horizontal, 8, horizontal, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: children,
-                ),
-              ),
+          body: body,
+        ),
+      ),
+    );
+  }
+}
+
+/// An AURA form page: [children] in one scrolling column inside the page
+/// gutters of an [AuraPageScaffold], centred at Home's max width on tablets.
+class AuraFormPage extends StatelessWidget {
+  const AuraFormPage({
+    super.key,
+    required this.title,
+    required this.formKey,
+    required this.children,
+  });
+
+  final String title;
+  final GlobalKey<FormState> formKey;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final horizontal = AuraForm.pageInset(MediaQuery.sizeOf(context).width);
+
+    return AuraPageScaffold(
+      title: title,
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: formKey,
+          // A plain scroll view, not a lazy ListView: the list disposed
+          // fields scrolled far out of view, so Form.validate() skipped
+          // their validators and an empty Alasan could be submitted.
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(horizontal, 8, horizontal, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
             ),
           ),
         ),
