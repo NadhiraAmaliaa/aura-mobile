@@ -155,10 +155,22 @@ String _shortDate(DateTime date) =>
 /// An AURA page: the AURA theme and light gradient under a transparent app
 /// bar titled [title], with [body] below it.
 class AuraPageScaffold extends StatelessWidget {
-  const AuraPageScaffold({super.key, required this.title, required this.body});
+  const AuraPageScaffold({
+    super.key,
+    required this.title,
+    required this.body,
+    this.foregroundColor = AuraForm.heading,
+    this.centerTitle,
+  });
 
   final String title;
   final Widget body;
+
+  /// The app bar's title and back button.
+  final Color foregroundColor;
+
+  /// Whether the title is centred; null keeps the platform default.
+  final bool? centerTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -177,12 +189,13 @@ class AuraPageScaffold extends StatelessWidget {
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: Text(title),
+            centerTitle: centerTitle,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             scrolledUnderElevation: 0,
-            foregroundColor: AuraForm.heading,
-            titleTextStyle: const TextStyle(
-              color: AuraForm.heading,
+            foregroundColor: foregroundColor,
+            titleTextStyle: TextStyle(
+              color: foregroundColor,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),

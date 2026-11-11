@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,16 +10,67 @@ import '../../../../app/router/routes.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
 import '../../../../core/providers/core_providers.dart';
+import '../../../../shared/widgets/aura_form.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
 import '../providers/avatar_notifier.dart';
 
+/// The AURA navy of the app bar, the name and the section titles.
+const _navy = Color(0xFF0B2559);
+
+/// The small accent bar before each section title.
+const _gold = Color(0xFFF2C94C);
+const _pastelBlue = Color(0xFFE3EEFF);
+const _pastelBlueBorder = Color(0xFFD3E2F8);
+
+// The white card surface of the other redesigned AURA pages.
+const _cardRadius = 20.0;
+const _cardShadow = BoxShadow(
+  color: Color(0x100E3555),
+  blurRadius: 12,
+  offset: Offset(0, 5),
+);
+
+/// The icon tiles of the contact and menu rows.
+const _tileSize = 48.0;
+const _tileGap = 16.0;
+const _rowInset = 16.0;
+
+/// Between the profile card and the sections that follow it.
+const _sectionGap = 20.0;
+
+/// Between a section's title row, 48dp tall for its edit button's tap
+/// target, and its card.
+const _titleGap = 6.0;
+
+// Zero letter spacing overrides the inherited M3 body tracking, as on Home.
+const _sectionTitleStyle = TextStyle(
+  color: _navy,
+  fontSize: 18,
+  fontWeight: FontWeight.w700,
+  height: 1.25,
+  letterSpacing: 0,
+);
+const _labelStyle = TextStyle(
+  color: AuraForm.bodyMuted,
+  fontSize: 13,
+  height: 1.3,
+  letterSpacing: 0,
+);
+const _valueStyle = TextStyle(
+  color: AuraForm.heading,
+  fontSize: 16,
+  fontWeight: FontWeight.w600,
+  height: 1.35,
+  letterSpacing: 0,
+);
+
 /// The intern's profile home.
 ///
-/// Presents the profile header (photo + name + NIM), a read-only "Informasi
+/// Presents the profile card (photo + name + NIM), a read-only "Informasi
 /// Kontak" section with a single edit affordance in its header, and the profile
-/// menu (Informasi Magang, Ganti Password, Logout). The header's camera button
+/// menu (Informasi Magang, Ganti Password, Logout). The card's camera button
 /// lets the intern change or remove their profile photo.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -30,90 +82,164 @@ class ProfileScreen extends ConsumerWidget {
       AsyncData(value: Authenticated(:final user)) => user,
       _ => null,
     };
+    final horizontal = AuraForm.pageInset(MediaQuery.sizeOf(context).width);
 
-    if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return AuraPageScaffold(
+      title: 'Profil',
+      foregroundColor: _navy,
+      centerTitle: true,
+      body: user == null
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              top: false,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(horizontal, 8, horizontal, 28),
+                children: [
+                  _ProfileHeader(user: user),
+                  const SizedBox(height: _sectionGap),
+                  _ContactSection(user: user),
+                  const SizedBox(height: _sectionGap),
+                  _MenuSection(user: user),
+                ],
+              ),
+            ),
+    );
+  }
+}
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profil'), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          _ProfileHeader(user: user),
-          const SizedBox(height: 24),
-          _ContactSection(user: user),
-          const SizedBox(height: 24),
-          _MenuSection(user: user),
-        ],
+/// A white, rounded, softly shadowed card. Its surface clips [child], so ink
+/// splashes and the profile card's waves follow the rounded corners.
+class _WhiteCard extends StatelessWidget {
+  const _WhiteCard({required this.child});
+
+  final Widget child;
+
+  static final _borderRadius = BorderRadius.circular(_cardRadius);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: _borderRadius,
+        boxShadow: const [_cardShadow],
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: _borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: child,
       ),
     );
   }
 }
 
+/// The profile card: the photo with its camera button, the name and the NIM
+/// pill, over soft waves in the bottom-right corner.
 class _ProfileHeader extends ConsumerWidget {
   const _ProfileHeader({required this.user});
 
   final UserModel user;
 
+  static const _avatarGap = 18.0;
+  static const _nameStyle = TextStyle(
+    color: _navy,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    letterSpacing: 0,
+  );
+  static const _pillPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 6);
+  static const _pillStyle = TextStyle(
+    color: _navy,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    letterSpacing: 0,
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final nim = user.intern?.nim;
     final isBusy = ref.watch(avatarProvider).isLoading;
     final avatarUrl = ref.watch(appEnvProvider).resolveAssetUrl(user.avatarUrl);
+    final avatar = _Avatar(
+      avatarUrl: avatarUrl,
+      isBusy: isBusy,
+      onEditPhoto: () => _showPhotoOptions(context, ref),
+    );
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
+    return _WhiteCard(
+      child: Stack(
         children: [
-          _Avatar(
-            avatarUrl: avatarUrl,
-            isBusy: isBusy,
-            onEditPhoto: () => _showPhotoOptions(context, ref),
+          const Positioned.fill(
+            child: CustomPaint(painter: _CardWavePainter()),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (nim != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$nim (NIM)',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: scheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final identity = _identity(nim);
+                // Beside the photo, as in the reference, while the NIM pill
+                // and every word of the name fit there; under it otherwise.
+                final besideWidth =
+                    constraints.maxWidth - _Avatar.size - _avatarGap;
+                if (besideWidth >= _identityWidth(context, nim)) {
+                  return Row(
+                    children: [
+                      avatar,
+                      const SizedBox(width: _avatarGap),
+                      Expanded(child: identity),
+                    ],
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [avatar, const SizedBox(height: 16), identity],
+                );
+              },
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _identity(String? nim) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(user.name, style: _nameStyle),
+        if (nim != null) ...[
+          const SizedBox(height: 10),
+          DecoratedBox(
+            // A pill on one line; a rounded box if large text wraps it.
+            decoration: const BoxDecoration(
+              color: _pastelBlue,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+            child: Padding(
+              padding: _pillPadding,
+              child: Text('$nim (NIM)', style: _pillStyle),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// The narrowest width that keeps the NIM pill on one line and no word of
+  /// the name broken.
+  double _identityWidth(BuildContext context, String? nim) {
+    final widestWord = user.name
+        .split(RegExp(r'\s+'))
+        .map((word) => AuraForm.textSize(context, word, _nameStyle).width)
+        .fold(0.0, math.max);
+    final pill = nim == null
+        ? 0.0
+        : AuraForm.textSize(context, '$nim (NIM)', _pillStyle).width +
+              _pillPadding.horizontal;
+    return math.max(widestWord, pill);
   }
 
   Future<void> _showPhotoOptions(BuildContext context, WidgetRef ref) async {
@@ -229,6 +355,8 @@ class _ProfileHeader extends ConsumerWidget {
 /// The action chosen from the profile-photo bottom sheet.
 enum _PhotoAction { camera, gallery, remove }
 
+/// The round photo inside a soft green ring, with the navy camera button on
+/// its lower right.
 class _Avatar extends StatelessWidget {
   const _Avatar({
     required this.avatarUrl,
@@ -240,62 +368,230 @@ class _Avatar extends StatelessWidget {
   final bool isBusy;
   final VoidCallback onEditPhoto;
 
+  static const size = 88.0;
+  static const _ring = Color(0xFFB9E0AB);
+  static const _ringWidth = 3.0;
+  static const _ringGap = 3.0;
+  static const _placeholder = Color(0xFF5E7787);
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final url = avatarUrl;
+    const inset = _ringWidth + _ringGap;
 
-    return SizedBox(
-      width: 72,
-      height: 72,
+    return SizedBox.square(
+      dimension: size,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: scheme.primaryContainer,
-            foregroundColor: scheme.onPrimaryContainer,
-            backgroundImage: url == null ? null : NetworkImage(url),
-            child: url == null ? const Icon(Icons.person, size: 40) : null,
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(color: _ring, width: _ringWidth),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(_ringGap),
+                child: CircleAvatar(
+                  radius: size / 2 - inset,
+                  backgroundColor: _pastelBlue,
+                  foregroundColor: _placeholder,
+                  backgroundImage: url == null ? null : NetworkImage(url),
+                  child: url == null
+                      ? const Icon(Icons.person, size: 48)
+                      : null,
+                ),
+              ),
+            ),
           ),
           if (isBusy)
             Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: scheme.scrim.withValues(alpha: 0.45),
-                ),
-                child: const Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+              child: Padding(
+                padding: const EdgeInsets.all(inset),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _navy.withValues(alpha: 0.45),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           Positioned(
-            right: -2,
+            right: -4,
             bottom: -2,
-            child: Material(
-              color: scheme.primary,
-              shape: const CircleBorder(),
-              elevation: 1,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: isBusy ? null : onEditPhoto,
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: Icon(
-                    Icons.photo_camera,
-                    size: 16,
-                    color: scheme.onPrimary,
+            child: Semantics(
+              container: true,
+              button: true,
+              label: 'Ubah foto profil',
+              child: Material(
+                color: _navy,
+                shape: const CircleBorder(
+                  side: BorderSide(color: Colors.white, width: 2.5),
+                ),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: isBusy ? null : onEditPhoto,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.photo_camera,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Soft pastel waves rising into the profile card's bottom-right corner, as
+/// in the reference: a gold crest just above a green swell. Kept to a fixed
+/// band along the bottom, behind the content, however tall the card grows.
+class _CardWavePainter extends CustomPainter {
+  const _CardWavePainter();
+
+  static const _band = 58.0;
+  static const _gold = Color(0xFFF8E3A3);
+  static const _greenLight = Color(0xFFD3EDC8);
+  static const _green = Color(0xFFB2DCA2);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = size.width;
+    final bottom = size.height;
+    final top = bottom - _band;
+
+    final gold = Path()
+      ..moveTo(width * 0.6, bottom)
+      ..cubicTo(
+        width * 0.78,
+        bottom - _band * 0.1,
+        width * 0.86,
+        top + _band * 0.05,
+        width,
+        top - _band * 0.08,
+      )
+      ..lineTo(width, bottom)
+      ..close();
+    final green = Path()
+      ..moveTo(width * 0.42, bottom)
+      ..cubicTo(
+        width * 0.64,
+        bottom - _band * 0.04,
+        width * 0.76,
+        top + _band * 0.42,
+        width,
+        top + _band * 0.24,
+      )
+      ..lineTo(width, bottom)
+      ..close();
+    final rect = Rect.fromLTRB(width * 0.42, top, width, bottom);
+
+    canvas
+      ..drawPath(gold, Paint()..color = _gold.withValues(alpha: 0.85))
+      ..drawPath(
+        green,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [_greenLight, _green],
+          ).createShader(rect),
+      );
+  }
+
+  @override
+  bool shouldRepaint(_CardWavePainter oldDelegate) => false;
+}
+
+/// A section title after a small gold bar, with an optional [action] on the
+/// right.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, this.action});
+
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 22,
+          decoration: const BoxDecoration(
+            color: _gold,
+            borderRadius: BorderRadius.all(Radius.circular(2)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(title, style: _sectionTitleStyle)),
+        if (action != null) ...[const SizedBox(width: 12), action!],
+      ],
+    );
+  }
+}
+
+/// A row's icon on its tinted rounded square.
+class _IconTile extends StatelessWidget {
+  const _IconTile({
+    required this.icon,
+    required this.tint,
+    required this.color,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: _tileSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: tint,
+          borderRadius: const BorderRadius.all(Radius.circular(14)),
+        ),
+        child: Icon(icon, size: 24, color: color),
+      ),
+    );
+  }
+}
+
+/// Hairline between two rows, starting where their text starts.
+class _RowDivider extends StatelessWidget {
+  const _RowDivider({this.end = 0});
+
+  final double end;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsetsDirectional.only(
+        start: _rowInset + _tileSize + _tileGap,
+        end: end,
+      ),
+      child: const Divider(
+        height: 1,
+        thickness: 1,
+        color: AuraForm.fieldBorder,
       ),
     );
   }
@@ -308,102 +604,103 @@ class _ContactSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Informasi Kontak',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+        _SectionHeader(
+          title: 'Informasi Kontak',
+          action: IconButton(
+            tooltip: 'Ubah kontak',
+            onPressed: () => context.pushNamed(RouteNames.profileContact),
+            style: IconButton.styleFrom(
+              backgroundColor: _pastelBlue,
+              foregroundColor: _navy,
+              fixedSize: const Size.square(44),
+              side: const BorderSide(color: _pastelBlueBorder),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            IconButton(
-              tooltip: 'Ubah kontak',
-              onPressed: () => context.pushNamed(RouteNames.profileContact),
-              style: IconButton.styleFrom(
-                foregroundColor: scheme.primary,
-                side: BorderSide(color: scheme.outlineVariant),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            icon: const Icon(Icons.edit_outlined, size: 22),
+          ),
+        ),
+        const SizedBox(height: _titleGap),
+        _WhiteCard(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Column(
+              children: [
+                _ContactRow(
+                  icon: Icons.mail_outline,
+                  tint: _pastelBlue,
+                  color: const Color(0xFF3D72C9),
+                  label: 'Email',
+                  value: user.email ?? '-',
+                  // Wraps after the "@" before breaking inside a word.
+                  breakAfterAt: true,
                 ),
-              ),
-              icon: const Icon(Icons.edit_outlined, size: 20),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: _RowDivider(end: _rowInset),
+                ),
+                _ContactRow(
+                  icon: Icons.call_outlined,
+                  tint: const Color(0xFFE3F4DC),
+                  color: const Color(0xFF2E7D1E),
+                  label: 'Nomor HP',
+                  value: user.intern?.phone ?? '-',
+                ),
+              ],
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _ContactCard(
-          icon: Icons.mail_outline,
-          label: 'Email',
-          value: user.email ?? '-',
-        ),
-        const SizedBox(height: 12),
-        _ContactCard(
-          icon: Icons.phone_outlined,
-          label: 'Nomor HP',
-          value: user.intern?.phone ?? '-',
+          ),
         ),
       ],
     );
   }
 }
 
-class _ContactCard extends StatelessWidget {
-  const _ContactCard({
+/// A contact's icon tile beside its label and value, read as one by screen
+/// readers.
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
     required this.icon,
+    required this.tint,
+    required this.color,
     required this.label,
     required this.value,
+    this.breakAfterAt = false,
   });
 
   final IconData icon;
+  final Color tint;
+  final Color color;
   final String label;
   final String value;
 
+  /// Whether a long [value] may wrap after its "@", as an address too wide
+  /// for one line would otherwise break mid-word. Display only: screen
+  /// readers still get [value] as is.
+  final bool breakAfterAt;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    final shown = breakAfterAt ? value.replaceFirst('@', '@​') : value;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _rowInset),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: scheme.primaryContainer,
-            foregroundColor: scheme.onPrimaryContainer,
-            child: Icon(icon, size: 22),
-          ),
-          const SizedBox(width: 16),
+          _IconTile(icon: icon, tint: tint, color: color),
+          const SizedBox(width: _tileGap),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: MergeSemantics(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: _labelStyle),
+                  const SizedBox(height: 3),
+                  Text(shown, style: _valueStyle, semanticsLabel: value),
+                ],
+              ),
             ),
           ),
         ],
@@ -417,38 +714,55 @@ class _MenuSection extends ConsumerWidget {
 
   final UserModel user;
 
+  static const _logoutRed = Color(0xFFC62F3B);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Menu',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
+        // As tall as the contact title, whose edit button's 48dp tap target
+        // makes it taller, so both sections sit the same distance from their
+        // cards.
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: kMinInteractiveDimension,
           ),
+          child: const _SectionHeader(title: 'Menu'),
         ),
-        const SizedBox(height: 8),
-        _MenuTile(
-          icon: Icons.description_outlined,
-          title: 'Informasi Magang',
-          onTap: () => context.pushNamed(RouteNames.profileInternship),
-        ),
-        const SizedBox(height: 12),
-        _MenuTile(
-          icon: Icons.lock_outline,
-          title: 'Ganti Password',
-          onTap: () => context.pushNamed(RouteNames.profilePassword),
-        ),
-        const SizedBox(height: 12),
-        _MenuTile(
-          icon: Icons.logout,
-          title: 'Logout',
-          foregroundColor: scheme.error,
-          onTap: () => _confirmLogout(context, ref),
+        const SizedBox(height: _titleGap),
+        _WhiteCard(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              children: [
+                _MenuTile(
+                  icon: Icons.description_outlined,
+                  tint: _pastelBlue,
+                  iconColor: const Color(0xFF3D72C9),
+                  title: 'Informasi Magang',
+                  onTap: () => context.pushNamed(RouteNames.profileInternship),
+                ),
+                const _RowDivider(end: _rowInset),
+                _MenuTile(
+                  icon: Icons.lock_outline,
+                  tint: const Color(0xFFFFF1D6),
+                  iconColor: const Color(0xFFD48A0C),
+                  title: 'Ganti Password',
+                  onTap: () => context.pushNamed(RouteNames.profilePassword),
+                ),
+                const _RowDivider(end: _rowInset),
+                _MenuTile(
+                  icon: Icons.logout,
+                  tint: const Color(0xFFFDE3E3),
+                  iconColor: _logoutRed,
+                  title: 'Logout',
+                  titleColor: _logoutRed,
+                  onTap: () => _confirmLogout(context, ref),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -479,58 +793,47 @@ class _MenuSection extends ConsumerWidget {
   }
 }
 
+/// One menu entry: its icon tile, title and a chevron, tappable across the
+/// card's full width.
 class _MenuTile extends StatelessWidget {
   const _MenuTile({
     required this.icon,
+    required this.tint,
+    required this.iconColor,
     required this.title,
     required this.onTap,
-    this.foregroundColor,
+    this.titleColor = AuraForm.heading,
   });
 
   final IconData icon;
+  final Color tint;
+  final Color iconColor;
   final String title;
+  final Color titleColor;
   final VoidCallback onTap;
-  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final color = foregroundColor ?? scheme.onSurface;
-
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: foregroundColor == null
-                    ? scheme.primaryContainer
-                    : scheme.errorContainer,
-                foregroundColor: foregroundColor == null
-                    ? scheme.onPrimaryContainer
-                    : scheme.onErrorContainer,
-                child: Icon(icon, size: 20),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: _rowInset,
+          vertical: 12,
+        ),
+        child: Row(
+          children: [
+            _IconTile(icon: icon, tint: tint, color: iconColor),
+            const SizedBox(width: _tileGap),
+            Expanded(
+              child: Text(
+                title,
+                style: _valueStyle.copyWith(color: titleColor),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-              ),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: AuraForm.bodyMuted),
+          ],
         ),
       ),
     );
