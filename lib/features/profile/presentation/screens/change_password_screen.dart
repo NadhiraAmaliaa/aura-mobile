@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
+import '../../../../shared/widgets/aura_form.dart';
 import '../../../auth/data/models/auth_models.dart';
 import '../providers/change_password_notifier.dart';
+import '../widgets/profile_form.dart';
 
 /// Form for changing the account password ("Ganti Password").
 ///
@@ -55,115 +57,85 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Ganti Password'), centerTitle: true),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    TextFormField(
-                      controller: _currentController,
-                      enabled: !_isSubmitting,
-                      obscureText: _obscureCurrent,
-                      decoration: InputDecoration(
-                        labelText: 'Password Saat Ini',
-                        border: const OutlineInputBorder(),
-                        errorText: _serverError('current_password'),
-                        suffixIcon: _VisibilityToggle(
-                          obscured: _obscureCurrent,
-                          onPressed: () => setState(
-                            () => _obscureCurrent = !_obscureCurrent,
-                          ),
-                        ),
-                      ),
-                      onChanged: (_) => _clearServerError('current_password'),
-                      validator: (value) {
-                        if ((value ?? '').isEmpty) {
-                          return 'Password saat ini wajib diisi.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _newController,
-                      enabled: !_isSubmitting,
-                      obscureText: _obscureNew,
-                      decoration: InputDecoration(
-                        labelText: 'Password Baru',
-                        border: const OutlineInputBorder(),
-                        errorText: _serverError('password'),
-                        suffixIcon: _VisibilityToggle(
-                          obscured: _obscureNew,
-                          onPressed: () =>
-                              setState(() => _obscureNew = !_obscureNew),
-                        ),
-                      ),
-                      onChanged: (_) => _clearServerError('password'),
-                      validator: (value) {
-                        final text = value ?? '';
-                        if (text.isEmpty) {
-                          return 'Password baru wajib diisi.';
-                        }
-                        if (text.length < 3) {
-                          return 'Password baru minimal 3 karakter.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmController,
-                      enabled: !_isSubmitting,
-                      obscureText: _obscureConfirm,
-                      decoration: InputDecoration(
-                        labelText: 'Konfirmasi Password Baru',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _VisibilityToggle(
-                          obscured: _obscureConfirm,
-                          onPressed: () => setState(
-                            () => _obscureConfirm = !_obscureConfirm,
-                          ),
-                        ),
-                      ),
-                      validator: (value) {
-                        if ((value ?? '').isEmpty) {
-                          return 'Konfirmasi password wajib diisi.';
-                        }
-                        if (value != _newController.text) {
-                          return 'Konfirmasi password tidak cocok.';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isSubmitting ? null : _submit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Simpan Perubahan'),
-                  ),
-                ),
-              ),
-            ],
+    return ProfileFormPage(
+      title: 'Ganti Password',
+      formKey: _formKey,
+      onSubmit: _submit,
+      isSubmitting: _isSubmitting,
+      children: [
+        TextFormField(
+          controller: _currentController,
+          enabled: !_isSubmitting,
+          obscureText: _obscureCurrent,
+          style: AuraForm.inputStyle,
+          decoration: profileFieldDecoration(
+            label: 'Password Saat Ini',
+            errorText: _serverError('current_password'),
+            suffixIcon: _VisibilityToggle(
+              obscured: _obscureCurrent,
+              onPressed: () =>
+                  setState(() => _obscureCurrent = !_obscureCurrent),
+            ),
           ),
+          onChanged: (_) => _clearServerError('current_password'),
+          validator: (value) {
+            if ((value ?? '').isEmpty) {
+              return 'Password saat ini wajib diisi.';
+            }
+            return null;
+          },
         ),
-      ),
+        const SizedBox(height: profileFieldGap),
+        TextFormField(
+          controller: _newController,
+          enabled: !_isSubmitting,
+          obscureText: _obscureNew,
+          style: AuraForm.inputStyle,
+          decoration: profileFieldDecoration(
+            label: 'Password Baru',
+            errorText: _serverError('password'),
+            suffixIcon: _VisibilityToggle(
+              obscured: _obscureNew,
+              onPressed: () => setState(() => _obscureNew = !_obscureNew),
+            ),
+          ),
+          onChanged: (_) => _clearServerError('password'),
+          validator: (value) {
+            final text = value ?? '';
+            if (text.isEmpty) {
+              return 'Password baru wajib diisi.';
+            }
+            if (text.length < 3) {
+              return 'Password baru minimal 3 karakter.';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: profileFieldGap),
+        TextFormField(
+          controller: _confirmController,
+          enabled: !_isSubmitting,
+          obscureText: _obscureConfirm,
+          style: AuraForm.inputStyle,
+          decoration: profileFieldDecoration(
+            label: 'Konfirmasi Password Baru',
+            suffixIcon: _VisibilityToggle(
+              obscured: _obscureConfirm,
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
+          ),
+          validator: (value) {
+            if ((value ?? '').isEmpty) {
+              return 'Konfirmasi password wajib diisi.';
+            }
+            if (value != _newController.text) {
+              return 'Konfirmasi password tidak cocok.';
+            }
+            return null;
+          },
+        ),
+      ],
     );
   }
 
@@ -213,6 +185,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 }
 
+/// Shows or hides a password. Its colour comes from the field's decoration:
+/// muted, navy while the field is focused.
 class _VisibilityToggle extends StatelessWidget {
   const _VisibilityToggle({required this.obscured, required this.onPressed});
 

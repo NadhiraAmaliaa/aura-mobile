@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/network/api_result.dart';
+import '../../../../shared/widgets/aura_form.dart';
 import '../../../auth/data/models/auth_models.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../../../auth/presentation/providers/auth_state.dart';
 import '../providers/profile_edit_notifier.dart';
+import '../widgets/profile_form.dart';
 
 /// Form for editing the intern's contact details ("Ubah Kontak").
 ///
@@ -59,108 +61,54 @@ class _ContactEditScreenState extends ConsumerState<ContactEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     final user = switch (ref.watch(authProvider)) {
       AsyncData(value: Authenticated(:final user)) => user,
       _ => null,
     };
     if (user != null) _prefill(user);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Ubah Kontak'), centerTitle: true),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    TextFormField(
-                      controller: _emailController,
-                      enabled: !_isSubmitting,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      maxLength: 255,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        border: const OutlineInputBorder(),
-                        counterText: '',
-                        errorText: _serverError('email'),
-                      ),
-                      onChanged: (_) => _clearServerError('email'),
-                      validator: _validateEmail,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      enabled: !_isSubmitting,
-                      keyboardType: TextInputType.phone,
-                      autofillHints: const [AutofillHints.telephoneNumber],
-                      maxLength: 30,
-                      decoration: InputDecoration(
-                        labelText: 'Nomor HP',
-                        border: const OutlineInputBorder(),
-                        counterText: '',
-                        errorText: _serverError('phone'),
-                      ),
-                      onChanged: (_) => _clearServerError('phone'),
-                      validator: _validatePhone,
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 20,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Pastikan email dan nomor HP yang kamu masukkan '
-                              'sudah benar.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isSubmitting ? null : _submit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Simpan Perubahan'),
-                  ),
-                ),
-              ),
-            ],
+    return ProfileFormPage(
+      title: 'Ubah Kontak',
+      formKey: _formKey,
+      onSubmit: _submit,
+      isSubmitting: _isSubmitting,
+      children: [
+        TextFormField(
+          controller: _emailController,
+          enabled: !_isSubmitting,
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.email],
+          maxLength: 255,
+          style: AuraForm.inputStyle,
+          decoration: profileFieldDecoration(
+            label: 'Email',
+            counterText: '',
+            errorText: _serverError('email'),
           ),
+          onChanged: (_) => _clearServerError('email'),
+          validator: _validateEmail,
         ),
-      ),
+        const SizedBox(height: profileFieldGap),
+        TextFormField(
+          controller: _phoneController,
+          enabled: !_isSubmitting,
+          keyboardType: TextInputType.phone,
+          autofillHints: const [AutofillHints.telephoneNumber],
+          maxLength: 30,
+          style: AuraForm.inputStyle,
+          decoration: profileFieldDecoration(
+            label: 'Nomor HP',
+            counterText: '',
+            errorText: _serverError('phone'),
+          ),
+          onChanged: (_) => _clearServerError('phone'),
+          validator: _validatePhone,
+        ),
+        const SizedBox(height: profileFieldGap),
+        const _InfoNote(
+          'Pastikan email dan nomor HP yang kamu masukkan sudah benar.',
+        ),
+      ],
     );
   }
 
@@ -226,5 +174,48 @@ class _ContactEditScreenState extends ConsumerState<ContactEditScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(exception.message)));
+  }
+}
+
+/// A gentle reminder on a soft blue card, with an info icon.
+class _InfoNote extends StatelessWidget {
+  const _InfoNote(this.message);
+
+  final String message;
+
+  static const _fill = Color(0xFFE8F0FC);
+  static const _border = Color(0xFFD3E2F8);
+  static const _icon = Color(0xFF3D72C9);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _fill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 20, color: _icon),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AuraForm.heading,
+                  fontSize: 13,
+                  height: 1.45,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
